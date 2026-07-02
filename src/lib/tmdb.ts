@@ -83,7 +83,7 @@ export const getTrendingSeries = createServerFn({ method: "POST" }).handler(
 );
 
 export const searchSeries = createServerFn({ method: "POST" })
-  .inputValidator((input: { query: string }) => input)
+  .validator((input: { query: string }) => input)
   .handler(async ({ data }): Promise<TrendingResponse> => {
     return tmdbFetch("/search/tv", {
       query: data.query,
@@ -92,13 +92,13 @@ export const searchSeries = createServerFn({ method: "POST" })
   });
 
 export const getSeriesDetails = createServerFn({ method: "POST" })
-  .inputValidator((input: { id: number }) => input)
+  .validator((input: { id: number }) => input)
   .handler(async ({ data }): Promise<SeriesDetails> => {
     return tmdbFetch(`/tv/${data.id}`);
   });
 
 export const getSeasonDetails = createServerFn({ method: "POST" })
-  .inputValidator((input: { id: number; season: number }) => input)
+  .validator((input: { id: number; season: number }) => input)
   .handler(async ({ data }): Promise<SeasonDetails> => {
     return tmdbFetch(`/tv/${data.id}/season/${data.season}`);
   });

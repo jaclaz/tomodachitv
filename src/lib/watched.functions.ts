@@ -14,7 +14,7 @@ export interface WatchedEpisode {
 
 export const getWatchedEpisodes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tmdb_id: number }) => input)
+  .validator((input: { tmdb_id: number }) => input)
   .handler(async ({ context, data }): Promise<WatchedEpisode[]> => {
     const { data: rows, error } = await context.supabase
       .from("watched_episodes")
@@ -29,7 +29,7 @@ export const getWatchedEpisodes = createServerFn({ method: "POST" })
 
 export const markEpisodeWatched = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     (input: {
       tmdb_id: number;
       season_number: number;
@@ -52,7 +52,7 @@ export const markEpisodeWatched = createServerFn({ method: "POST" })
 
 export const unmarkEpisodeWatched = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     (input: {
       tmdb_id: number;
       season_number: number;

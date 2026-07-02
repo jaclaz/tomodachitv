@@ -27,7 +27,7 @@ export const getWatchlist = createServerFn({ method: "POST" })
 
 export const addToWatchlist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     (input: {
       tmdb_id: number;
       series_name: string;
@@ -55,7 +55,7 @@ export const addToWatchlist = createServerFn({ method: "POST" })
 
 export const removeFromWatchlist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tmdb_id: number }) => input)
+  .validator((input: { tmdb_id: number }) => input)
   .handler(async ({ context, data }) => {
     const { error } = await context.supabase
       .from("watchlist")
