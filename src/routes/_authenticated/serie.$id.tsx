@@ -1,0 +1,169 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getSeriesDetails, posterUrl, backdropUrl } from "@/lib/tmdb";
+import {
+  getWatchlist,
+  addToWatchlist,
+  removeFromWatchlist,
+} from "@/lib/watchlist.functions";
+import { EpisodeList } from "@/components/episode-list";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Check, Star, ArrowLeft } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/serie/$id")({
+  component: SeriesDetailPage,
+});
+
+function SeriesDetailPage() {
+  const { id } = Route.useParams();
+  const tmdbId = Number(id);
+  const queryClient = useQueryClient();
+
+  const { data: series, isLoading: seriesLoading } = useQuery({
+    queryKey: ["series", tmdbId],
+    queryFn: () => getSeriesDetails({ data: { id: tmdbId } }),
+    enabled: !isNaN(tmdbId),
+  });
+
+  const { data: watchlist = [] } = useQuery({
+    queryKey: ["watchlist"],
+    queryFn: () => getWatchlist(),
+  });
+
+  const inWatchlist = watchlist.some((w) => w.tmdb_id === tmdbId);
+
+  const addMutation = useMutation({
+    mutationFn: (data: {
+      tmdb_id: number;
+      series_name: string;
+      poster_path?: string | null;
+      backdrop_path?: string | null;
+      first_air_date?: string | null;
+      vote_average?: number | null;
+    }) => addToWatchlist({ data }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (tmdb_id: number) => removeFromWatchlist({ data: { tmdb_id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+  });
+
+  const toggleWatchlist = () => {
+    if (!series) return;
+    if (inWatchlist) {
+      removeMutation.mutate(tmdbId);
+    } else {
+      addMutation.mutate({
+        tmdb_id: series.id,
+        series_name: series.name,
+        poster_path: series.poster_path,
+        backdrop_path: series.backdrop_path,
+        first_air_date: series.first_air_date,
+        vote_average: series.vote_average,
+      });
+    }
+  };
+
+  if (seriesLoading || !series) {
+    return (
+      <div className="space-y-6 pt-12 sm:pt-0">
+        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-96 animate-pulse rounded-2xl bg-muted" />
+      </div>
+    );
+  }
+
+  const backdrop = backdropUrl(series.backdrop_path);
+  const poster = posterUrl(series.poster_path);
+  const year = series.first_air_date
+    ? new Date(series.first_air_date).getFullYear()
+    : null;
+
+  return (
+    <div className="space-y-6 pt-12 sm:pt-0">
+      <Button variant="ghost" asChild className="-ml-2 gap-2 text-muted-foreground">
+        <Link to="/">
+          <ArrowLeft className="h-4 w-4" />
+          Torna indietro
+        </Link>
+      </Button>
+
+      <section className="relative overflow-hidden rounded-2xl border border-border">
+        <div className="absolute inset-0">
+          {backdrop ? (
+            <img
+              src={backdrop}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-primary/20 to-accent/20" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/90 to-canvas/40" />
+        </div>
+
+        <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:p-8">
+          <div className="hidden sm:block sm:w-40 md:w-48 lg:w-52 flex-shrink-0">
+            <div className="aspect-[2/3] overflow-hidden rounded-xl border border-border shadow-2xl">
+              {poster ? (
+                <img
+                  src={poster}
+                  alt={series.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-muted">
+                  <span className="font-display text-3xl font-bold text-muted-foreground">
+                    {series.name.slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {year && <Badge variant="secondary">{year}</Badge>}
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Star className="h-3 w-3 fill-rating text-rating" />
+                {series.vote_average.toFixed(1)}
+              </Badge>
+              {series.genres.map((g) => (
+                <Badge key={g.id} variant="outline" className="border-border">
+                  {g.name}
+                </Badge>
+              ))}
+            </div>
+
+            <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              {series.name}
+            </h1>
+
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {series.overview || "Nessuna descrizione disponibile."}
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant={inWatchlist ? "secondary" : "default"}
+                className="gap-2"
+                onClick={toggleWatchlist}
+              >
+                {inWatchlist ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {inWatchlist ? "Nella lista" : "Aggiungi alla lista"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <EpisodeList series={series} />
+    </div>
+  );
+}

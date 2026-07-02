@@ -9,61 +9,180 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedWatchlistRouteImport } from './routes/_authenticated/watchlist'
+import { Route as AuthenticatedTrendingRouteImport } from './routes/_authenticated/trending'
+import { Route as AuthenticatedStatisticheRouteImport } from './routes/_authenticated/statistiche'
+import { Route as AuthenticatedSerieIdRouteImport } from './routes/_authenticated/serie.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWatchlistRoute = AuthenticatedWatchlistRouteImport.update({
+  id: '/watchlist',
+  path: '/watchlist',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTrendingRoute = AuthenticatedTrendingRouteImport.update({
+  id: '/trending',
+  path: '/trending',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStatisticheRoute =
+  AuthenticatedStatisticheRouteImport.update({
+    id: '/statistiche',
+    path: '/statistiche',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSerieIdRoute = AuthenticatedSerieIdRouteImport.update({
+  id: '/serie/$id',
+  path: '/serie/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/statistiche': typeof AuthenticatedStatisticheRoute
+  '/trending': typeof AuthenticatedTrendingRoute
+  '/watchlist': typeof AuthenticatedWatchlistRoute
+  '/serie/$id': typeof AuthenticatedSerieIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/statistiche': typeof AuthenticatedStatisticheRoute
+  '/trending': typeof AuthenticatedTrendingRoute
+  '/watchlist': typeof AuthenticatedWatchlistRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/serie/$id': typeof AuthenticatedSerieIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/statistiche': typeof AuthenticatedStatisticheRoute
+  '/_authenticated/trending': typeof AuthenticatedTrendingRoute
+  '/_authenticated/watchlist': typeof AuthenticatedWatchlistRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/serie/$id': typeof AuthenticatedSerieIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/statistiche'
+    | '/trending'
+    | '/watchlist'
+    | '/serie/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/auth' | '/statistiche' | '/trending' | '/watchlist' | '/' | '/serie/$id'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/statistiche'
+    | '/_authenticated/trending'
+    | '/_authenticated/watchlist'
+    | '/_authenticated/'
+    | '/_authenticated/serie/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/watchlist': {
+      id: '/_authenticated/watchlist'
+      path: '/watchlist'
+      fullPath: '/watchlist'
+      preLoaderRoute: typeof AuthenticatedWatchlistRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/trending': {
+      id: '/_authenticated/trending'
+      path: '/trending'
+      fullPath: '/trending'
+      preLoaderRoute: typeof AuthenticatedTrendingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/statistiche': {
+      id: '/_authenticated/statistiche'
+      path: '/statistiche'
+      fullPath: '/statistiche'
+      preLoaderRoute: typeof AuthenticatedStatisticheRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/serie/$id': {
+      id: '/_authenticated/serie/$id'
+      path: '/serie/$id'
+      fullPath: '/serie/$id'
+      preLoaderRoute: typeof AuthenticatedSerieIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedStatisticheRoute: typeof AuthenticatedStatisticheRoute
+  AuthenticatedTrendingRoute: typeof AuthenticatedTrendingRoute
+  AuthenticatedWatchlistRoute: typeof AuthenticatedWatchlistRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedSerieIdRoute: typeof AuthenticatedSerieIdRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedStatisticheRoute: AuthenticatedStatisticheRoute,
+  AuthenticatedTrendingRoute: AuthenticatedTrendingRoute,
+  AuthenticatedWatchlistRoute: AuthenticatedWatchlistRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedSerieIdRoute: AuthenticatedSerieIdRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
