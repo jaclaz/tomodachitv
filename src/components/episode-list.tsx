@@ -1,0 +1,174 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  getSeasonDetails,
+  type Episode,
+  type SeriesDetails,
+} from "@/lib/tmdb";
+import {
+  getWatchedEpisodes,
+  markEpisodeWatched,
+  unmarkEpisodeWatched,
+} from "@/lib/watched.functions";
+import { Clock, Check } from "lucide-react";
+
+interface EpisodeListProps {
+  series: SeriesDetails;
+}
+
+export function EpisodeList({ series }: EpisodeListProps) {
+  const [activeSeason, setActiveSeason] = useState(() => {
+    const first = series.seasons.find((s) => s.season_number > 0);
+    return first?.season_number ?? 1;
+  });
+
+  const tmdbId = series.id;
+  const queryClient = useQueryClient();
+
+  const runtimeFallback =
+    series.episode_run_time && series.episode_run_time.length > 0
+      ? series.episode_run_time[0]
+      : null;
+
+  const { data: season, isLoading } = useQuery({
+    queryKey: ["season", tmdbId, activeSeason],
+    queryFn: () => getSeasonDetails({ data: { id: tmdbId, season: activeSeason } }),
+    enabled: !!activeSeason,
+  });
+
+  const { data: watched = [] } = useQuery({
+    queryKey: ["watched", tmdbId],
+    queryFn: () => getWatchedEpisodes({ data: { tmdb_id: tmdbId } }),
+  });
+
+  const markMutation = useMutation({
+    mutationFn: markEpisodeWatched,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+
+  const unmarkMutation = useMutation({
+    mutationFn: unmarkEpisodeWatched,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+
+  const watchedSet = new Set(
+    watched.map((w) => `${w.season_number}-${w.episode_number}`)
+  );
+
+  const isWatched = (ep: Episode) =>
+    watchedSet.has(`${ep.season_number}-${ep.episode_number}`);
+
+  const toggleEpisode = (ep: Episode) => {
+    if (isWatched(ep)) {
+      unmarkMutation.mutate({
+        tmdb_id: tmdbId,
+        season_number: ep.season_number,
+        episode_number: ep.episode_number,
+      });
+    } else {
+      markMutation.mutate({
+        tmdb_id: tmdbId,
+        season_number: ep.season_number,
+        episode_number: ep.episode_number,
+        episode_name: ep.name,
+        runtime_minutes: ep.runtime ?? runtimeFallback,
+      });
+    }
+  };
+
+  const seasons = series.seasons.filter((s) => s.season_number > 0);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface">
+      <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
+        <div className="border-b border-border px-4 pt-4">
+          <TabsList className="bg-transparent p-0">
+            {seasons.map((season) => (
+              <TabsTrigger
+                key={season.season_number}
+                value={String(season.season_number)}
+                className="rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
+              >
+                St. {season.season_number}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        {seasons.map((season) => (
+          <TabsContent
+            key={season.season_number}
+            value={String(season.season_number)}
+            className="m-0"
+          >
+            <ScrollArea className="h-[500px]">
+              {isLoading ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  Caricamento episodi...
+                </div>
+              ) : !season?.episodes?.length ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  Nessun episodio disponibile.
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {season.episodes.map((ep) => {
+                    const watched = isWatched(ep);
+                    return (
+                      <li
+                        key={ep.id}
+                        className="flex items-start gap-4 p-4 transition-colors hover:bg-secondary/30"
+                      >
+                        <Checkbox
+                          id={`ep-${ep.id}`}
+                          checked={watched}
+                          onCheckedChange={() => toggleEpisode(ep)}
+                          className="mt-1"
+                        />
+                        <label
+                          htmlFor={`ep-${ep.id}`}
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-foreground">
+                              {ep.episode_number}. {ep.name}
+                            </span>
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              {watched ? (
+                                <>
+                                  <Check className="h-3 w-3 text-primary" />
+                                  Visto
+                                </>
+                              ) : ep.runtime ? (
+                                <>
+                                  <Clock className="h-3 w-3" />
+                                  {ep.runtime} min
+                                </>
+                              ) : null}
+                            </span>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            {ep.overview || "Nessuna descrizione."}
+                          </p>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </ScrollArea>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
