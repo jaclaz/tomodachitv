@@ -14,7 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      watched_episodes: {
+        Row: {
+          episode_name: string | null
+          episode_number: number
+          id: string
+          runtime_minutes: number | null
+          season_number: number
+          tmdb_id: number
+          user_id: string
+          watched_at: string
+        }
+        Insert: {
+          episode_name?: string | null
+          episode_number: number
+          id?: string
+          runtime_minutes?: number | null
+          season_number: number
+          tmdb_id: number
+          user_id: string
+          watched_at?: string
+        }
+        Update: {
+          episode_name?: string | null
+          episode_number?: number
+          id?: string
+          runtime_minutes?: number | null
+          season_number?: number
+          tmdb_id?: number
+          user_id?: string
+          watched_at?: string
+        }
+        Relationships: []
+      }
+      watchlist: {
+        Row: {
+          added_at: string
+          backdrop_path: string | null
+          first_air_date: string | null
+          id: string
+          poster_path: string | null
+          series_name: string
+          tmdb_id: number
+          user_id: string
+          vote_average: number | null
+        }
+        Insert: {
+          added_at?: string
+          backdrop_path?: string | null
+          first_air_date?: string | null
+          id?: string
+          poster_path?: string | null
+          series_name: string
+          tmdb_id: number
+          user_id: string
+          vote_average?: number | null
+        }
+        Update: {
+          added_at?: string
+          backdrop_path?: string | null
+          first_air_date?: string | null
+          id?: string
+          poster_path?: string | null
+          series_name?: string
+          tmdb_id?: number
+          user_id?: string
+          vote_average?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
