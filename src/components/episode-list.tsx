@@ -33,7 +33,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
       ? series.episode_run_time[0]
       : null;
 
-  const { data: season, isLoading } = useQuery({
+  const { data: seasonDetails, isLoading } = useQuery({
     queryKey: ["season", tmdbId, activeSeason],
     queryFn: () => getSeasonDetails({ data: { id: tmdbId, season: activeSeason } }),
     enabled: !!activeSeason,
@@ -45,7 +45,13 @@ export function EpisodeList({ series }: EpisodeListProps) {
   });
 
   const markMutation = useMutation({
-    mutationFn: markEpisodeWatched,
+    mutationFn: (vars: {
+      tmdb_id: number;
+      season_number: number;
+      episode_number: number;
+      episode_name?: string;
+      runtime_minutes?: number | null;
+    }) => markEpisodeWatched({ data: vars }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
@@ -53,7 +59,11 @@ export function EpisodeList({ series }: EpisodeListProps) {
   });
 
   const unmarkMutation = useMutation({
-    mutationFn: unmarkEpisodeWatched,
+    mutationFn: (vars: {
+      tmdb_id: number;
+      season_number: number;
+      episode_number: number;
+    }) => unmarkEpisodeWatched({ data: vars }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
@@ -92,22 +102,22 @@ export function EpisodeList({ series }: EpisodeListProps) {
       <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
         <div className="border-b border-border px-4 pt-4">
           <TabsList className="bg-transparent p-0">
-            {seasons.map((season) => (
+            {seasons.map((seasonInfo) => (
               <TabsTrigger
-                key={season.season_number}
-                value={String(season.season_number)}
+                key={seasonInfo.season_number}
+                value={String(seasonInfo.season_number)}
                 className="rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
               >
-                St. {season.season_number}
+                St. {seasonInfo.season_number}
               </TabsTrigger>
             ))}
           </TabsList>
         </div>
 
-        {seasons.map((season) => (
+        {seasons.map((seasonInfo) => (
           <TabsContent
-            key={season.season_number}
-            value={String(season.season_number)}
+            key={seasonInfo.season_number}
+            value={String(seasonInfo.season_number)}
             className="m-0"
           >
             <ScrollArea className="h-[500px]">
@@ -115,13 +125,13 @@ export function EpisodeList({ series }: EpisodeListProps) {
                 <div className="p-8 text-center text-muted-foreground">
                   Caricamento episodi...
                 </div>
-              ) : !season?.episodes?.length ? (
+              ) : !seasonDetails?.episodes?.length ? (
                 <div className="p-8 text-center text-muted-foreground">
                   Nessun episodio disponibile.
                 </div>
               ) : (
                 <ul className="divide-y divide-border">
-                  {season.episodes.map((ep) => {
+                  {seasonDetails.episodes.map((ep) => {
                     const watched = isWatched(ep);
                     return (
                       <li
@@ -172,3 +182,4 @@ export function EpisodeList({ series }: EpisodeListProps) {
     </div>
   );
 }
+
