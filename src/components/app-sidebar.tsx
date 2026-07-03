@@ -32,6 +32,11 @@ export function AppSidebar() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
+  const { data: profile } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => getMyProfile(),
+  });
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     await router.navigate({ to: "/auth" });
@@ -40,9 +45,13 @@ export function AppSidebar() {
   const sidebarContent = (
     <div className="flex h-full flex-col bg-canvas">
       <div className="flex h-16 items-center gap-3 px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <span className="font-display text-lg font-bold">P</span>
-        </div>
+        <img
+          src={logoUrl}
+          alt="PAVULLI logo"
+          width={36}
+          height={36}
+          className="h-9 w-9"
+        />
         <span className="font-display text-xl font-bold tracking-tight">PAVULLI</span>
       </div>
 
@@ -64,22 +73,29 @@ export function AppSidebar() {
 
         <Separator className="my-4 bg-border" />
 
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Up next
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Play className="h-5 w-5 fill-current" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Start watching</p>
-              <p className="text-xs text-muted-foreground">
-                Add titles to your list
+        {profile && (
+          <Link
+            to="/u/$username"
+            params={{ username: profile.username }}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 transition-colors hover:bg-card"
+          >
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={profile.avatar_url ?? undefined} />
+              <AvatarFallback>
+                {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">
+                {profile.display_name ?? profile.username}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                @{profile.username}
               </p>
             </div>
-          </div>
-        </div>
+          </Link>
+        )}
       </ScrollArea>
 
       <div className="border-t border-border p-4">
@@ -94,6 +110,7 @@ export function AppSidebar() {
       </div>
     </div>
   );
+
 
   return (
     <>
