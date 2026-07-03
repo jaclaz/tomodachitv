@@ -129,6 +129,7 @@ function AuthPage() {
                 />
               </div>
               {error && <p className="text-sm text-accent">{error}</p>}
+              {message && <p className="text-sm text-primary">{message}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Accedi
