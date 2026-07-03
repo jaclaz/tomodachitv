@@ -135,7 +135,12 @@ export const getUserWatched = createServerFn({ method: "POST" })
 export const updateMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(
-    (input: { username?: string; display_name?: string; bio?: string }) => input
+    (input: {
+      username?: string;
+      display_name?: string;
+      bio?: string;
+      avatar_url?: string | null;
+    }) => input
   )
   .handler(async ({ context, data }) => {
     if (data.username) {
