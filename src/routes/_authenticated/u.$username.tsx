@@ -9,6 +9,7 @@ import {
 } from "@/lib/social.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarUpload } from "@/components/avatar-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, UserPlus, UserMinus, Film, Tv } from "lucide-react";
