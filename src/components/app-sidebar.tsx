@@ -1,26 +1,32 @@
 import { useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getMyProfile } from "@/lib/social.functions";
+import logoUrl from "@/assets/logo.png";
 import {
   Compass,
   Flame,
   ListVideo,
   BarChart3,
+  Users,
   LogOut,
   Menu,
-  Play,
 } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: Compass, label: "Home" },
   { to: "/trending", icon: Flame, label: "Trending" },
   { to: "/watchlist", icon: ListVideo, label: "Watchlist" },
+  { to: "/social", icon: Users, label: "Social" },
   { to: "/stats", icon: BarChart3, label: "Stats" },
 ] as const;
+
 
 export function AppSidebar() {
   const [open, setOpen] = useState(false);
