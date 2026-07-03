@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import logoUrl from "@/assets/logo.png";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -14,6 +15,8 @@ function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,9 +47,24 @@ function AuthPage() {
     setLoading(true);
     setError("");
     setMessage("");
+
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(normalizedUsername)) {
+      setError("Username must be 3–20 chars: lowercase letters, numbers, or _");
+      setLoading(false);
+      return;
+    }
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: {
+          username: normalizedUsername,
+          display_name: displayName.trim() || normalizedUsername,
+        },
+      },
     });
     if (signUpError) {
       setError(signUpError.message);
@@ -66,8 +84,8 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-surface p-8 shadow-2xl">
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <span className="font-display text-2xl font-bold">P</span>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center">
+            <img src={logoUrl} alt="PAVULLI logo" className="h-14 w-14" />
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">
             PAVULLI
@@ -136,6 +154,34 @@ function AuthPage() {
             </form>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="yourhandle"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={3}
+                  maxLength={20}
+                  autoComplete="username"
+                />
+                <p className="text-xs text-muted-foreground">
+                  3–20 chars: lowercase letters, numbers, underscores.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="display-name">Display name (optional)</Label>
+                <Input
+                  id="display-name"
+                  type="text"
+                  placeholder="Your name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={50}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email-signup">Email</Label>
                 <Input
