@@ -71,12 +71,40 @@ export type Database = {
         }
         Relationships: []
       }
+      watched_movies: {
+        Row: {
+          id: string
+          runtime_minutes: number | null
+          title: string | null
+          tmdb_id: number
+          user_id: string
+          watched_at: string
+        }
+        Insert: {
+          id?: string
+          runtime_minutes?: number | null
+          title?: string | null
+          tmdb_id: number
+          user_id: string
+          watched_at?: string
+        }
+        Update: {
+          id?: string
+          runtime_minutes?: number | null
+          title?: string | null
+          tmdb_id?: number
+          user_id?: string
+          watched_at?: string
+        }
+        Relationships: []
+      }
       watchlist: {
         Row: {
           added_at: string
           backdrop_path: string | null
           first_air_date: string | null
           id: string
+          media_type: string
           poster_path: string | null
           series_name: string
           tmdb_id: number
@@ -88,6 +116,7 @@ export type Database = {
           backdrop_path?: string | null
           first_air_date?: string | null
           id?: string
+          media_type?: string
           poster_path?: string | null
           series_name: string
           tmdb_id: number
@@ -99,6 +128,7 @@ export type Database = {
           backdrop_path?: string | null
           first_air_date?: string | null
           id?: string
+          media_type?: string
           poster_path?: string | null
           series_name?: string
           tmdb_id?: number
