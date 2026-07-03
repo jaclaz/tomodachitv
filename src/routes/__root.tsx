@@ -27,13 +27,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           name: "viewport",
           content: "width=device-width, initial-scale=1, viewport-fit=cover",
         },
-        { title: "Pavulli — Movie & TV Tracker" },
+        { title: "TomodachiTV — Movie & TV Tracker" },
         {
           name: "description",
           content:
             "Track the movies and TV shows you watch, discover trending titles, and build your personal watchlist.",
         },
-        { property: "og:title", content: "Pavulli — Movie & TV Tracker" },
+        { property: "og:title", content: "TomodachiTV — Movie & TV Tracker" },
         {
           property: "og:description",
           content:
@@ -41,7 +41,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: "Pavulli — Movie & TV Tracker" },
+        { name: "twitter:title", content: "TomodachiTV — Movie & TV Tracker" },
         {
           name: "twitter:description",
           content:
