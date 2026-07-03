@@ -85,10 +85,10 @@ function AuthPage() {
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-surface p-8 shadow-2xl">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center">
-            <img src={logoUrl} alt="PAVULLI logo" className="h-14 w-14" />
+            <img src={logoUrl} alt="TomodachiTV logo" className="h-14 w-14" />
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">
-            PAVULLI
+            TomodachiTV
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Track the movies and TV shows you love

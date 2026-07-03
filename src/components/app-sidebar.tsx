@@ -47,12 +47,12 @@ export function AppSidebar() {
       <div className="flex h-16 items-center gap-3 px-6">
         <img
           src={logoUrl}
-          alt="PAVULLI logo"
+          alt="TomodachiTV logo"
           width={36}
           height={36}
           className="h-9 w-9"
         />
-        <span className="font-display text-xl font-bold tracking-tight">PAVULLI</span>
+        <span className="font-display text-xl font-bold tracking-tight">TomodachiTV</span>
       </div>
 
       <ScrollArea className="flex-1 px-4">
