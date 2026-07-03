@@ -224,3 +224,58 @@ export const getSeasonDetails = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SeasonDetails> => {
     return tmdbFetch(`/tv/${data.id}/season/${data.season}`);
   });
+
+// ============ Genres ============
+export interface Genre { id: number; name: string }
+
+export const getGenres = createServerFn({ method: "POST" })
+  .validator((input: { type: MediaType }) => input)
+  .handler(async ({ data }): Promise<{ genres: Genre[] }> => {
+    const res = await tmdbFetch(`/genre/${data.type}/list`);
+    return { genres: res.genres ?? [] };
+  });
+
+// ============ Discover with filters ============
+export type SortBy =
+  | "popularity.desc"
+  | "vote_average.desc"
+  | "primary_release_date.desc"
+  | "first_air_date.desc"
+  | "title.asc"
+  | "name.asc";
+
+export interface DiscoverParams {
+  type: MediaType;
+  genreId?: number | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  minRating?: number | null;
+  sortBy?: SortBy;
+  page?: number;
+}
+
+export const discoverContent = createServerFn({ method: "POST" })
+  .validator((input: DiscoverParams) => input)
+  .handler(async ({ data }): Promise<{ results: MediaItem[] }> => {
+    const params: Record<string, string> = {
+      sort_by: data.sortBy ?? "popularity.desc",
+      include_adult: "false",
+      page: String(data.page ?? 1),
+      "vote_count.gte": "50",
+    };
+    if (data.genreId) params.with_genres = String(data.genreId);
+    if (data.minRating != null) params["vote_average.gte"] = String(data.minRating);
+    if (data.type === "movie") {
+      if (data.yearFrom) params["primary_release_date.gte"] = `${data.yearFrom}-01-01`;
+      if (data.yearTo) params["primary_release_date.lte"] = `${data.yearTo}-12-31`;
+    } else {
+      if (data.yearFrom) params["first_air_date.gte"] = `${data.yearFrom}-01-01`;
+      if (data.yearTo) params["first_air_date.lte"] = `${data.yearTo}-12-31`;
+    }
+    const res = await tmdbFetch(`/discover/${data.type}`, params);
+    const results = (res.results ?? []).map((r: RawTv & RawMovie) =>
+      data.type === "tv" ? mapTv(r) : mapMovie(r)
+    );
+    return { results };
+  });
+
