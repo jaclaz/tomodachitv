@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { to: "/", icon: Compass, label: "Esplora" },
-  { to: "/trending", icon: Flame, label: "In Tendenza" },
-  { to: "/watchlist", icon: ListVideo, label: "La Mia Lista" },
-  { to: "/statistiche", icon: BarChart3, label: "Statistiche" },
-];
+  { to: "/", icon: Compass, label: "Home" },
+  { to: "/trending", icon: Flame, label: "Trending" },
+  { to: "/watchlist", icon: ListVideo, label: "Watchlist" },
+  { to: "/stats", icon: BarChart3, label: "Stats" },
+] as const;
 
 export function AppSidebar() {
   const [open, setOpen] = useState(false);
@@ -60,16 +60,16 @@ export function AppSidebar() {
 
         <div className="rounded-xl border border-border bg-surface p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Prossimo episodio
+            Up next
           </p>
           <div className="mt-3 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Play className="h-5 w-5 fill-current" />
             </div>
             <div>
-              <p className="text-sm font-medium">Inizia a guardare</p>
+              <p className="text-sm font-medium">Start watching</p>
               <p className="text-xs text-muted-foreground">
-                Aggiungi serie alla tua lista
+                Add titles to your list
               </p>
             </div>
           </div>
@@ -83,7 +83,7 @@ export function AppSidebar() {
           onClick={handleLogout}
         >
           <LogOut className="h-5 w-5" />
-          Esci
+          Sign out
         </Button>
       </div>
     </div>
@@ -97,7 +97,7 @@ export function AppSidebar() {
           <SheetTrigger asChild>
             <Button variant="outline" size="icon" className="bg-surface">
               <Menu className="h-5 w-5" />
-              <span className="sr-only">Apri menu</span>
+              <span className="sr-only">Open menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72 border-r border-border p-0">

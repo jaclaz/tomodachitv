@@ -14,8 +14,9 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedWatchlistRouteImport } from './routes/_authenticated/watchlist'
 import { Route as AuthenticatedTrendingRouteImport } from './routes/_authenticated/trending'
-import { Route as AuthenticatedStatisticheRouteImport } from './routes/_authenticated/statistiche'
+import { Route as AuthenticatedStatsRouteImport } from './routes/_authenticated/stats'
 import { Route as AuthenticatedSerieIdRouteImport } from './routes/_authenticated/serie.$id'
+import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticated/movie.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -41,42 +42,49 @@ const AuthenticatedTrendingRoute = AuthenticatedTrendingRouteImport.update({
   path: '/trending',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedStatisticheRoute =
-  AuthenticatedStatisticheRouteImport.update({
-    id: '/statistiche',
-    path: '/statistiche',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
+const AuthenticatedStatsRoute = AuthenticatedStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSerieIdRoute = AuthenticatedSerieIdRouteImport.update({
   id: '/serie/$id',
   path: '/serie/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMovieIdRoute = AuthenticatedMovieIdRouteImport.update({
+  id: '/movie/$id',
+  path: '/movie/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/statistiche': typeof AuthenticatedStatisticheRoute
+  '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
+  '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/statistiche': typeof AuthenticatedStatisticheRoute
+  '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/': typeof AuthenticatedIndexRoute
+  '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/statistiche': typeof AuthenticatedStatisticheRoute
+  '/_authenticated/stats': typeof AuthenticatedStatsRoute
   '/_authenticated/trending': typeof AuthenticatedTrendingRoute
   '/_authenticated/watchlist': typeof AuthenticatedWatchlistRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/movie/$id': typeof AuthenticatedMovieIdRoute
   '/_authenticated/serie/$id': typeof AuthenticatedSerieIdRoute
 }
 export interface FileRouteTypes {
@@ -84,20 +92,29 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/statistiche'
+    | '/stats'
     | '/trending'
     | '/watchlist'
+    | '/movie/$id'
     | '/serie/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/statistiche' | '/trending' | '/watchlist' | '/' | '/serie/$id'
+  to:
+    | '/auth'
+    | '/stats'
+    | '/trending'
+    | '/watchlist'
+    | '/'
+    | '/movie/$id'
+    | '/serie/$id'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/statistiche'
+    | '/_authenticated/stats'
     | '/_authenticated/trending'
     | '/_authenticated/watchlist'
     | '/_authenticated/'
+    | '/_authenticated/movie/$id'
     | '/_authenticated/serie/$id'
   fileRoutesById: FileRoutesById
 }
@@ -143,11 +160,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrendingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/statistiche': {
-      id: '/_authenticated/statistiche'
-      path: '/statistiche'
-      fullPath: '/statistiche'
-      preLoaderRoute: typeof AuthenticatedStatisticheRouteImport
+    '/_authenticated/stats': {
+      id: '/_authenticated/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof AuthenticatedStatsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/serie/$id': {
@@ -157,22 +174,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSerieIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/movie/$id': {
+      id: '/_authenticated/movie/$id'
+      path: '/movie/$id'
+      fullPath: '/movie/$id'
+      preLoaderRoute: typeof AuthenticatedMovieIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedStatisticheRoute: typeof AuthenticatedStatisticheRoute
+  AuthenticatedStatsRoute: typeof AuthenticatedStatsRoute
   AuthenticatedTrendingRoute: typeof AuthenticatedTrendingRoute
   AuthenticatedWatchlistRoute: typeof AuthenticatedWatchlistRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedMovieIdRoute: typeof AuthenticatedMovieIdRoute
   AuthenticatedSerieIdRoute: typeof AuthenticatedSerieIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedStatisticheRoute: AuthenticatedStatisticheRoute,
+  AuthenticatedStatsRoute: AuthenticatedStatsRoute,
   AuthenticatedTrendingRoute: AuthenticatedTrendingRoute,
   AuthenticatedWatchlistRoute: AuthenticatedWatchlistRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedMovieIdRoute: AuthenticatedMovieIdRoute,
   AuthenticatedSerieIdRoute: AuthenticatedSerieIdRoute,
 }
 
@@ -186,13 +212,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

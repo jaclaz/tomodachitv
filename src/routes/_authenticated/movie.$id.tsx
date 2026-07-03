@@ -1,28 +1,32 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSeriesDetails, posterUrl, backdropUrl } from "@/lib/tmdb";
+import { getMovieDetails, posterUrl, backdropUrl } from "@/lib/tmdb";
 import {
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
 } from "@/lib/watchlist.functions";
-import { EpisodeList } from "@/components/episode-list";
+import {
+  getWatchedMovies,
+  markMovieWatched,
+  unmarkMovieWatched,
+} from "@/lib/watched.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, Star, ArrowLeft } from "lucide-react";
+import { Plus, Check, Star, ArrowLeft, Clock, Eye, EyeOff } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/serie/$id")({
-  component: SeriesDetailPage,
+export const Route = createFileRoute("/_authenticated/movie/$id")({
+  component: MovieDetailPage,
 });
 
-function SeriesDetailPage() {
+function MovieDetailPage() {
   const { id } = Route.useParams();
   const tmdbId = Number(id);
   const queryClient = useQueryClient();
 
-  const { data: series, isLoading: seriesLoading } = useQuery({
-    queryKey: ["series", tmdbId],
-    queryFn: () => getSeriesDetails({ data: { id: tmdbId } }),
+  const { data: movie, isLoading } = useQuery({
+    queryKey: ["movie", tmdbId],
+    queryFn: () => getMovieDetails({ data: { id: tmdbId } }),
     enabled: !isNaN(tmdbId),
   });
 
@@ -31,21 +35,27 @@ function SeriesDetailPage() {
     queryFn: () => getWatchlist(),
   });
 
+  const { data: watchedMovies = [] } = useQuery({
+    queryKey: ["watchedMovies"],
+    queryFn: () => getWatchedMovies(),
+  });
+
   const inWatchlist = watchlist.some(
-    (w) => w.media_type === "tv" && w.tmdb_id === tmdbId
+    (w) => w.media_type === "movie" && w.tmdb_id === tmdbId
   );
+  const isWatched = watchedMovies.some((m) => m.tmdb_id === tmdbId);
 
   const addMutation = useMutation({
     mutationFn: () =>
       addToWatchlist({
         data: {
-          tmdb_id: series!.id,
-          media_type: "tv",
-          series_name: series!.title,
-          poster_path: series!.poster_path,
-          backdrop_path: series!.backdrop_path,
-          first_air_date: series!.release_date,
-          vote_average: series!.vote_average,
+          tmdb_id: movie!.id,
+          media_type: "movie",
+          series_name: movie!.title,
+          poster_path: movie!.poster_path,
+          backdrop_path: movie!.backdrop_path,
+          first_air_date: movie!.release_date,
+          vote_average: movie!.vote_average,
         },
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
@@ -53,29 +63,46 @@ function SeriesDetailPage() {
 
   const removeMutation = useMutation({
     mutationFn: () =>
-      removeFromWatchlist({ data: { tmdb_id: tmdbId, media_type: "tv" } }),
+      removeFromWatchlist({ data: { tmdb_id: tmdbId, media_type: "movie" } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
-  const toggleWatchlist = () => {
-    if (!series) return;
-    if (inWatchlist) removeMutation.mutate();
-    else addMutation.mutate();
-  };
+  const markMutation = useMutation({
+    mutationFn: () =>
+      markMovieWatched({
+        data: {
+          tmdb_id: movie!.id,
+          title: movie!.title,
+          runtime_minutes: movie!.runtime,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchedMovies"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
 
-  if (seriesLoading || !series) {
+  const unmarkMutation = useMutation({
+    mutationFn: () => unmarkMovieWatched({ data: { tmdb_id: tmdbId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchedMovies"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+
+  if (isLoading || !movie) {
     return (
       <div className="space-y-6 pt-12 sm:pt-0">
         <div className="h-64 animate-pulse rounded-2xl bg-muted" />
-        <div className="h-96 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-48 animate-pulse rounded-2xl bg-muted" />
       </div>
     );
   }
 
-  const backdrop = backdropUrl(series.backdrop_path);
-  const poster = posterUrl(series.poster_path);
-  const year = series.release_date
-    ? new Date(series.release_date).getFullYear()
+  const backdrop = backdropUrl(movie.backdrop_path);
+  const poster = posterUrl(movie.poster_path);
+  const year = movie.release_date
+    ? new Date(movie.release_date).getFullYear()
     : null;
 
   return (
@@ -103,13 +130,13 @@ function SeriesDetailPage() {
               {poster ? (
                 <img
                   src={poster}
-                  alt={series.title}
+                  alt={movie.title}
                   className="h-full w-full object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-muted">
                   <span className="font-display text-3xl font-bold text-muted-foreground">
-                    {series.title.slice(0, 2).toUpperCase()}
+                    {movie.title.slice(0, 2).toUpperCase()}
                   </span>
                 </div>
               )}
@@ -118,13 +145,19 @@ function SeriesDetailPage() {
 
           <div className="flex-1 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">TV Series</Badge>
+              <Badge variant="secondary">Movie</Badge>
               {year && <Badge variant="secondary">{year}</Badge>}
               <Badge variant="secondary" className="flex items-center gap-1">
                 <Star className="h-3 w-3 fill-rating text-rating" />
-                {series.vote_average.toFixed(1)}
+                {movie.vote_average.toFixed(1)}
               </Badge>
-              {series.genres.map((g) => (
+              {movie.runtime && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {movie.runtime} min
+                </Badge>
+              )}
+              {movie.genres.map((g) => (
                 <Badge key={g.id} variant="outline" className="border-border">
                   {g.name}
                 </Badge>
@@ -132,18 +165,34 @@ function SeriesDetailPage() {
             </div>
 
             <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              {series.title}
+              {movie.title}
             </h1>
 
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {series.overview || "No description available."}
+              {movie.overview || "No description available."}
             </p>
 
             <div className="flex flex-wrap gap-3">
               <Button
-                variant={inWatchlist ? "secondary" : "default"}
+                variant={isWatched ? "secondary" : "default"}
                 className="gap-2"
-                onClick={toggleWatchlist}
+                onClick={() =>
+                  isWatched ? unmarkMutation.mutate() : markMutation.mutate()
+                }
+              >
+                {isWatched ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+                {isWatched ? "Mark as unwatched" : "Mark as watched"}
+              </Button>
+              <Button
+                variant={inWatchlist ? "secondary" : "outline"}
+                className="gap-2"
+                onClick={() =>
+                  inWatchlist ? removeMutation.mutate() : addMutation.mutate()
+                }
               >
                 {inWatchlist ? (
                   <Check className="h-4 w-4" />
@@ -156,8 +205,6 @@ function SeriesDetailPage() {
           </div>
         </div>
       </section>
-
-      <EpisodeList series={series} />
     </div>
   );
 }

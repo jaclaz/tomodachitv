@@ -54,8 +54,7 @@ function AuthPage() {
       return;
     }
     if (!data.session) {
-      // Account created but email confirmation may be required.
-      setMessage("Account creato! Controlla la tua email per confermare.");
+      setMessage("Account created! Check your email to confirm.");
       setMode("login");
       setLoading(false);
       return;
@@ -74,7 +73,7 @@ function AuthPage() {
             PAVULLI
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Traccia le tue serie TV preferite
+            Track the movies and TV shows you love
           </p>
         </div>
 
@@ -89,7 +88,7 @@ function AuthPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Accedi
+              Sign in
             </button>
             <button
               type="button"
@@ -100,7 +99,7 @@ function AuthPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Registrati
+              Sign up
             </button>
           </div>
 
@@ -111,7 +110,7 @@ function AuthPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="nome@esempio.it"
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -132,7 +131,7 @@ function AuthPage() {
               {message && <p className="text-sm text-primary">{message}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Accedi
+                Sign in
               </Button>
             </form>
           ) : (
@@ -142,7 +141,7 @@ function AuthPage() {
                 <Input
                   id="email-signup"
                   type="email"
-                  placeholder="nome@esempio.it"
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -163,7 +162,7 @@ function AuthPage() {
               {error && <p className="text-sm text-accent">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Registrati
+                Sign up
               </Button>
             </form>
           )}

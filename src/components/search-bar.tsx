@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { searchSeries, type SeriesResult } from "@/lib/tmdb";
+import { searchMulti, type MediaItem } from "@/lib/tmdb";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
@@ -13,17 +13,21 @@ export function SearchBar() {
 
   const { data, isFetching } = useQuery({
     queryKey: ["search", query],
-    queryFn: () => searchSeries({ data: { query } }),
+    queryFn: () => searchMulti({ data: { query } }),
     enabled: query.length >= 2,
     staleTime: 1000 * 60,
   });
 
   const results = data?.results?.slice(0, 6) ?? [];
 
-  const handleSelect = (series: SeriesResult) => {
+  const handleSelect = (item: MediaItem) => {
     setOpen(false);
     setQuery("");
-    navigate({ to: "/serie/$id", params: { id: String(series.id) } });
+    if (item.media_type === "tv") {
+      navigate({ to: "/serie/$id", params: { id: String(item.id) } });
+    } else {
+      navigate({ to: "/movie/$id", params: { id: String(item.id) } });
+    }
   };
 
   return (
@@ -31,7 +35,7 @@ export function SearchBar() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Cerca una serie TV..."
+          placeholder="Search movies and TV shows..."
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -61,36 +65,38 @@ export function SearchBar() {
           onMouseDown={(e) => e.preventDefault()}
         >
           {isFetching ? (
-            <p className="px-3 py-2 text-sm text-muted-foreground">Ricerca...</p>
+            <p className="px-3 py-2 text-sm text-muted-foreground">Searching...</p>
           ) : results.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-muted-foreground">Nessun risultato.</p>
+            <p className="px-3 py-2 text-sm text-muted-foreground">No results.</p>
           ) : (
             <ul className="space-y-1">
-              {results.map((series) => (
-                <li key={series.id}>
+              {results.map((item) => (
+                <li key={`${item.media_type}-${item.id}`}>
                   <button
-                    onClick={() => handleSelect(series)}
+                    onClick={() => handleSelect(item)}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface"
                   >
-                    <div className="flex h-10 w-7 items-center justify-center rounded bg-muted text-xs font-bold text-muted-foreground">
-                      {series.poster_path ? (
+                    <div className="flex h-10 w-7 items-center justify-center overflow-hidden rounded bg-muted text-xs font-bold text-muted-foreground">
+                      {item.poster_path ? (
                         <img
-                          src={`https://image.tmdb.org/t/p/w92${series.poster_path}`}
+                          src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
                           alt=""
-                          className="h-full w-full rounded object-cover"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
-                        series.name.slice(0, 1).toUpperCase()
+                        item.title.slice(0, 1).toUpperCase()
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">{series.name}</p>
+                      <p className="font-medium text-foreground">{item.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {series.first_air_date
-                          ? new Date(series.first_air_date).getFullYear()
+                        {item.media_type === "tv" ? "TV" : "Movie"}
+                        {" · "}
+                        {item.release_date
+                          ? new Date(item.release_date).getFullYear()
                           : "—"}
                         {" · "}
-                        {series.vote_average.toFixed(1)}
+                        {item.vote_average.toFixed(1)}
                       </p>
                     </div>
                   </button>

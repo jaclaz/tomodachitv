@@ -1,32 +1,28 @@
 import { Link } from "@tanstack/react-router";
-import { backdropUrl, posterUrl } from "@/lib/tmdb";
+import { backdropUrl, posterUrl, type MediaItem } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Star, Plus } from "lucide-react";
-import type { SeriesResult } from "@/lib/tmdb";
+import { Play, Star, Plus, Check } from "lucide-react";
 
 interface HeroSectionProps {
-  series: SeriesResult;
+  item: MediaItem;
   inWatchlist?: boolean;
   onToggleWatchlist?: () => void;
 }
 
-export function HeroSection({ series, inWatchlist, onToggleWatchlist }: HeroSectionProps) {
-  const backdrop = backdropUrl(series.backdrop_path);
-  const poster = posterUrl(series.poster_path);
-  const year = series.first_air_date
-    ? new Date(series.first_air_date).getFullYear()
+export function HeroSection({ item, inWatchlist, onToggleWatchlist }: HeroSectionProps) {
+  const backdrop = backdropUrl(item.backdrop_path);
+  const poster = posterUrl(item.poster_path);
+  const year = item.release_date
+    ? new Date(item.release_date).getFullYear()
     : null;
+  const to = item.media_type === "tv" ? "/serie/$id" : "/movie/$id";
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border">
       <div className="absolute inset-0">
         {backdrop ? (
-          <img
-            src={backdrop}
-            alt=""
-            className="h-full w-full object-cover"
-          />
+          <img src={backdrop} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-primary/20 to-accent/20" />
         )}
@@ -37,11 +33,11 @@ export function HeroSection({ series, inWatchlist, onToggleWatchlist }: HeroSect
         <div className="hidden sm:block sm:w-40 md:w-48 lg:w-52 flex-shrink-0">
           <div className="aspect-[2/3] overflow-hidden rounded-xl border border-border shadow-2xl">
             {poster ? (
-              <img src={poster} alt={series.name} className="h-full w-full object-cover" />
+              <img src={poster} alt={item.title} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-muted">
                 <span className="font-display text-3xl font-bold text-muted-foreground">
-                  {series.name.slice(0, 2).toUpperCase()}
+                  {item.title.slice(0, 2).toUpperCase()}
                 </span>
               </div>
             )}
@@ -50,27 +46,32 @@ export function HeroSection({ series, inWatchlist, onToggleWatchlist }: HeroSect
 
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-primary/10 text-primary hover:bg-primary/20">In tendenza</Badge>
+            <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
+              Trending
+            </Badge>
+            <Badge variant="secondary">
+              {item.media_type === "tv" ? "TV Series" : "Movie"}
+            </Badge>
             {year && <Badge variant="secondary">{year}</Badge>}
             <Badge variant="secondary" className="flex items-center gap-1">
               <Star className="h-3 w-3 fill-rating text-rating" />
-              {series.vote_average.toFixed(1)}
+              {item.vote_average.toFixed(1)}
             </Badge>
           </div>
 
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            {series.name}
+            {item.title}
           </h1>
 
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            {series.overview || "Nessuna descrizione disponibile."}
+            {item.overview || "No description available."}
           </p>
 
           <div className="flex flex-wrap gap-3">
             <Button asChild className="gap-2">
-              <Link to="/serie/$id" params={{ id: String(series.id) }}>
+              <Link to={to} params={{ id: String(item.id) }}>
                 <Play className="h-4 w-4 fill-current" />
-                Dettagli
+                Details
               </Link>
             </Button>
             <Button
@@ -78,8 +79,8 @@ export function HeroSection({ series, inWatchlist, onToggleWatchlist }: HeroSect
               className="gap-2"
               onClick={onToggleWatchlist}
             >
-              <Plus className="h-4 w-4" />
-              {inWatchlist ? "Nella lista" : "Aggiungi alla lista"}
+              {inWatchlist ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {inWatchlist ? "In your list" : "Add to watchlist"}
             </Button>
           </div>
         </div>

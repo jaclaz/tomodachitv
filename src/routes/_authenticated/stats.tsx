@@ -4,7 +4,7 @@ import { getWatchlist } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
 import { StatsStrip } from "@/components/stats-strip";
 
-export const Route = createFileRoute("/_authenticated/statistiche")({
+export const Route = createFileRoute("/_authenticated/stats")({
   component: StatsPage,
 });
 
@@ -19,40 +19,38 @@ function StatsPage() {
     queryFn: () => getAllWatchedStats(),
   });
 
-  const averageRating =
-    watchlist.length > 0
-      ? watchlist.reduce((sum, w) => sum + (w.vote_average || 0), 0) / watchlist.length
-      : 0;
+  const tvCount = watchlist.filter((w) => w.media_type === "tv").length;
+  const movieCount = watchlist.filter((w) => w.media_type === "movie").length;
 
   return (
     <div className="space-y-8">
       <div className="pt-12 sm:pt-0">
-        <h1 className="font-display text-2xl font-bold text-foreground">
-          Statistiche
-        </h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Stats</h1>
         <p className="text-sm text-muted-foreground">
-          Il riepilogo del tuo guarda-serie.
+          A summary of your watching habits.
         </p>
       </div>
 
       <StatsStrip
         totalEpisodes={stats?.totalEpisodes ?? 0}
+        totalMovies={stats?.totalMovies ?? 0}
         totalMinutes={stats?.totalMinutes ?? 0}
         watchlistCount={watchlist.length}
-        averageRating={averageRating}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-6">
-          <h3 className="font-display text-lg font-semibold">Serie in lista</h3>
+          <h3 className="font-display text-lg font-semibold">In your list</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Hai salvato {watchlist.length} serie nella tua watchlist.
+            {tvCount} TV show{tvCount === 1 ? "" : "s"} and {movieCount} movie
+            {movieCount === 1 ? "" : "s"} saved.
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface p-6">
-          <h3 className="font-display text-lg font-semibold">Tempo totale</h3>
+          <h3 className="font-display text-lg font-semibold">Total watch time</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Circa {Math.round((stats?.totalMinutes ?? 0) / 60)} ore di contenuti visti.
+            About {Math.round((stats?.totalMinutes ?? 0) / 60)} hours of content
+            watched.
           </p>
         </div>
       </div>

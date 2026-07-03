@@ -1,36 +1,61 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getWatchlist, removeFromWatchlist } from "@/lib/watchlist.functions";
+import {
+  getWatchlist,
+  removeFromWatchlist,
+  type WatchlistItem,
+} from "@/lib/watchlist.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, Star } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
   component: WatchlistPage,
 });
 
+type Filter = "all" | "tv" | "movie";
+
 function WatchlistPage() {
   const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<Filter>("all");
+
   const { data = [], isLoading } = useQuery({
     queryKey: ["watchlist"],
     queryFn: () => getWatchlist(),
   });
 
   const removeMutation = useMutation({
-    mutationFn: (tmdb_id: number) => removeFromWatchlist({ data: { tmdb_id } }),
+    mutationFn: (item: WatchlistItem) =>
+      removeFromWatchlist({
+        data: { tmdb_id: item.tmdb_id, media_type: item.media_type },
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
+
+  const filtered = data.filter(
+    (item) => filter === "all" || item.media_type === filter
+  );
 
   return (
     <div className="space-y-8">
       <div className="pt-12 sm:pt-0">
         <h1 className="font-display text-2xl font-bold text-foreground">
-          La mia lista
+          My watchlist
         </h1>
         <p className="text-sm text-muted-foreground">
-          Le serie che vuoi seguire o stai già guardando.
+          Movies and shows you want to watch or are currently watching.
         </p>
       </div>
+
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="tv">TV Shows</TabsTrigger>
+          <TabsTrigger value="movie">Movies</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -41,24 +66,27 @@ function WatchlistPage() {
             />
           ))}
         </div>
-      ) : data.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-border bg-surface p-12 text-center">
-          <h3 className="font-display text-lg font-semibold">Lista vuota</h3>
+          <h3 className="font-display text-lg font-semibold">Empty list</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Esplora le serie e aggiungi quelle che ti interessano.
+            Explore titles and add the ones you're interested in.
           </p>
           <Button asChild className="mt-4">
-            <Link to="/">Esplora</Link>
+            <Link to="/">Explore</Link>
           </Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {data.map((item) => (
+          {filtered.map((item) => (
             <div
               key={item.id}
               className="group relative overflow-hidden rounded-xl bg-card"
             >
-              <Link to="/serie/$id" params={{ id: String(item.tmdb_id) }}>
+              <Link
+                to={item.media_type === "tv" ? "/serie/$id" : "/movie/$id"}
+                params={{ id: String(item.tmdb_id) }}
+              >
                 <div className="aspect-[2/3] overflow-hidden">
                   {item.poster_path ? (
                     <img
@@ -75,11 +103,16 @@ function WatchlistPage() {
                   )}
                 </div>
               </Link>
+              <div className="absolute right-2 top-2">
+                <span className="rounded-md bg-background/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
+                  {item.media_type === "tv" ? "TV" : "Movie"}
+                </span>
+              </div>
               <Button
                 size="icon"
                 variant="secondary"
-                className="absolute right-2 top-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-                onClick={() => removeMutation.mutate(item.tmdb_id)}
+                className="absolute left-2 top-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                onClick={() => removeMutation.mutate(item)}
               >
                 <Trash2 className="h-4 w-4 text-accent" />
               </Button>
