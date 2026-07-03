@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
@@ -12,9 +11,11 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth" }) as { redirect?: string };
@@ -25,6 +26,7 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setMessage("");
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -41,12 +43,20 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error: signUpError } = await supabase.auth.signUp({
+    setMessage("");
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
     });
     if (signUpError) {
       setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+    if (!data.session) {
+      // Account created but email confirmation may be required.
+      setMessage("Account creato! Controlla la tua email per confermare.");
+      setMode("login");
       setLoading(false);
       return;
     }
@@ -68,13 +78,33 @@ function AuthPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-secondary">
-            <TabsTrigger value="login">Accedi</TabsTrigger>
-            <TabsTrigger value="signup">Registrati</TabsTrigger>
-          </TabsList>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary p-1">
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-all ${
+                mode === "login"
+                  ? "bg-background text-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Accedi
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-all ${
+                mode === "signup"
+                  ? "bg-background text-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Registrati
+            </button>
+          </div>
 
-          <TabsContent value="login" className="space-y-4 pt-2">
+          {mode === "login" ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -104,9 +134,7 @@ function AuthPage() {
                 Accedi
               </Button>
             </form>
-          </TabsContent>
-
-          <TabsContent value="signup" className="space-y-4 pt-2">
+          ) : (
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email-signup">Email</Label>
@@ -137,8 +165,8 @@ function AuthPage() {
                 Registrati
               </Button>
             </form>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </div>
   );
