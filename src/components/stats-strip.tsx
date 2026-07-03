@@ -1,45 +1,25 @@
-import { Tv, Clock, ListChecks, Star } from "lucide-react";
+import { Tv, Film, Clock, ListChecks } from "lucide-react";
 
 interface StatsStripProps {
   totalEpisodes: number;
+  totalMovies: number;
   totalMinutes: number;
   watchlistCount: number;
-  averageRating: number;
 }
 
 export function StatsStrip({
   totalEpisodes,
+  totalMovies,
   totalMinutes,
   watchlistCount,
-  averageRating,
 }: StatsStripProps) {
   const hours = Math.round(totalMinutes / 60);
 
   const stats = [
-    {
-      label: "Episodi visti",
-      value: totalEpisodes,
-      icon: Tv,
-      suffix: "",
-    },
-    {
-      label: "Ore guardate",
-      value: hours,
-      icon: Clock,
-      suffix: "h",
-    },
-    {
-      label: "In lista",
-      value: watchlistCount,
-      icon: ListChecks,
-      suffix: "",
-    },
-    {
-      label: "Media voti",
-      value: averageRating.toFixed(1),
-      icon: Star,
-      suffix: "",
-    },
+    { label: "Episodes watched", value: totalEpisodes, icon: Tv, suffix: "" },
+    { label: "Movies watched", value: totalMovies, icon: Film, suffix: "" },
+    { label: "Hours watched", value: hours, icon: Clock, suffix: "h" },
+    { label: "In watchlist", value: watchlistCount, icon: ListChecks, suffix: "" },
   ];
 
   return (

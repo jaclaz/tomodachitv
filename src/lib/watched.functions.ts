@@ -12,6 +12,16 @@ export interface WatchedEpisode {
   watched_at: string;
 }
 
+export interface WatchedMovie {
+  id: string;
+  user_id: string;
+  tmdb_id: number;
+  title: string | null;
+  runtime_minutes: number | null;
+  watched_at: string;
+}
+
+// ============ Episodes (TV) ============
 export const getWatchedEpisodes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { tmdb_id: number }) => input)
@@ -71,18 +81,85 @@ export const unmarkEpisodeWatched = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+// ============ Movies ============
+export const getWatchedMovies = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<WatchedMovie[]> => {
+    const { data, error } = await context.supabase
+      .from("watched_movies")
+      .select("*")
+      .eq("user_id", context.userId)
+      .order("watched_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  });
+
+export const markMovieWatched = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    (input: {
+      tmdb_id: number;
+      title?: string;
+      runtime_minutes?: number | null;
+    }) => input
+  )
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase.from("watched_movies").upsert(
+      {
+        user_id: context.userId,
+        ...data,
+      },
+      { onConflict: "user_id, tmdb_id" }
+    );
+    if (error) throw error;
+    return { success: true };
+  });
+
+export const unmarkMovieWatched = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { tmdb_id: number }) => input)
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("watched_movies")
+      .delete()
+      .eq("user_id", context.userId)
+      .eq("tmdb_id", data.tmdb_id);
+    if (error) throw error;
+    return { success: true };
+  });
+
+// ============ Combined stats ============
 export const getAllWatchedStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("watched_episodes")
-      .select("runtime_minutes")
-      .eq("user_id", context.userId);
-    if (error) throw error;
-    const totalEpisodes = data?.length ?? 0;
-    const totalMinutes = (data ?? []).reduce(
-      (sum, ep) => sum + (ep.runtime_minutes || 0),
+    const [{ data: eps, error: e1 }, { data: movies, error: e2 }] =
+      await Promise.all([
+        context.supabase
+          .from("watched_episodes")
+          .select("runtime_minutes")
+          .eq("user_id", context.userId),
+        context.supabase
+          .from("watched_movies")
+          .select("runtime_minutes")
+          .eq("user_id", context.userId),
+      ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+    const totalEpisodes = eps?.length ?? 0;
+    const totalMovies = movies?.length ?? 0;
+    const epMinutes = (eps ?? []).reduce(
+      (s, e) => s + (e.runtime_minutes || 0),
       0
     );
-    return { totalEpisodes, totalMinutes };
+    const movieMinutes = (movies ?? []).reduce(
+      (s, m) => s + (m.runtime_minutes || 0),
+      0
+    );
+    return {
+      totalEpisodes,
+      totalMovies,
+      totalMinutes: epMinutes + movieMinutes,
+      episodeMinutes: epMinutes,
+      movieMinutes,
+    };
   });

@@ -14,7 +14,6 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedWatchlistRouteImport } from './routes/_authenticated/watchlist'
 import { Route as AuthenticatedTrendingRouteImport } from './routes/_authenticated/trending'
-import { Route as AuthenticatedStatisticheRouteImport } from './routes/_authenticated/statistiche'
 import { Route as AuthenticatedSerieIdRouteImport } from './routes/_authenticated/serie.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -41,12 +40,6 @@ const AuthenticatedTrendingRoute = AuthenticatedTrendingRouteImport.update({
   path: '/trending',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedStatisticheRoute =
-  AuthenticatedStatisticheRouteImport.update({
-    id: '/statistiche',
-    path: '/statistiche',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedSerieIdRoute = AuthenticatedSerieIdRouteImport.update({
   id: '/serie/$id',
   path: '/serie/$id',
@@ -56,14 +49,12 @@ const AuthenticatedSerieIdRoute = AuthenticatedSerieIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/statistiche': typeof AuthenticatedStatisticheRoute
   '/trending': typeof AuthenticatedTrendingRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/statistiche': typeof AuthenticatedStatisticheRoute
   '/trending': typeof AuthenticatedTrendingRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/': typeof AuthenticatedIndexRoute
@@ -73,7 +64,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/statistiche': typeof AuthenticatedStatisticheRoute
   '/_authenticated/trending': typeof AuthenticatedTrendingRoute
   '/_authenticated/watchlist': typeof AuthenticatedWatchlistRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -81,20 +71,13 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/auth'
-    | '/statistiche'
-    | '/trending'
-    | '/watchlist'
-    | '/serie/$id'
+  fullPaths: '/' | '/auth' | '/trending' | '/watchlist' | '/serie/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/statistiche' | '/trending' | '/watchlist' | '/' | '/serie/$id'
+  to: '/auth' | '/trending' | '/watchlist' | '/' | '/serie/$id'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/statistiche'
     | '/_authenticated/trending'
     | '/_authenticated/watchlist'
     | '/_authenticated/'
@@ -143,13 +126,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrendingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/statistiche': {
-      id: '/_authenticated/statistiche'
-      path: '/statistiche'
-      fullPath: '/statistiche'
-      preLoaderRoute: typeof AuthenticatedStatisticheRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/serie/$id': {
       id: '/_authenticated/serie/$id'
       path: '/serie/$id'
@@ -161,7 +137,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedStatisticheRoute: typeof AuthenticatedStatisticheRoute
   AuthenticatedTrendingRoute: typeof AuthenticatedTrendingRoute
   AuthenticatedWatchlistRoute: typeof AuthenticatedWatchlistRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -169,7 +144,6 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedStatisticheRoute: AuthenticatedStatisticheRoute,
   AuthenticatedTrendingRoute: AuthenticatedTrendingRoute,
   AuthenticatedWatchlistRoute: AuthenticatedWatchlistRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

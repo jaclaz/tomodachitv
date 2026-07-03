@@ -108,7 +108,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
                 value={String(seasonInfo.season_number)}
                 className="rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
               >
-                St. {seasonInfo.season_number}
+                Season {seasonInfo.season_number}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -123,11 +123,11 @@ export function EpisodeList({ series }: EpisodeListProps) {
             <ScrollArea className="h-[500px]">
               {isLoading ? (
                 <div className="p-8 text-center text-muted-foreground">
-                  Caricamento episodi...
+                  Loading episodes...
                 </div>
               ) : !seasonDetails?.episodes?.length ? (
                 <div className="p-8 text-center text-muted-foreground">
-                  Nessun episodio disponibile.
+                  No episodes available.
                 </div>
               ) : (
                 <ul className="divide-y divide-border">
@@ -156,7 +156,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
                               {watched ? (
                                 <>
                                   <Check className="h-3 w-3 text-primary" />
-                                  Visto
+                                  Watched
                                 </>
                               ) : ep.runtime ? (
                                 <>
@@ -167,7 +167,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
                             </span>
                           </div>
                           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                            {ep.overview || "Nessuna descrizione."}
+                            {ep.overview || "No description."}
                           </p>
                         </label>
                       </li>
@@ -182,4 +182,3 @@ export function EpisodeList({ series }: EpisodeListProps) {
     </div>
   );
 }
-
