@@ -41,6 +41,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: "PAVULLI — Tracker Serie TV" },
+        { name: "description", content: "Track your favorite TV shows and never miss an episode with My Show Tracker." },
+        { property: "og:description", content: "Track your favorite TV shows and never miss an episode with My Show Tracker." },
+        { name: "twitter:description", content: "Track your favorite TV shows and never miss an episode with My Show Tracker." },
+        { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c8f9a19f-a826-4187-a46a-0d93cb10065a/id-preview-7d5b4687--557c06e6-151b-4fc0-8307-18a0227567ad.lovable.app-1783076244419.png" },
+        { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c8f9a19f-a826-4187-a46a-0d93cb10065a/id-preview-7d5b4687--557c06e6-151b-4fc0-8307-18a0227567ad.lovable.app-1783076244419.png" },
       ],
       links: [
         { rel: "stylesheet", href: appCss },
