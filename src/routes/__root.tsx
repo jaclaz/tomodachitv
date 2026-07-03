@@ -27,13 +27,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           name: "viewport",
           content: "width=device-width, initial-scale=1, viewport-fit=cover",
         },
-        { title: "LUME — Tracker Serie TV" },
+        { title: "PAVULLI — Tracker Serie TV" },
         {
           name: "description",
           content:
             "Traccia le serie TV che guardi, scopri nuove uscite e organizza la tua watchlist.",
         },
-        { property: "og:title", content: "LUME — Tracker Serie TV" },
+        { property: "og:title", content: "PAVULLI — Tracker Serie TV" },
         {
           property: "og:description",
           content:
