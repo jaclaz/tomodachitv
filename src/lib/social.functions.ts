@@ -20,7 +20,7 @@ export const searchUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { query: string }) => input)
   .handler(async ({ context, data }): Promise<PublicProfile[]> => {
-    const q = data.query.trim();
+    const q = data.query.trim().replace(/[,()%]/g, "");
     if (q.length < 2) return [];
     const { data: rows, error } = await context.supabase
       .from("profiles")
@@ -32,6 +32,7 @@ export const searchUsers = createServerFn({ method: "POST" })
     if (error) throw error;
     return (rows ?? []) as PublicProfile[];
   });
+
 
 export const getProfileByUsername = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
