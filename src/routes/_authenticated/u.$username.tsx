@@ -58,12 +58,20 @@ function UserProfilePage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-6 pt-12 sm:pt-0 sm:flex-row sm:items-center">
-        <Avatar className="h-24 w-24">
-          <AvatarImage src={profile.avatar_url ?? undefined} />
-          <AvatarFallback className="text-2xl">
-            {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        {profile.is_self ? (
+          <AvatarUpload
+            userId={profile.id}
+            currentUrl={profile.avatar_url}
+            fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+          />
+        ) : (
+          <Avatar className="h-24 w-24">
+            <AvatarImage src={profile.avatar_url ?? undefined} />
+            <AvatarFallback className="text-2xl">
+              {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        )}
         <div className="flex-1">
           <h1 className="font-display text-2xl font-bold">
             {profile.display_name ?? profile.username}
