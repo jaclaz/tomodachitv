@@ -35,9 +35,9 @@ export function AppSidebar() {
     <div className="flex h-full flex-col bg-canvas">
       <div className="flex h-16 items-center gap-3 px-6">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <span className="font-display text-lg font-bold">L</span>
+          <span className="font-display text-lg font-bold">P</span>
         </div>
-        <span className="font-display text-xl font-bold tracking-tight">LUME</span>
+        <span className="font-display text-xl font-bold tracking-tight">PAVULLI</span>
       </div>
 
       <ScrollArea className="flex-1 px-4">
