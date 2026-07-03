@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMAGE = "https://image.tmdb.org/t/p";
@@ -144,21 +145,21 @@ async function tmdbFetch(path: string, params?: Record<string, string>) {
 }
 
 // ============ Server functions ============
-export const getTrendingSeries = createServerFn({ method: "POST" }).handler(
+export const getTrendingSeries = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).handler(
   async (): Promise<{ results: MediaItem[] }> => {
     const data = await tmdbFetch("/trending/tv/week");
     return { results: (data.results as RawTv[]).map(mapTv) };
   }
 );
 
-export const getTrendingMovies = createServerFn({ method: "POST" }).handler(
+export const getTrendingMovies = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).handler(
   async (): Promise<{ results: MediaItem[] }> => {
     const data = await tmdbFetch("/trending/movie/week");
     return { results: (data.results as RawMovie[]).map(mapMovie) };
   }
 );
 
-export const getTrendingAll = createServerFn({ method: "POST" }).handler(
+export const getTrendingAll = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).handler(
   async (): Promise<{ results: MediaItem[] }> => {
     const data = await tmdbFetch("/trending/all/week");
     const results: MediaItem[] = [];
@@ -173,7 +174,7 @@ export const getTrendingAll = createServerFn({ method: "POST" }).handler(
   }
 );
 
-export const searchMulti = createServerFn({ method: "POST" })
+export const searchMulti = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { query: string }) => input)
   .handler(async ({ data }): Promise<{ results: MediaItem[] }> => {
     if (!data.query.trim()) return { results: [] };
@@ -192,7 +193,7 @@ export const searchMulti = createServerFn({ method: "POST" })
     return { results };
   });
 
-export const getSeriesDetails = createServerFn({ method: "POST" })
+export const getSeriesDetails = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { id: number }) => input)
   .handler(async ({ data }): Promise<SeriesDetails> => {
     const raw = await tmdbFetch(`/tv/${data.id}`);
@@ -207,7 +208,7 @@ export const getSeriesDetails = createServerFn({ method: "POST" })
     };
   });
 
-export const getMovieDetails = createServerFn({ method: "POST" })
+export const getMovieDetails = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { id: number }) => input)
   .handler(async ({ data }): Promise<MovieDetails> => {
     const raw = await tmdbFetch(`/movie/${data.id}`);
@@ -219,7 +220,7 @@ export const getMovieDetails = createServerFn({ method: "POST" })
     };
   });
 
-export const getSeasonDetails = createServerFn({ method: "POST" })
+export const getSeasonDetails = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { id: number; season: number }) => input)
   .handler(async ({ data }): Promise<SeasonDetails> => {
     return tmdbFetch(`/tv/${data.id}/season/${data.season}`);
@@ -228,7 +229,7 @@ export const getSeasonDetails = createServerFn({ method: "POST" })
 // ============ Genres ============
 export interface Genre { id: number; name: string }
 
-export const getGenres = createServerFn({ method: "POST" })
+export const getGenres = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { type: MediaType }) => input)
   .handler(async ({ data }): Promise<{ genres: Genre[] }> => {
     const res = await tmdbFetch(`/genre/${data.type}/list`);
@@ -254,7 +255,7 @@ export interface DiscoverParams {
   page?: number;
 }
 
-export const discoverContent = createServerFn({ method: "POST" })
+export const discoverContent = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: DiscoverParams) => input)
   .handler(async ({ data }): Promise<{ results: MediaItem[] }> => {
     const params: Record<string, string> = {
