@@ -17,6 +17,7 @@ import {
   Users,
   LogOut,
   Menu,
+  Download,
 } from "lucide-react";
 
 const navItems = [
@@ -25,6 +26,7 @@ const navItems = [
   { to: "/watchlist", icon: ListVideo, label: "Watchlist" },
   { to: "/social", icon: Users, label: "Social" },
   { to: "/stats", icon: BarChart3, label: "Stats" },
+  { to: "/import", icon: Download, label: "Import" },
 ] as const;
 
 
