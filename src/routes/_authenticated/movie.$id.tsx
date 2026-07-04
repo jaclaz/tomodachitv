@@ -14,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft, Clock, Eye, EyeOff } from "lucide-react";
+import { WatchProviders } from "@/components/watch-providers";
+
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
   component: MovieDetailPage,
