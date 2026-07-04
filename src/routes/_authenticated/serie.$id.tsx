@@ -10,6 +10,8 @@ import { EpisodeList } from "@/components/episode-list";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft } from "lucide-react";
+import { WatchProviders } from "@/components/watch-providers";
+
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
   component: SeriesDetailPage,
@@ -157,7 +159,10 @@ function SeriesDetailPage() {
         </div>
       </section>
 
+      <WatchProviders tmdbId={tmdbId} type="tv" />
+
       <EpisodeList series={series} />
     </div>
   );
 }
+

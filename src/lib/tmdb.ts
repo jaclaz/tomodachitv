@@ -280,3 +280,40 @@ export const discoverContent = createServerFn({ method: "POST" }).middleware([re
     return { results };
   });
 
+// ============ Watch providers ============
+export interface WatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+}
+
+export interface CountryProviders {
+  link?: string;
+  flatrate?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+  ads?: WatchProvider[];
+  free?: WatchProvider[];
+}
+
+export function providerLogoUrl(path: string | null | undefined) {
+  return path ? `${TMDB_IMAGE}/w92${path}` : "";
+}
+
+export const getWatchProviders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { id: number; type: MediaType; country: string }) => input)
+  .handler(
+    async ({ data }): Promise<{ country: string; providers: CountryProviders | null; available: string[] }> => {
+      const res = await tmdbFetch(`/${data.type}/${data.id}/watch/providers`);
+      const results = (res.results ?? {}) as Record<string, CountryProviders>;
+      const country = data.country.toUpperCase();
+      return {
+        country,
+        providers: results[country] ?? null,
+        available: Object.keys(results).sort(),
+      };
+    }
+  );
+
+
