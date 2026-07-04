@@ -57,6 +57,21 @@ export const importTvTime = createServerFn({ method: "POST" })
     }) => i
   )
   .handler(async ({ context, data }) => {
+    const MAX_EPISODES = 5000;
+    const MAX_MOVIES = 2000;
+    const MAX_SHOWS = 1000;
+    const MAX_FOLLOW_MOVIES = 2000;
+    if (
+      data.episodes.length > MAX_EPISODES ||
+      data.watched_movies.length > MAX_MOVIES ||
+      data.follow_shows.length > MAX_SHOWS ||
+      data.follow_movies.length > MAX_FOLLOW_MOVIES
+    ) {
+      throw new Error(
+        "Import payload too large. Please split your archive into smaller chunks."
+      );
+    }
+
     const key = process.env.TMDB_API_KEY;
     if (!key) throw new Error("TMDB_API_KEY not configured");
 
