@@ -13,6 +13,8 @@ interface MovieRow {
   tmdb_id?: number | null;
   imdb_id?: string | null;
   title?: string | null;
+  year?: number | null;
+  runtime_minutes?: number | null;
   watched_at?: string | null;
 }
 interface FollowShowRow {
@@ -22,6 +24,7 @@ interface FollowMovieRow {
   tmdb_id?: number | null;
   imdb_id?: string | null;
   title?: string | null;
+  year?: number | null;
 }
 
 interface ResolvedShow {
@@ -125,6 +128,23 @@ export const importTvTime = createServerFn({ method: "POST" })
           };
         }
       }
+      if (m.title) {
+        const params: Record<string, string> = { query: m.title };
+        if (m.year) params.year = String(m.year);
+        const d = await fetchJson(`/search/movie`, params);
+        const mv = d?.results?.[0];
+        if (mv) {
+          return {
+            tmdb_id: mv.id,
+            title: mv.title,
+            poster_path: mv.poster_path ?? null,
+            backdrop_path: mv.backdrop_path ?? null,
+            release_date: mv.release_date ?? null,
+            vote_average: mv.vote_average ?? null,
+            runtime: null,
+          };
+        }
+      }
       return null;
     };
 
@@ -199,7 +219,7 @@ export const importTvTime = createServerFn({ method: "POST" })
               user_id: context.userId,
               tmdb_id: r.tmdb_id,
               title: r.title,
-              runtime_minutes: r.runtime,
+              runtime_minutes: r.runtime ?? data.watched_movies[i].runtime_minutes ?? null,
               watched_at:
                 data.watched_movies[i].watched_at ||
                 new Date().toISOString(),
