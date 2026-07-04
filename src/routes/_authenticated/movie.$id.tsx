@@ -207,6 +207,9 @@ function MovieDetailPage() {
           </div>
         </div>
       </section>
+
+      <WatchProviders tmdbId={tmdbId} type="movie" />
     </div>
   );
 }
+
