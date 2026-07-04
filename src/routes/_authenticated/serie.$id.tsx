@@ -159,7 +159,10 @@ function SeriesDetailPage() {
         </div>
       </section>
 
+      <WatchProviders tmdbId={tmdbId} type="tv" />
+
       <EpisodeList series={series} />
     </div>
   );
 }
+
