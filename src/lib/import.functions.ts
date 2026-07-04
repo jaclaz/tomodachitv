@@ -336,7 +336,9 @@ export const importTvTime = createServerFn({ method: "POST" })
       importedEpisodes,
       importedMovies,
       importedWatchlist,
-      unresolvedShows: showIds.filter((id) => !showMap.get(id)).length,
+      unresolvedShows:
+        tvdbIds.filter((id) => !showByTvdb.get(id)).length +
+        tmdbShowIds.filter((id) => !showByTmdb.get(id)).length,
       unresolvedMovies:
         movieResolved.filter((r) => !r).length +
         wlMovieResolved.filter((r) => !r).length,
