@@ -52,7 +52,8 @@ function ImportPage() {
 
       setProgress("Detecting your data…");
       const episodes: {
-        tvdb_show_id: number;
+        tvdb_show_id?: number | null;
+        tmdb_show_id?: number | null;
         season_number: number;
         episode_number: number;
         watched_at: string | null;
@@ -65,7 +66,7 @@ function ImportPage() {
         runtime_minutes: number | null;
         watched_at: string | null;
       }[] = [];
-      const follow_shows: { tvdb_show_id: number }[] = [];
+      const follow_shows: { tvdb_show_id?: number | null; tmdb_show_id?: number | null }[] = [];
       const follow_movies: {
         tmdb_id: number | null;
         imdb_id: string | null;
