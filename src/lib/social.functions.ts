@@ -148,6 +148,12 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       if (clean.length < 3) throw new Error("Username must be at least 3 characters");
       data.username = clean;
     }
+    if (data.avatar_url) {
+      const base = process.env.SUPABASE_URL;
+      if (!base || !data.avatar_url.startsWith(`${base}/storage/v1/`)) {
+        throw new Error("Invalid avatar URL");
+      }
+    }
     const { error } = await context.supabase
       .from("profiles")
       .update(data)
