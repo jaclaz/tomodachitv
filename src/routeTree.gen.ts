@@ -16,6 +16,7 @@ import { Route as AuthenticatedWatchlistRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTrendingRouteImport } from './routes/_authenticated/trending'
 import { Route as AuthenticatedStatsRouteImport } from './routes/_authenticated/stats'
 import { Route as AuthenticatedSocialRouteImport } from './routes/_authenticated/social'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedUUsernameRouteImport } from './routes/_authenticated/u.$username'
 import { Route as AuthenticatedSerieIdRouteImport } from './routes/_authenticated/serie.$id'
 import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticated/movie.$id'
@@ -54,6 +55,11 @@ const AuthenticatedSocialRoute = AuthenticatedSocialRouteImport.update({
   path: '/social',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedUUsernameRoute = AuthenticatedUUsernameRouteImport.update({
   id: '/u/$username',
   path: '/u/$username',
@@ -73,6 +79,7 @@ const AuthenticatedMovieIdRoute = AuthenticatedMovieIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/import': typeof AuthenticatedImportRoute
   '/social': typeof AuthenticatedSocialRoute
   '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/import': typeof AuthenticatedImportRoute
   '/social': typeof AuthenticatedSocialRoute
   '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/social': typeof AuthenticatedSocialRoute
   '/_authenticated/stats': typeof AuthenticatedStatsRoute
   '/_authenticated/trending': typeof AuthenticatedTrendingRoute
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/import'
     | '/social'
     | '/stats'
     | '/trending'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/import'
     | '/social'
     | '/stats'
     | '/trending'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/import'
     | '/_authenticated/social'
     | '/_authenticated/stats'
     | '/_authenticated/trending'
@@ -198,6 +210,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSocialRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/u/$username': {
       id: '/_authenticated/u/$username'
       path: '/u/$username'
@@ -223,6 +242,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedSocialRoute: typeof AuthenticatedSocialRoute
   AuthenticatedStatsRoute: typeof AuthenticatedStatsRoute
   AuthenticatedTrendingRoute: typeof AuthenticatedTrendingRoute
@@ -234,6 +254,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedSocialRoute: AuthenticatedSocialRoute,
   AuthenticatedStatsRoute: AuthenticatedStatsRoute,
   AuthenticatedTrendingRoute: AuthenticatedTrendingRoute,
