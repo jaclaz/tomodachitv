@@ -283,6 +283,44 @@ function ImportPage() {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const data = await exportLibrary();
+      const toCsv = (rows: Record<string, unknown>[]) =>
+        Papa.unparse(rows, { quotes: true });
+      const zip = new JSZip();
+      zip.file("tomodachi_watched_episodes.csv", toCsv(data.episodes));
+      zip.file("tomodachi_watched_movies.csv", toCsv(data.movies));
+      zip.file("tomodachi_watchlist.csv", toCsv(data.watchlist));
+      const readme =
+        "Tomodachi export\n\nRe-import this ZIP on the Import page to restore your library.\n";
+      zip.file("README.txt", readme);
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `tomodachi-export-${stamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(
+        `Exported ${data.episodes.length} episodes · ${data.movies.length} movies · ${data.watchlist.length} watchlist items`
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        "Export failed: " +
+          (err instanceof Error ? err.message : "unknown error")
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 pt-12 sm:pt-0">
       <div>
