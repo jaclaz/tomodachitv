@@ -90,6 +90,57 @@ function ImportPage() {
         const has = (c: string) => cols.includes(c);
         const lname = name.toLowerCase();
 
+        // Tomodachi export format
+        if (lname === "tomodachi_watched_episodes.csv" && has("tmdb_show_id")) {
+          for (const r of rows) {
+            const tmdb = num(r.tmdb_show_id);
+            const s = num(r.season_number);
+            const e = num(r.episode_number);
+            if (tmdb > 0 && s >= 0 && e > 0) {
+              episodes.push({
+                tmdb_show_id: tmdb,
+                season_number: s,
+                episode_number: e,
+                watched_at: r.watched_at || null,
+              });
+            }
+          }
+          continue;
+        }
+        if (lname === "tomodachi_watched_movies.csv" && has("tmdb_id")) {
+          for (const r of rows) {
+            const tmdb = num(r.tmdb_id);
+            if (!(tmdb > 0)) continue;
+            const runtime = num(r.runtime_minutes);
+            watched_movies.push({
+              tmdb_id: tmdb,
+              imdb_id: null,
+              title: r.title || null,
+              year: null,
+              runtime_minutes: Number.isFinite(runtime) && runtime > 0 ? runtime : null,
+              watched_at: r.watched_at || null,
+            });
+          }
+          continue;
+        }
+        if (lname === "tomodachi_watchlist.csv" && has("tmdb_id") && has("media_type")) {
+          for (const r of rows) {
+            const tmdb = num(r.tmdb_id);
+            if (!(tmdb > 0)) continue;
+            if ((r.media_type ?? "").toLowerCase() === "tv") {
+              follow_shows.push({ tmdb_show_id: tmdb });
+            } else {
+              follow_movies.push({
+                tmdb_id: tmdb,
+                imdb_id: null,
+                title: r.series_name || null,
+                year: null,
+              });
+            }
+          }
+          continue;
+        }
+
         // TV Time v2 tracking: full watched-episode history
         if (lname.includes("tracking-prod-records-v2") && has("key") && has("s_id")) {
           for (const r of rows) {
