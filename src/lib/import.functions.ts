@@ -4,7 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
 interface EpisodeRow {
-  tvdb_show_id: number;
+  tvdb_show_id?: number | null;
+  tmdb_show_id?: number | null;
   season_number: number;
   episode_number: number;
   watched_at?: string | null;
@@ -18,7 +19,8 @@ interface MovieRow {
   watched_at?: string | null;
 }
 interface FollowShowRow {
-  tvdb_show_id: number;
+  tvdb_show_id?: number | null;
+  tmdb_show_id?: number | null;
 }
 interface FollowMovieRow {
   tmdb_id?: number | null;
