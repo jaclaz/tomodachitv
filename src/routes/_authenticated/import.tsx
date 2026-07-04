@@ -4,9 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Upload, Loader2, CheckCircle2, FileArchive } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, FileArchive, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { importTvTime } from "@/lib/import.functions";
+import { importTvTime, exportLibrary } from "@/lib/import.functions";
 
 export const Route = createFileRoute("/_authenticated/import")({
   component: ImportPage,
@@ -52,7 +52,8 @@ function ImportPage() {
 
       setProgress("Detecting your data…");
       const episodes: {
-        tvdb_show_id: number;
+        tvdb_show_id?: number | null;
+        tmdb_show_id?: number | null;
         season_number: number;
         episode_number: number;
         watched_at: string | null;
@@ -65,7 +66,7 @@ function ImportPage() {
         runtime_minutes: number | null;
         watched_at: string | null;
       }[] = [];
-      const follow_shows: { tvdb_show_id: number }[] = [];
+      const follow_shows: { tvdb_show_id?: number | null; tmdb_show_id?: number | null }[] = [];
       const follow_movies: {
         tmdb_id: number | null;
         imdb_id: string | null;
@@ -88,6 +89,57 @@ function ImportPage() {
         const cols = Object.keys(rows[0]);
         const has = (c: string) => cols.includes(c);
         const lname = name.toLowerCase();
+
+        // Tomodachi export format
+        if (lname === "tomodachi_watched_episodes.csv" && has("tmdb_show_id")) {
+          for (const r of rows) {
+            const tmdb = num(r.tmdb_show_id);
+            const s = num(r.season_number);
+            const e = num(r.episode_number);
+            if (tmdb > 0 && s >= 0 && e > 0) {
+              episodes.push({
+                tmdb_show_id: tmdb,
+                season_number: s,
+                episode_number: e,
+                watched_at: r.watched_at || null,
+              });
+            }
+          }
+          continue;
+        }
+        if (lname === "tomodachi_watched_movies.csv" && has("tmdb_id")) {
+          for (const r of rows) {
+            const tmdb = num(r.tmdb_id);
+            if (!(tmdb > 0)) continue;
+            const runtime = num(r.runtime_minutes);
+            watched_movies.push({
+              tmdb_id: tmdb,
+              imdb_id: null,
+              title: r.title || null,
+              year: null,
+              runtime_minutes: Number.isFinite(runtime) && runtime > 0 ? runtime : null,
+              watched_at: r.watched_at || null,
+            });
+          }
+          continue;
+        }
+        if (lname === "tomodachi_watchlist.csv" && has("tmdb_id") && has("media_type")) {
+          for (const r of rows) {
+            const tmdb = num(r.tmdb_id);
+            if (!(tmdb > 0)) continue;
+            if ((r.media_type ?? "").toLowerCase() === "tv") {
+              follow_shows.push({ tmdb_show_id: tmdb });
+            } else {
+              follow_movies.push({
+                tmdb_id: tmdb,
+                imdb_id: null,
+                title: r.series_name || null,
+                year: null,
+              });
+            }
+          }
+          continue;
+        }
 
         // TV Time v2 tracking: full watched-episode history
         if (lname.includes("tracking-prod-records-v2") && has("key") && has("s_id")) {
@@ -177,10 +229,11 @@ function ImportPage() {
       };
       const dedupEpisodes = uniq(
         episodes,
-        (e) => `${e.tvdb_show_id}-${e.season_number}-${e.episode_number}`
+        (e) =>
+          `${e.tmdb_show_id ? "tmdb:" + e.tmdb_show_id : "tvdb:" + e.tvdb_show_id}-${e.season_number}-${e.episode_number}`
       );
       const dedupFollowShows = uniq(follow_shows, (f) =>
-        String(f.tvdb_show_id)
+        f.tmdb_show_id ? "tmdb:" + f.tmdb_show_id : "tvdb:" + f.tvdb_show_id
       );
       const dedupMovies = uniq(watched_movies, (m) =>
         String(m.tmdb_id ?? m.imdb_id ?? `${(m.title ?? "").toLowerCase()}|${m.year ?? ""}`)
@@ -230,15 +283,53 @@ function ImportPage() {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const data = await exportLibrary();
+      const toCsv = (rows: Record<string, unknown>[]) =>
+        Papa.unparse(rows, { quotes: true });
+      const zip = new JSZip();
+      zip.file("tomodachi_watched_episodes.csv", toCsv(data.episodes));
+      zip.file("tomodachi_watched_movies.csv", toCsv(data.movies));
+      zip.file("tomodachi_watchlist.csv", toCsv(data.watchlist));
+      const readme =
+        "Tomodachi export\n\nRe-import this ZIP on the Import page to restore your library.\n";
+      zip.file("README.txt", readme);
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `tomodachi-export-${stamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(
+        `Exported ${data.episodes.length} episodes · ${data.movies.length} movies · ${data.watchlist.length} watchlist items`
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        "Export failed: " +
+          (err instanceof Error ? err.message : "unknown error")
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 pt-12 sm:pt-0">
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">
-          Import from TV Time
+          Import &amp; Export
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upload the ZIP archive TV Time gave you when you requested your data.
-          We'll import your watched episodes, watched movies and watchlist.
+          Import your TV Time archive, or export your Tomodachi library as a ZIP
+          you can re-import later.
         </p>
       </div>
 
@@ -281,6 +372,32 @@ function ImportPage() {
           )}
         </label>
       </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-display text-base font-semibold">
+            Export your library
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Downloads a ZIP with your watched episodes, movies and watchlist.
+            You can re-import it here anytime.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handleExport}
+          disabled={exporting || busy}
+        >
+          {exporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          {exporting ? "Preparing…" : "Export ZIP"}
+        </Button>
+      </div>
+
 
       {result && (
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-6">

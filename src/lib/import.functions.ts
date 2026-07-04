@@ -4,7 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
 interface EpisodeRow {
-  tvdb_show_id: number;
+  tvdb_show_id?: number | null;
+  tmdb_show_id?: number | null;
   season_number: number;
   episode_number: number;
   watched_at?: string | null;
@@ -18,7 +19,8 @@ interface MovieRow {
   watched_at?: string | null;
 }
 interface FollowShowRow {
-  tvdb_show_id: number;
+  tvdb_show_id?: number | null;
+  tmdb_show_id?: number | null;
 }
 interface FollowMovieRow {
   tmdb_id?: number | null;
@@ -184,23 +186,54 @@ export const importTvTime = createServerFn({ method: "POST" })
       return results;
     };
 
-    // Resolve unique shows (episodes + follow_shows share TVDB ids)
-    const showIds = Array.from(
+    // Resolve shows via TVDB (external → tmdb) and TMDB (direct)
+    const tvdbIds = Array.from(
       new Set([
         ...data.episodes.map((e) => e.tvdb_show_id),
         ...data.follow_shows.map((f) => f.tvdb_show_id),
       ])
-    ).filter((x) => Number.isFinite(x) && x > 0);
+    ).filter((x): x is number => typeof x === "number" && Number.isFinite(x) && x > 0);
 
-    const showMap = new Map<number, ResolvedShow | null>();
-    await mapPool(showIds, 8, async (id) => {
-      showMap.set(id, await resolveShow(id));
+    const tmdbShowIds = Array.from(
+      new Set([
+        ...data.episodes.map((e) => e.tmdb_show_id),
+        ...data.follow_shows.map((f) => f.tmdb_show_id),
+      ])
+    ).filter((x): x is number => typeof x === "number" && Number.isFinite(x) && x > 0);
+
+    const resolveShowByTmdb = async (id: number): Promise<ResolvedShow | null> => {
+      const d = await fetchJson(`/tv/${id}`);
+      if (!d?.id) return null;
+      return {
+        tmdb_id: d.id,
+        name: d.name,
+        poster_path: d.poster_path ?? null,
+        backdrop_path: d.backdrop_path ?? null,
+        first_air_date: d.first_air_date ?? null,
+        vote_average: d.vote_average ?? null,
+        runtime: d.episode_run_time?.[0] ?? null,
+      };
+    };
+
+    const showByTvdb = new Map<number, ResolvedShow | null>();
+    const showByTmdb = new Map<number, ResolvedShow | null>();
+    await mapPool(tvdbIds, 8, async (id) => {
+      showByTvdb.set(id, await resolveShow(id));
     });
+    await mapPool(tmdbShowIds, 8, async (id) => {
+      showByTmdb.set(id, await resolveShowByTmdb(id));
+    });
+
+    const showFor = (e: { tvdb_show_id?: number | null; tmdb_show_id?: number | null }) => {
+      if (e.tmdb_show_id) return showByTmdb.get(e.tmdb_show_id) ?? null;
+      if (e.tvdb_show_id) return showByTvdb.get(e.tvdb_show_id) ?? null;
+      return null;
+    };
 
     // Episodes upsert
     const epRows = data.episodes
       .map((e) => {
-        const s = showMap.get(e.tvdb_show_id);
+        const s = showFor(e);
         if (!s) return null;
         return {
           user_id: context.userId,
@@ -255,7 +288,7 @@ export const importTvTime = createServerFn({ method: "POST" })
     // Watchlist: shows
     const wlShowRows = data.follow_shows
       .map((f) => {
-        const s = showMap.get(f.tvdb_show_id);
+        const s = showFor(f);
         if (!s) return null;
         return {
           user_id: context.userId,
@@ -303,9 +336,35 @@ export const importTvTime = createServerFn({ method: "POST" })
       importedEpisodes,
       importedMovies,
       importedWatchlist,
-      unresolvedShows: showIds.filter((id) => !showMap.get(id)).length,
+      unresolvedShows:
+        tvdbIds.filter((id) => !showByTvdb.get(id)).length +
+        tmdbShowIds.filter((id) => !showByTmdb.get(id)).length,
       unresolvedMovies:
         movieResolved.filter((r) => !r).length +
         wlMovieResolved.filter((r) => !r).length,
+    };
+  });
+
+export const exportLibrary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [ep, mv, wl] = await Promise.all([
+      context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, season_number, episode_number, watched_at")
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("watched_movies")
+        .select("tmdb_id, title, runtime_minutes, watched_at")
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("watchlist")
+        .select("tmdb_id, media_type, series_name, poster_path, backdrop_path, first_air_date, vote_average, added_at")
+        .eq("user_id", context.userId),
+    ]);
+    return {
+      episodes: ep.data ?? [],
+      movies: mv.data ?? [],
+      watchlist: wl.data ?? [],
     };
   });
