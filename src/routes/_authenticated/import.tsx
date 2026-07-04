@@ -229,10 +229,11 @@ function ImportPage() {
       };
       const dedupEpisodes = uniq(
         episodes,
-        (e) => `${e.tvdb_show_id}-${e.season_number}-${e.episode_number}`
+        (e) =>
+          `${e.tmdb_show_id ? "tmdb:" + e.tmdb_show_id : "tvdb:" + e.tvdb_show_id}-${e.season_number}-${e.episode_number}`
       );
       const dedupFollowShows = uniq(follow_shows, (f) =>
-        String(f.tvdb_show_id)
+        f.tmdb_show_id ? "tmdb:" + f.tmdb_show_id : "tvdb:" + f.tvdb_show_id
       );
       const dedupMovies = uniq(watched_movies, (m) =>
         String(m.tmdb_id ?? m.imdb_id ?? `${(m.title ?? "").toLowerCase()}|${m.year ?? ""}`)
