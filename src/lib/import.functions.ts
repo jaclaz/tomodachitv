@@ -219,7 +219,7 @@ export const importTvTime = createServerFn({ method: "POST" })
               user_id: context.userId,
               tmdb_id: r.tmdb_id,
               title: r.title,
-              runtime_minutes: r.runtime,
+              runtime_minutes: r.runtime ?? data.watched_movies[i].runtime_minutes ?? null,
               watched_at:
                 data.watched_movies[i].watched_at ||
                 new Date().toISOString(),
