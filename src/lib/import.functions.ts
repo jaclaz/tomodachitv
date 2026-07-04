@@ -344,3 +344,27 @@ export const importTvTime = createServerFn({ method: "POST" })
         wlMovieResolved.filter((r) => !r).length,
     };
   });
+
+export const exportLibrary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [ep, mv, wl] = await Promise.all([
+      context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, season_number, episode_number, watched_at")
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("watched_movies")
+        .select("tmdb_id, title, runtime_minutes, watched_at")
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("watchlist")
+        .select("tmdb_id, media_type, series_name, poster_path, backdrop_path, first_air_date, vote_average, added_at")
+        .eq("user_id", context.userId),
+    ]);
+    return {
+      episodes: ep.data ?? [],
+      movies: mv.data ?? [],
+      watchlist: wl.data ?? [],
+    };
+  });
