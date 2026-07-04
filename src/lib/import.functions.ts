@@ -13,6 +13,8 @@ interface MovieRow {
   tmdb_id?: number | null;
   imdb_id?: string | null;
   title?: string | null;
+  year?: number | null;
+  runtime_minutes?: number | null;
   watched_at?: string | null;
 }
 interface FollowShowRow {
@@ -22,6 +24,7 @@ interface FollowMovieRow {
   tmdb_id?: number | null;
   imdb_id?: string | null;
   title?: string | null;
+  year?: number | null;
 }
 
 interface ResolvedShow {
