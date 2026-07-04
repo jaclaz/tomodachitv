@@ -373,6 +373,32 @@ function ImportPage() {
         </label>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-display text-base font-semibold">
+            Export your library
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Downloads a ZIP with your watched episodes, movies and watchlist.
+            You can re-import it here anytime.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handleExport}
+          disabled={exporting || busy}
+        >
+          {exporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          {exporting ? "Preparing…" : "Export ZIP"}
+        </Button>
+      </div>
+
+
       {result && (
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-center gap-2 font-display text-base font-semibold">
