@@ -35,6 +35,42 @@ export type Database = {
         }
         Relationships: []
       }
+      media_cache: {
+        Row: {
+          backdrop_path: string | null
+          genre_ids: number[]
+          media_type: string
+          poster_path: string | null
+          release_date: string | null
+          title: string | null
+          tmdb_id: number
+          updated_at: string
+          vote_average: number | null
+        }
+        Insert: {
+          backdrop_path?: string | null
+          genre_ids?: number[]
+          media_type: string
+          poster_path?: string | null
+          release_date?: string | null
+          title?: string | null
+          tmdb_id: number
+          updated_at?: string
+          vote_average?: number | null
+        }
+        Update: {
+          backdrop_path?: string | null
+          genre_ids?: number[]
+          media_type?: string
+          poster_path?: string | null
+          release_date?: string | null
+          title?: string | null
+          tmdb_id?: number
+          updated_at?: string
+          vote_average?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

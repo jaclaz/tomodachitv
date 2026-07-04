@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedWatchlistRouteImport } from './routes/_authenticated/watchlist'
+import { Route as AuthenticatedWatchedRouteImport } from './routes/_authenticated/watched'
 import { Route as AuthenticatedTrendingRouteImport } from './routes/_authenticated/trending'
 import { Route as AuthenticatedStatsRouteImport } from './routes/_authenticated/stats'
 import { Route as AuthenticatedSocialRouteImport } from './routes/_authenticated/social'
@@ -38,6 +39,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedWatchlistRoute = AuthenticatedWatchlistRouteImport.update({
   id: '/watchlist',
   path: '/watchlist',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWatchedRoute = AuthenticatedWatchedRouteImport.update({
+  id: '/watched',
+  path: '/watched',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTrendingRoute = AuthenticatedTrendingRouteImport.update({
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/social': typeof AuthenticatedSocialRoute
   '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
+  '/watched': typeof AuthenticatedWatchedRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/social': typeof AuthenticatedSocialRoute
   '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
+  '/watched': typeof AuthenticatedWatchedRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/': typeof AuthenticatedIndexRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/_authenticated/social': typeof AuthenticatedSocialRoute
   '/_authenticated/stats': typeof AuthenticatedStatsRoute
   '/_authenticated/trending': typeof AuthenticatedTrendingRoute
+  '/_authenticated/watched': typeof AuthenticatedWatchedRoute
   '/_authenticated/watchlist': typeof AuthenticatedWatchlistRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/movie/$id': typeof AuthenticatedMovieIdRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/social'
     | '/stats'
     | '/trending'
+    | '/watched'
     | '/watchlist'
     | '/movie/$id'
     | '/serie/$id'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/social'
     | '/stats'
     | '/trending'
+    | '/watched'
     | '/watchlist'
     | '/'
     | '/movie/$id'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/_authenticated/social'
     | '/_authenticated/stats'
     | '/_authenticated/trending'
+    | '/_authenticated/watched'
     | '/_authenticated/watchlist'
     | '/_authenticated/'
     | '/_authenticated/movie/$id'
@@ -187,6 +199,13 @@ declare module '@tanstack/react-router' {
       path: '/watchlist'
       fullPath: '/watchlist'
       preLoaderRoute: typeof AuthenticatedWatchlistRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/watched': {
+      id: '/_authenticated/watched'
+      path: '/watched'
+      fullPath: '/watched'
+      preLoaderRoute: typeof AuthenticatedWatchedRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/trending': {
@@ -246,6 +265,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSocialRoute: typeof AuthenticatedSocialRoute
   AuthenticatedStatsRoute: typeof AuthenticatedStatsRoute
   AuthenticatedTrendingRoute: typeof AuthenticatedTrendingRoute
+  AuthenticatedWatchedRoute: typeof AuthenticatedWatchedRoute
   AuthenticatedWatchlistRoute: typeof AuthenticatedWatchlistRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedMovieIdRoute: typeof AuthenticatedMovieIdRoute
@@ -258,6 +278,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSocialRoute: AuthenticatedSocialRoute,
   AuthenticatedStatsRoute: AuthenticatedStatsRoute,
   AuthenticatedTrendingRoute: AuthenticatedTrendingRoute,
+  AuthenticatedWatchedRoute: AuthenticatedWatchedRoute,
   AuthenticatedWatchlistRoute: AuthenticatedWatchlistRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedMovieIdRoute: AuthenticatedMovieIdRoute,
