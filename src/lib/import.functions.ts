@@ -128,6 +128,23 @@ export const importTvTime = createServerFn({ method: "POST" })
           };
         }
       }
+      if (m.title) {
+        const params: Record<string, string> = { query: m.title };
+        if (m.year) params.year = String(m.year);
+        const d = await fetchJson(`/search/movie`, params);
+        const mv = d?.results?.[0];
+        if (mv) {
+          return {
+            tmdb_id: mv.id,
+            title: mv.title,
+            poster_path: mv.poster_path ?? null,
+            backdrop_path: mv.backdrop_path ?? null,
+            release_date: mv.release_date ?? null,
+            vote_average: mv.vote_average ?? null,
+            runtime: null,
+          };
+        }
+      }
       return null;
     };
 
