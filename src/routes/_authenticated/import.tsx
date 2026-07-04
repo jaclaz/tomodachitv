@@ -325,11 +325,11 @@ function ImportPage() {
     <div className="mx-auto max-w-2xl space-y-6 pt-12 sm:pt-0">
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">
-          Import from TV Time
+          Import &amp; Export
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Upload the ZIP archive TV Time gave you when you requested your data.
-          We'll import your watched episodes, watched movies and watchlist.
+          Import your TV Time archive, or export your Tomodachi library as a ZIP
+          you can re-import later.
         </p>
       </div>
 
