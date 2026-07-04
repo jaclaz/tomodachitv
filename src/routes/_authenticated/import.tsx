@@ -183,10 +183,10 @@ function ImportPage() {
         String(f.tvdb_show_id)
       );
       const dedupMovies = uniq(watched_movies, (m) =>
-        String(m.tmdb_id ?? m.imdb_id ?? m.title ?? "")
+        String(m.tmdb_id ?? m.imdb_id ?? `${(m.title ?? "").toLowerCase()}|${m.year ?? ""}`)
       );
       const dedupFollowMovies = uniq(follow_movies, (m) =>
-        String(m.tmdb_id ?? m.imdb_id ?? m.title ?? "")
+        String(m.tmdb_id ?? m.imdb_id ?? `${(m.title ?? "").toLowerCase()}|${m.year ?? ""}`)
       );
 
       if (
