@@ -17,6 +17,7 @@ import { Plus, Check, Star, ArrowLeft, Clock, Eye, EyeOff } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
 import { CastList } from "@/components/cast-list";
 import { MovieInfo } from "@/components/movie-info";
+import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
