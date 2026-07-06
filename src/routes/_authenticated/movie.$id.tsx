@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft, Clock, Eye, EyeOff } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
+import { CastList } from "@/components/cast-list";
+import { MovieInfo } from "@/components/movie-info";
 
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
@@ -218,6 +220,10 @@ function MovieDetailPage() {
       </section>
 
       <WatchProviders tmdbId={tmdbId} type="movie" />
+
+      <CastList id={tmdbId} type="movie" />
+
+      <MovieInfo movie={movie} />
     </div>
   );
 }

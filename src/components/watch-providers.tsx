@@ -79,11 +79,11 @@ export function WatchProviders({ tmdbId, type }: Props) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Tv2 className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-display text-lg font-semibold">Dove vederlo</h2>
+          <h2 className="font-display text-lg font-semibold">Where to watch</h2>
         </div>
         <Select value={country} onValueChange={onCountryChange}>
           <SelectTrigger className="h-9 w-[180px]">
-            <SelectValue placeholder="Paese" />
+            <SelectValue placeholder="Country" />
           </SelectTrigger>
           <SelectContent>
             {COUNTRIES.map((c) => (
@@ -99,29 +99,33 @@ export function WatchProviders({ tmdbId, type }: Props) {
         <div className="h-16 animate-pulse rounded-lg bg-muted" />
       ) : !hasAny ? (
         <p className="text-sm text-muted-foreground">
-          Nessun servizio di streaming disponibile in questo paese.
+          No streaming services available in this country.
         </p>
       ) : (
         <div className="space-y-3">
           <ProviderRow label="Streaming" items={p!.flatrate} />
-          <ProviderRow label="Gratis" items={p!.free} />
-          <ProviderRow label="Con pubblicità" items={p!.ads} />
+          <ProviderRow label="Free" items={p!.free} />
+          <ProviderRow label="With ads" items={p!.ads} />
           <RentBuyRow rent={p!.rent} buy={p!.buy} />
-          {p!.link && (
-            <a
-              href={p!.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Dettagli su JustWatch <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            {p!.link ? (
+              <a
+                href={p!.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Details on JustWatch <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : (
+              <span />
+            )}
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Data provided by JustWatch via TMDB
+            </p>
+          </div>
         </div>
       )}
-      <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
-        Dati forniti da JustWatch tramite TMDB
-      </p>
     </section>
   );
 }
@@ -158,7 +162,7 @@ function RentBuyRow({
         {hasRent && (
           <div className="flex shrink-0 flex-col gap-1.5">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Noleggio
+              Rent
             </div>
             <div className="flex flex-nowrap gap-2">
               {rent!.map((prov) => (
@@ -173,7 +177,7 @@ function RentBuyRow({
         {hasBuy && (
           <div className="flex shrink-0 flex-col gap-1.5">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Acquisto
+              Buy
             </div>
             <div className="flex flex-nowrap gap-2">
               {buy!.map((prov) => (
