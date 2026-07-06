@@ -17,6 +17,7 @@ import { Plus, Check, Star, ArrowLeft, Clock, Eye, EyeOff } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
 import { CastList } from "@/components/cast-list";
 import { MovieInfo } from "@/components/movie-info";
+import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
@@ -214,6 +215,18 @@ function MovieDetailPage() {
                 )}
                 {inWatchlist ? "In your list" : "Add to watchlist"}
               </Button>
+              <FavoriteButton
+                media_type="movie"
+                tmdb_id={movie.id}
+                title={movie.title}
+                poster_path={movie.poster_path}
+              />
+              <AddToListButton
+                media_type="movie"
+                tmdb_id={movie.id}
+                title={movie.title}
+                poster_path={movie.poster_path}
+              />
             </div>
           </div>
         </div>

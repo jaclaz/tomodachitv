@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
+import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
@@ -166,6 +167,18 @@ function SeriesDetailPage() {
                 )}
                 {inWatchlist ? "In your list" : "Add to watchlist"}
               </Button>
+              <FavoriteButton
+                media_type="tv"
+                tmdb_id={series.id}
+                title={series.title}
+                poster_path={series.poster_path}
+              />
+              <AddToListButton
+                media_type="tv"
+                tmdb_id={series.id}
+                title={series.title}
+                poster_path={series.poster_path}
+              />
             </div>
           </div>
         </div>

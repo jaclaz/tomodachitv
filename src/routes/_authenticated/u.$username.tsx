@@ -1,22 +1,36 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getProfileByUsername,
   followUser,
   unfollowUser,
   getUserWatchlist,
-  getUserWatched,
   updateMyProfile,
 } from "@/lib/social.functions";
-import { posterUrl } from "@/lib/tmdb";
+import {
+  getUserFavorites,
+  getUserRecentWatchedMedia,
+} from "@/lib/lists.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { BannerUpload } from "@/components/banner-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, UserPlus, UserMinus, Film, Tv, Pencil, Check, X, Loader2 } from "lucide-react";
+import {
+  Lock,
+  UserPlus,
+  UserMinus,
+  Pencil,
+  Check,
+  X,
+  Loader2,
+  Tv,
+  Film,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PosterStrip, type PosterItem } from "@/components/poster-strip";
+import { UserListsSection } from "@/components/user-lists-section";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
   component: UserProfilePage,
@@ -31,17 +45,23 @@ function UserProfilePage() {
     queryFn: () => getProfileByUsername({ data: { username } }),
   });
 
+  const canSeeWatched = !!profile && (profile.is_self || profile.is_following);
+
   const { data: watchlist = [] } = useQuery({
     queryKey: ["user-watchlist", profile?.id],
     queryFn: () => getUserWatchlist({ data: { user_id: profile!.id } }),
     enabled: !!profile,
   });
 
-  const canSeeWatched = !!profile && (profile.is_self || profile.is_following);
-
   const { data: watched } = useQuery({
-    queryKey: ["user-watched", profile?.id],
-    queryFn: () => getUserWatched({ data: { user_id: profile!.id } }),
+    queryKey: ["user-recent-watched", profile?.id],
+    queryFn: () => getUserRecentWatchedMedia({ data: { user_id: profile!.id } }),
+    enabled: !!profile && canSeeWatched,
+  });
+
+  const { data: favorites = [] } = useQuery({
+    queryKey: ["user-favorites", profile?.id],
+    queryFn: () => getUserFavorites({ data: { user_id: profile!.id } }),
     enabled: !!profile && canSeeWatched,
   });
 
@@ -58,6 +78,53 @@ function UserProfilePage() {
     return <div className="pt-12 text-sm text-muted-foreground">Loading...</div>;
   }
   if (!profile) throw notFound();
+
+  const watchlistTv: PosterItem[] = watchlist
+    .filter((w) => w.media_type === "tv")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "tv" as const,
+    }));
+  const watchlistMovies: PosterItem[] = watchlist
+    .filter((w) => w.media_type === "movie")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "movie" as const,
+    }));
+
+  const watchedTv: PosterItem[] = (watched?.series ?? []).map((s) => ({
+    tmdb_id: s.tmdb_id,
+    title: s.title,
+    poster_path: s.poster_path,
+    media_type: "tv" as const,
+  }));
+  const watchedMovies: PosterItem[] = (watched?.movies ?? []).map((m) => ({
+    tmdb_id: m.tmdb_id,
+    title: m.title,
+    poster_path: m.poster_path,
+    media_type: "movie" as const,
+  }));
+
+  const favTv: PosterItem[] = favorites
+    .filter((f) => f.media_type === "tv")
+    .map((f) => ({
+      tmdb_id: f.tmdb_id,
+      title: f.title,
+      poster_path: f.poster_path,
+      media_type: "tv" as const,
+    }));
+  const favMovies: PosterItem[] = favorites
+    .filter((f) => f.media_type === "movie")
+    .map((f) => ({
+      tmdb_id: f.tmdb_id,
+      title: f.title,
+      poster_path: f.poster_path,
+      media_type: "movie" as const,
+    }));
 
   return (
     <div className="space-y-8">
@@ -148,48 +215,13 @@ function UserProfilePage() {
         </div>
       </div>
 
-      <Tabs defaultValue="watchlist">
+      <Tabs defaultValue="watched">
         <TabsList>
-          <TabsTrigger value="watchlist">Watchlist ({watchlist.length})</TabsTrigger>
           <TabsTrigger value="watched">Watched</TabsTrigger>
+          <TabsTrigger value="watchlist">Watchlist ({watchlist.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="watchlist" className="mt-4">
-          {watchlist.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Empty watchlist.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {watchlist.map((item) => (
-                <Link
-                  key={item.id}
-                  to={item.media_type === "tv" ? "/serie/$id" : "/movie/$id"}
-                  params={{ id: String(item.tmdb_id) }}
-                  className="group overflow-hidden rounded-xl bg-card"
-                >
-                  <div className="aspect-[2/3] overflow-hidden">
-                    {item.poster_path ? (
-                      <img
-                        src={posterUrl(item.poster_path)}
-                        alt={item.series_name}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-                        {item.series_name.slice(0, 2)}
-                      </div>
-                    )}
-                  </div>
-                  <p className="p-2 text-sm font-medium line-clamp-1">
-                    {item.series_name}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="watched" className="mt-4">
+        <TabsContent value="watched" className="mt-4 space-y-6">
           {!canSeeWatched ? (
             <div className="rounded-2xl border border-border bg-surface p-10 text-center">
               <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
@@ -198,55 +230,70 @@ function UserProfilePage() {
                 Follow @{profile.username} to see their watched history.
               </p>
             </div>
-          ) : !watched ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : watched.episodes.length === 0 && watched.movies.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing watched yet.</p>
           ) : (
-            <div className="space-y-6">
-              <div>
-                <h3 className="mb-2 flex items-center gap-2 font-semibold">
-                  <Film className="h-4 w-4" /> Recent movies ({watched.movies.length})
+            <>
+              <div className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Tv className="h-4 w-4" /> Recently watched series
                 </h3>
-                <ul className="space-y-2">
-                  {watched.movies.slice(0, 20).map((m) => (
-                    <li
-                      key={m.id}
-                      className="flex items-center justify-between rounded-lg bg-surface px-4 py-2 text-sm"
-                    >
-                      <span>{m.title ?? `Movie #${m.tmdb_id}`}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(m.watched_at).toLocaleDateString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <PosterStrip items={watchedTv} emptyLabel="No series watched yet." />
               </div>
-              <div>
-                <h3 className="mb-2 flex items-center gap-2 font-semibold">
-                  <Tv className="h-4 w-4" /> Recent episodes ({watched.episodes.length})
+              <div className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Film className="h-4 w-4" /> Recently watched movies
                 </h3>
-                <ul className="space-y-2">
-                  {watched.episodes.slice(0, 20).map((e) => (
-                    <li
-                      key={e.id}
-                      className="flex items-center justify-between rounded-lg bg-surface px-4 py-2 text-sm"
-                    >
-                      <span>
-                        S{e.season_number}E{e.episode_number}
-                        {e.episode_name ? ` · ${e.episode_name}` : ""}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(e.watched_at).toLocaleDateString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <PosterStrip items={watchedMovies} emptyLabel="No movies watched yet." />
               </div>
-            </div>
+            </>
           )}
         </TabsContent>
+
+        <TabsContent value="watchlist" className="mt-4 space-y-6">
+          <div className="space-y-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Tv className="h-4 w-4" /> Series
+            </h3>
+            <PosterStrip items={watchlistTv} emptyLabel="No series in watchlist." />
+          </div>
+          <div className="space-y-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Film className="h-4 w-4" /> Movies
+            </h3>
+            <PosterStrip items={watchlistMovies} emptyLabel="No movies in watchlist." />
+          </div>
+        </TabsContent>
       </Tabs>
+
+      {/* Favorites */}
+      {canSeeWatched && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="font-display text-lg font-semibold">Favorites</h2>
+            <p className="text-xs text-muted-foreground">
+              {profile.is_self
+                ? "Mark movies and series as favorites from their pages."
+                : "Loved by this user."}
+            </p>
+          </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <Tv className="h-4 w-4" /> Favorite series
+              </h3>
+              <PosterStrip items={favTv} emptyLabel="No favorite series yet." />
+            </div>
+            <div className="space-y-2">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <Film className="h-4 w-4" /> Favorite movies
+              </h3>
+              <PosterStrip items={favMovies} emptyLabel="No favorite movies yet." />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Personal lists */}
+      <UserListsSection userId={profile.id} isSelf={profile.is_self} />
     </div>
   );
 }
