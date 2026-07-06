@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/calendar")({
 
 function formatDay(dateStr: string) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
