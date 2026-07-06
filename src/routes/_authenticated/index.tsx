@@ -18,6 +18,7 @@ import { StatsStrip } from "@/components/stats-strip";
 import { MediaCard } from "@/components/media-card";
 import { SearchBar } from "@/components/search-bar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CurrentlyWatching } from "@/components/currently-watching";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: HomePage,
@@ -122,6 +123,8 @@ function HomePage() {
         totalMinutes={stats?.totalMinutes ?? 0}
         watchlistCount={watchlist.length}
       />
+
+      <CurrentlyWatching />
 
       <section>
         <div className="flex items-center justify-between">
