@@ -14,7 +14,7 @@ import {
   markEpisodeWatched,
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
-import { Clock, Check } from "lucide-react";
+import { Clock } from "lucide-react";
 
 interface EpisodeListProps {
   series: SeriesDetails;
@@ -163,12 +163,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
                               {ep.episode_number}. {ep.name}
                             </span>
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              {watched ? (
-                                <>
-                                  <Check className="h-3 w-3 text-primary" />
-                                  Watched
-                                </>
-                              ) : ep.runtime ? (
+                              {ep.runtime ? (
                                 <>
                                   <Clock className="h-3 w-3" />
                                   {ep.runtime} min
