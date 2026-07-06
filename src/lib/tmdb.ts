@@ -308,6 +308,12 @@ export const getMovieDetails = createServerFn({ method: "POST" }).middleware([re
       media_type: "movie",
       runtime: raw.runtime ?? null,
       genres: raw.genres ?? [],
+      production_companies: raw.production_companies ?? [],
+      original_language: raw.original_language ?? "",
+      spoken_languages: raw.spoken_languages ?? [],
+      origin_country:
+        raw.origin_country ??
+        (raw.production_countries ?? []).map((c: { iso_3166_1: string }) => c.iso_3166_1),
     };
   });
 
