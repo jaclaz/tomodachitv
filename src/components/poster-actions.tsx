@@ -186,8 +186,14 @@ function AddToListIconButton({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <ListPlus className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={size === "sm" ? "h-7 w-7" : "h-8 w-8"}
+          >
+            <ListPlus
+              className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
+            />
             <span className="sr-only">Add to list</span>
           </Button>
         </DropdownMenuTrigger>
