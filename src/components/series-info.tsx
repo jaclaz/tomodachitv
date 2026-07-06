@@ -43,8 +43,9 @@ function LangTags({
   countries?: string[];
 }) {
   if (languages.length === 0) return "—";
-  const countrySet = new Set(countries?.filter(Boolean) ?? []);
-  const countryStr = Array.from(countrySet).join(", ");
+  const countryStr = Array.from(new Set(countries?.filter(Boolean) ?? []))
+    .map(regionLabel)
+    .join(", ");
   return (
     <div className="flex flex-wrap gap-1.5">
       {languages.map((code) => (
