@@ -9,6 +9,7 @@ import {
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PosterActions } from "@/components/poster-actions";
 import { Trash2, Star } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
