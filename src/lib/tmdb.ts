@@ -130,6 +130,10 @@ export interface MovieDetails extends MediaItem {
   media_type: "movie";
   runtime: number | null;
   genres: { id: number; name: string }[];
+  production_companies: ProductionCompany[];
+  original_language: string;
+  spoken_languages: SpokenLanguage[];
+  origin_country: string[];
 }
 
 export interface Episode {
