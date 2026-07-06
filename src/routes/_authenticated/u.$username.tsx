@@ -257,9 +257,11 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
   const [bio, setBio] = useState(profile.bio ?? "");
   const queryClient = useQueryClient();
 
+  const MAX_BIO_LENGTH = 120;
+
   const mutation = useMutation({
     mutationFn: async (newBio: string) => {
-      await updateMyProfile({ data: { bio: newBio.trim() || null } });
+      await updateMyProfile({ data: { bio: newBio.trim().slice(0, MAX_BIO_LENGTH) || null } });
     },
     onSuccess: () => {
       setIsEditing(false);
