@@ -6,6 +6,7 @@ export interface PublicProfile {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
 }
 
