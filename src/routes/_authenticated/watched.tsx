@@ -261,28 +261,32 @@ function WatchedPage() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {filtered.map((item) => (
-            <Link
+            <div
               key={`${item.media_type}-${item.tmdb_id}`}
-              to={item.media_type === "tv" ? "/serie/$id" : "/movie/$id"}
-              params={{ id: String(item.tmdb_id) }}
-              className="group relative block overflow-hidden rounded-xl bg-card"
+              className="group relative overflow-hidden rounded-xl bg-card"
             >
-              <div className="aspect-[2/3] overflow-hidden">
-                {item.poster_path ? (
-                  <img
-                    src={posterUrl(item.poster_path)}
-                    alt={item.title}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-muted">
-                    <span className="font-display text-2xl font-bold text-muted-foreground">
-                      {item.title.slice(0, 2).toUpperCase()}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <Link
+                to={item.media_type === "tv" ? "/serie/$id" : "/movie/$id"}
+                params={{ id: String(item.tmdb_id) }}
+                className="block"
+              >
+                <div className="aspect-[2/3] overflow-hidden">
+                  {item.poster_path ? (
+                    <img
+                      src={posterUrl(item.poster_path)}
+                      alt={item.title}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                      <span className="font-display text-2xl font-bold text-muted-foreground">
+                        {item.title.slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </Link>
               <div className="absolute right-2 top-2">
                 <span className="rounded-md bg-background/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
                   {item.media_type === "tv" ? "TV" : "Movie"}
@@ -301,8 +305,16 @@ function WatchedPage() {
                     <span>{item.episodes_watched} ep</span>
                   )}
                 </div>
+                <div className="mt-2 flex justify-end">
+                  <PosterActions
+                    media_type={item.media_type}
+                    tmdb_id={item.tmdb_id}
+                    title={item.title}
+                    poster_path={item.poster_path}
+                  />
+                </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
