@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      favorites: {
+        Row: {
+          added_at: string
+          id: string
+          media_type: string
+          poster_path: string | null
+          title: string
+          tmdb_id: number
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          media_type: string
+          poster_path?: string | null
+          title: string
+          tmdb_id: number
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          media_type?: string
+          poster_path?: string | null
+          title?: string
+          tmdb_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
@@ -101,6 +131,74 @@ export type Database = {
           id?: string
           updated_at?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      user_list_items: {
+        Row: {
+          added_at: string
+          id: string
+          list_id: string
+          media_type: string
+          poster_path: string | null
+          title: string
+          tmdb_id: number
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          list_id: string
+          media_type: string
+          poster_path?: string | null
+          title: string
+          tmdb_id: number
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          list_id?: string
+          media_type?: string
+          poster_path?: string | null
+          title?: string
+          tmdb_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "user_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
