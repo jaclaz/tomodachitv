@@ -79,7 +79,7 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
   const shownUrl = previewUrl ?? currentUrl ?? undefined;
 
   return (
-    <div className="group relative h-32 w-full overflow-hidden rounded-2xl sm:h-40">
+    <div className="group relative h-36 w-full overflow-hidden rounded-2xl sm:h-44">
       {/* Background image */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"

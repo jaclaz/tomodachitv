@@ -63,7 +63,7 @@ function UserProfilePage() {
     <div className="space-y-8">
       {/* Banner + profile header */}
       <div className="relative rounded-2xl border border-border bg-card">
-        <div className="relative h-32 w-full overflow-hidden rounded-t-2xl sm:h-40">
+        <div className="relative h-36 w-full overflow-hidden rounded-t-2xl sm:h-44">
           {profile.is_self ? (
             <BannerUpload userId={profile.id} currentUrl={profile.banner_url} />
           ) : (
@@ -88,7 +88,7 @@ function UserProfilePage() {
 
         {/* Profile info layered over the bottom of the banner */}
         <div className="absolute inset-x-0 bottom-0 px-4 pb-3 sm:px-6 sm:pb-4">
-          <div className="flex items-stretch gap-4">
+          <div className="flex items-end gap-4">
             <div className="flex-shrink-0">
               {profile.is_self ? (
                 <AvatarUpload
@@ -108,25 +108,21 @@ function UserProfilePage() {
               )}
             </div>
 
-            <div className="flex flex-1 flex-col justify-between py-1">
-              <div>
-                <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">
-                  {profile.display_name ?? profile.username}
-                </h1>
-                <p className="text-sm text-muted-foreground">@{profile.username}</p>
-              </div>
-              <div>
-                <BioSection profile={profile} />
-                <div className="mt-2 flex gap-4 text-sm">
-                  <span>
-                    <strong>{profile.followers_count}</strong>{" "}
-                    <span className="text-muted-foreground">followers</span>
-                  </span>
-                  <span>
-                    <strong>{profile.following_count}</strong>{" "}
-                    <span className="text-muted-foreground">following</span>
-                  </span>
-                </div>
+            <div className="flex flex-1 flex-col">
+              <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">
+                {profile.display_name ?? profile.username}
+              </h1>
+              <p className="text-sm text-muted-foreground">@{profile.username}</p>
+              <BioSection profile={profile} />
+              <div className="mt-2 flex gap-4 text-sm">
+                <span>
+                  <strong>{profile.followers_count}</strong>{" "}
+                  <span className="text-muted-foreground">followers</span>
+                </span>
+                <span>
+                  <strong>{profile.following_count}</strong>{" "}
+                  <span className="text-muted-foreground">following</span>
+                </span>
               </div>
             </div>
 
@@ -261,9 +257,11 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
   const [bio, setBio] = useState(profile.bio ?? "");
   const queryClient = useQueryClient();
 
+  const MAX_BIO_LENGTH = 120;
+
   const mutation = useMutation({
     mutationFn: async (newBio: string) => {
-      await updateMyProfile({ data: { bio: newBio.trim() || null } });
+      await updateMyProfile({ data: { bio: newBio.trim().slice(0, MAX_BIO_LENGTH) || null } });
     },
     onSuccess: () => {
       setIsEditing(false);
@@ -278,42 +276,47 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
 
   if (isEditing) {
     return (
-      <div className="mt-2 max-w-xl">
+      <div className="mt-1 max-w-xl">
         <textarea
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          maxLength={240}
-          rows={3}
+          onChange={(e) => setBio(e.target.value.slice(0, MAX_BIO_LENGTH))}
+          maxLength={MAX_BIO_LENGTH}
+          rows={2}
           placeholder="Write a short bio..."
           className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <div className="mt-2 flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => mutation.mutate(bio)}
-            disabled={mutation.isPending}
-          >
-            <Check className="mr-1 h-4 w-4" /> Save
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setBio(profile.bio ?? "");
-              setIsEditing(false);
-            }}
-            disabled={mutation.isPending}
-          >
-            <X className="mr-1 h-4 w-4" /> Cancel
-          </Button>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => mutation.mutate(bio)}
+              disabled={mutation.isPending}
+            >
+              <Check className="mr-1 h-4 w-4" /> Save
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setBio(profile.bio ?? "");
+                setIsEditing(false);
+              }}
+              disabled={mutation.isPending}
+            >
+              <X className="mr-1 h-4 w-4" /> Cancel
+            </Button>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {bio.length}/{MAX_BIO_LENGTH}
+          </span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mt-2 flex max-w-xl items-start gap-2">
-      <p className="text-sm text-foreground/80">
+    <div className="mt-1 flex max-w-xl items-start gap-2">
+      <p className="line-clamp-2 text-sm text-foreground/80">
         {profile.bio || (profile.is_self ? "No bio yet." : "")}
       </p>
       {profile.is_self && (
