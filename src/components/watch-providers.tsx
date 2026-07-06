@@ -75,8 +75,8 @@ export function WatchProviders({ tmdbId, type }: Props) {
     p && ((p.flatrate?.length ?? 0) + (p.free?.length ?? 0) + (p.ads?.length ?? 0) + (p.rent?.length ?? 0) + (p.buy?.length ?? 0)) > 0;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Tv2 className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-display text-lg font-semibold">Dove vederlo</h2>
@@ -102,12 +102,11 @@ export function WatchProviders({ tmdbId, type }: Props) {
           Nessun servizio di streaming disponibile in questo paese.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <ProviderRow label="Streaming" items={p!.flatrate} />
           <ProviderRow label="Gratis" items={p!.free} />
           <ProviderRow label="Con pubblicità" items={p!.ads} />
-          <ProviderRow label="Noleggio" items={p!.rent} />
-          <ProviderRow label="Acquisto" items={p!.buy} />
+          <RentBuyRow rent={p!.rent} buy={p!.buy} />
           {p!.link && (
             <a
               href={p!.link}
@@ -120,7 +119,7 @@ export function WatchProviders({ tmdbId, type }: Props) {
           )}
         </div>
       )}
-      <p className="mt-4 text-[10px] uppercase tracking-wider text-muted-foreground">
+      <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
         Dati forniti da JustWatch tramite TMDB
       </p>
     </section>
@@ -131,30 +130,63 @@ function ProviderRow({ label, items }: { label: string; items?: WatchProvider[] 
   if (!items || items.length === 0) return null;
   return (
     <div>
-      <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div className="flex flex-wrap gap-2">
         {items.map((prov) => (
-          <div
-            key={prov.provider_id}
-            title={prov.provider_name}
-            className="flex items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
-          >
-            {prov.logo_path ? (
-              <img
-                src={providerLogoUrl(prov.logo_path)}
-                alt={prov.provider_name}
-                className="h-8 w-8 rounded-md object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-md bg-muted" />
-            )}
-            <span className="text-sm font-medium">{prov.provider_name}</span>
-          </div>
+          <ProviderPill key={prov.provider_id} prov={prov} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function RentBuyRow({
+  rent,
+  buy,
+}: {
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+}) {
+  if ((!rent || rent.length === 0) && (!buy || buy.length === 0)) return null;
+  return (
+    <div>
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Noleggio / Acquisto
+      </div>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex flex-nowrap gap-2">
+          {rent?.map((prov) => <ProviderPill key={prov.provider_id} prov={prov} />).filter(Boolean)}
+        </div>
+        {rent && rent.length > 0 && buy && buy.length > 0 && (
+          <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+        )}
+        <div className="flex flex-nowrap gap-2">
+          {buy?.map((prov) => <ProviderPill key={prov.provider_id} prov={prov} />).filter(Boolean)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProviderPill({ prov }: { prov: WatchProvider }) {
+  return (
+    <div
+      title={prov.provider_name}
+      className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
+    >
+      {prov.logo_path ? (
+        <img
+          src={providerLogoUrl(prov.logo_path)}
+          alt={prov.provider_name}
+          className="h-8 w-8 rounded-md object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="h-8 w-8 rounded-md bg-muted" />
+      )}
+      <span className="text-sm font-medium whitespace-nowrap">{prov.provider_name}</span>
     </div>
   );
 }
