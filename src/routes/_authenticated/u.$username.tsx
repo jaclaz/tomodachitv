@@ -66,15 +66,15 @@ function UserProfilePage() {
         {profile.is_self ? (
           <BannerUpload userId={profile.id} currentUrl={profile.banner_url} />
         ) : (
-          <div className="relative h-48 w-full overflow-hidden sm:h-64">
+          <div className="relative h-32 w-full overflow-hidden sm:h-40">
             {profile.banner_url ? (
               <>
                 <div
                   className="absolute inset-0 bg-cover bg-center"
                   style={{ backgroundImage: `url(${profile.banner_url})` }}
                 />
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-[2px]" />
               </>
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
@@ -84,10 +84,10 @@ function UserProfilePage() {
           </div>
         )}
 
-        {/* Profile info layered over the banner */}
-        <div className="relative -mt-12 px-4 pb-5 sm:-mt-16 sm:px-6 sm:pb-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-shrink-0">
+        {/* Profile info layered over the bottom of the banner */}
+        <div className="relative px-4 pb-4 pt-0 sm:px-6 sm:pb-5">
+          <div className="flex items-stretch gap-4">
+            <div className="flex-shrink-0 -mt-8 sm:-mt-10">
               {profile.is_self ? (
                 <AvatarUpload
                   userId={profile.id}
@@ -95,30 +95,34 @@ function UserProfilePage() {
                   fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
                 />
               ) : (
-                <Avatar className="h-24 w-24 border-4 border-background">
+                <Avatar className="h-28 w-28 border-4 border-background sm:h-32 sm:w-32">
                   <AvatarImage src={profile.avatar_url ?? undefined} />
-                  <AvatarFallback className="text-2xl">
+                  <AvatarFallback className="text-2xl sm:text-3xl">
                     {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               )}
             </div>
 
-            <div className="min-w-0 flex-1">
-              <h1 className="font-display text-2xl font-bold text-foreground">
-                {profile.display_name ?? profile.username}
-              </h1>
-              <p className="text-sm text-muted-foreground">@{profile.username}</p>
-              <BioSection profile={profile} />
-              <div className="mt-3 flex gap-4 text-sm">
-                <span>
-                  <strong>{profile.followers_count}</strong>{" "}
-                  <span className="text-muted-foreground">followers</span>
-                </span>
-                <span>
-                  <strong>{profile.following_count}</strong>{" "}
-                  <span className="text-muted-foreground">following</span>
-                </span>
+            <div className="flex flex-1 flex-col justify-between py-1">
+              <div>
+                <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">
+                  {profile.display_name ?? profile.username}
+                </h1>
+                <p className="text-sm text-muted-foreground">@{profile.username}</p>
+              </div>
+              <div>
+                <BioSection profile={profile} />
+                <div className="mt-2 flex gap-4 text-sm">
+                  <span>
+                    <strong>{profile.followers_count}</strong>{" "}
+                    <span className="text-muted-foreground">followers</span>
+                  </span>
+                  <span>
+                    <strong>{profile.following_count}</strong>{" "}
+                    <span className="text-muted-foreground">following</span>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -128,6 +132,7 @@ function UserProfilePage() {
                   variant="secondary"
                   onClick={() => unfollowMut.mutate(profile.id)}
                   disabled={unfollowMut.isPending}
+                  className="self-start"
                 >
                   <UserMinus className="mr-2 h-4 w-4" /> Unfollow
                 </Button>
@@ -135,6 +140,7 @@ function UserProfilePage() {
                 <Button
                   onClick={() => followMut.mutate(profile.id)}
                   disabled={followMut.isPending}
+                  className="self-start"
                 >
                   <UserPlus className="mr-2 h-4 w-4" /> Follow
                 </Button>
