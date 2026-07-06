@@ -92,9 +92,8 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
         )}
       </div>
 
-      {/* Bottom-only darkening + blur where the profile info sits */}
+      {/* Bottom-only darkening where the profile info sits */}
       <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-[2px]" />
 
       {/* Edit controls */}
       <div className="absolute inset-0 flex items-start justify-end p-3 opacity-0 transition-opacity group-hover:opacity-100">
