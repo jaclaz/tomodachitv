@@ -11,14 +11,17 @@ interface AvatarUploadProps {
   currentUrl: string | null;
   fallback: string;
   onUpdated?: () => void;
+  className?: string;
 }
+
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 // ~10 years in seconds
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
-export function AvatarUpload({ userId, currentUrl, fallback, onUpdated }: AvatarUploadProps) {
+export function AvatarUpload({ userId, currentUrl, fallback, onUpdated, className }: AvatarUploadProps) {
+
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -65,7 +68,7 @@ export function AvatarUpload({ userId, currentUrl, fallback, onUpdated }: Avatar
 
   return (
     <div className="relative">
-      <Avatar className="h-24 w-24">
+      <Avatar className={cn("h-24 w-24", className)}>
         <AvatarImage src={shownUrl} />
         <AvatarFallback className="text-2xl">{fallback}</AvatarFallback>
       </Avatar>
