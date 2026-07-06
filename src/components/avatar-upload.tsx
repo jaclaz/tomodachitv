@@ -13,7 +13,9 @@ interface AvatarUploadProps {
   fallback: string;
   onUpdated?: () => void;
   className?: string;
+  fallbackClassName?: string;
 }
+
 
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -21,7 +23,15 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 // ~10 years in seconds
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
-export function AvatarUpload({ userId, currentUrl, fallback, onUpdated, className }: AvatarUploadProps) {
+export function AvatarUpload({
+  userId,
+  currentUrl,
+  fallback,
+  onUpdated,
+  className,
+  fallbackClassName,
+}: AvatarUploadProps) {
+
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -71,7 +81,7 @@ export function AvatarUpload({ userId, currentUrl, fallback, onUpdated, classNam
     <div className="relative">
       <Avatar className={cn("h-24 w-24", className)}>
         <AvatarImage src={shownUrl} />
-        <AvatarFallback className="text-2xl">{fallback}</AvatarFallback>
+        <AvatarFallback className={cn("text-2xl", fallbackClassName)}>{fallback}</AvatarFallback>
       </Avatar>
       <button
         type="button"
