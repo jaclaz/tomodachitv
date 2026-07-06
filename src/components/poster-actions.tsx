@@ -37,6 +37,7 @@ interface PosterActionsProps {
   poster_path: string | null;
   showAddToList?: boolean;
   className?: string;
+  size?: "sm" | "default";
 }
 
 export function PosterActions({
