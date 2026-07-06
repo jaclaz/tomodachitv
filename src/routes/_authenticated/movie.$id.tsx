@@ -177,20 +177,27 @@ function MovieDetailPage() {
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <Button
-                variant={isWatched ? "secondary" : "default"}
-                className="gap-2"
-                onClick={() =>
-                  isWatched ? unmarkMutation.mutate() : markMutation.mutate()
-                }
-              >
-                {isWatched ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-                {isWatched ? "Mark as unwatched" : "Mark as watched"}
-              </Button>
+              {isUnreleased ? (
+                <Button variant="secondary" className="gap-2" disabled>
+                  <Clock className="h-4 w-4" />
+                  Not yet released
+                </Button>
+              ) : (
+                <Button
+                  variant={isWatched ? "secondary" : "default"}
+                  className="gap-2"
+                  onClick={() =>
+                    isWatched ? unmarkMutation.mutate() : markMutation.mutate()
+                  }
+                >
+                  {isWatched ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  {isWatched ? "Mark as unwatched" : "Mark as watched"}
+                </Button>
+              )}
               <Button
                 variant={inWatchlist ? "secondary" : "outline"}
                 className="gap-2"
