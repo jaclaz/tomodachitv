@@ -88,7 +88,7 @@ function UserProfilePage() {
 
         {/* Profile info layered over the bottom of the banner */}
         <div className="absolute inset-x-0 bottom-0 px-4 pb-3 sm:px-6 sm:pb-4">
-          <div className="flex items-stretch gap-4">
+          <div className="flex items-end gap-4">
             <div className="flex-shrink-0">
               {profile.is_self ? (
                 <AvatarUpload
