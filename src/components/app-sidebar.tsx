@@ -28,7 +28,7 @@ const navItems = [
   { to: "/watchlist", icon: ListVideo, label: "Watchlist" },
   { to: "/watched", icon: CheckCircle2, label: "Watched" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
-  { to: "/social", icon: Users, label: "Social" },
+  { to: "/social", icon: Users, label: "Tomodachi" },
   { to: "/stats", icon: BarChart3, label: "Stats" },
   { to: "/import", icon: Download, label: "Import" },
 ] as const;

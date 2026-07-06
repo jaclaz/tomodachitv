@@ -8,14 +8,14 @@ import { Film, Search, Tv, Users } from "lucide-react";
 import { posterUrl } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/_authenticated/social")({
-  component: SocialPage,
+  component: TomodachiPage,
 });
 
-function SocialPage() {
+function TomodachiPage() {
   return (
     <div className="space-y-8">
       <div className="pt-12 sm:pt-0">
-        <h1 className="font-display text-2xl font-bold">Friends</h1>
+        <h1 className="font-display text-2xl font-bold">Tomodachi</h1>
         <p className="text-sm text-muted-foreground">
           Find new people to follow and keep up with what your friends watch.
         </p>
