@@ -167,6 +167,18 @@ function SeriesDetailPage() {
                 )}
                 {inWatchlist ? "In your list" : "Add to watchlist"}
               </Button>
+              <FavoriteButton
+                media_type="tv"
+                tmdb_id={series.id}
+                title={series.title}
+                poster_path={series.poster_path}
+              />
+              <AddToListButton
+                media_type="tv"
+                tmdb_id={series.id}
+                title={series.title}
+                poster_path={series.poster_path}
+              />
             </div>
           </div>
         </div>
