@@ -35,6 +35,22 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+function LangTags({ languages }: { languages: string[] }) {
+  if (languages.length === 0) return "—";
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {languages.map((code) => (
+        <span
+          key={code}
+          className="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
+        >
+          {languageLabel(code)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function MovieInfo({ movie }: MovieInfoProps) {
   const { data: credits } = useQuery({
     queryKey: ["credits", "movie", movie.id],
@@ -68,6 +84,13 @@ export function MovieInfo({ movie }: MovieInfoProps) {
 
   const originCountries = movie.origin_country ?? [];
   const countryStr = originCountries.map(regionLabel).join(", ");
+
+  const dubLanguages = Array.from(
+    new Set([
+      ...(movie.original_language ? [movie.original_language] : []),
+      ...(movie.spoken_languages ?? []).map((l) => l.iso_639_1).filter(Boolean),
+    ])
+  ).sort((a, b) => languageLabel(a).localeCompare(languageLabel(b)));
 
   const subGroups = new Map<string, Set<string>>();
   for (const t of translationsData?.translations ?? []) {
@@ -109,6 +132,11 @@ export function MovieInfo({ movie }: MovieInfoProps) {
             "—"
           )}
         </Row>
+        {dubLanguages.length > 0 && (
+          <Row label="Dubs">
+            <LangTags languages={dubLanguages} />
+          </Row>
+        )}
         {subLanguages.length > 0 && (
           <Row label="Subtitles">
             <div className="flex flex-wrap gap-1.5">
