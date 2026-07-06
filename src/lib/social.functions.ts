@@ -256,7 +256,7 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
       items.push({
         id: `m:${m.id}`,
         kind: "movie",
-        user: p,
+        user: { id: p.id, username: p.username, display_name: p.display_name, avatar_url: p.avatar_url },
         tmdb_id: m.tmdb_id,
         title: m.title ?? c?.title ?? `#${m.tmdb_id}`,
         poster_path: c?.poster_path ?? null,
