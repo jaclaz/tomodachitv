@@ -9,7 +9,7 @@ import {
 import { EpisodeList } from "@/components/episode-list";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, Star, ArrowLeft } from "lucide-react";
+import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
 
 
@@ -126,6 +126,16 @@ function SeriesDetailPage() {
                 <Star className="h-3 w-3 fill-rating text-rating" />
                 {series.vote_average.toFixed(1)}
               </Badge>
+              {series.episode_run_time && series.episode_run_time.length > 0 && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {Math.round(
+                    series.episode_run_time.reduce((a, b) => a + b, 0) /
+                      series.episode_run_time.length
+                  )}{" "}
+                  min avg
+                </Badge>
+              )}
               {series.genres.map((g) => (
                 <Badge key={g.id} variant="outline" className="border-border">
                   {g.name}
