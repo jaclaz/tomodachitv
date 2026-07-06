@@ -106,6 +106,8 @@ function MovieDetailPage() {
   const year = movie.release_date
     ? new Date(movie.release_date).getFullYear()
     : null;
+  const releaseDate = movie.release_date ? new Date(movie.release_date + "T00:00:00") : null;
+  const isUnreleased = !!releaseDate && releaseDate.getTime() > Date.now();
 
   return (
     <div className="space-y-6 pt-12 sm:pt-0">
