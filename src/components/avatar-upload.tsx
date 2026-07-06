@@ -5,6 +5,7 @@ import { updateMyProfile } from "@/lib/social.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface AvatarUploadProps {
   userId: string;
