@@ -125,6 +125,14 @@ function WatchlistPage() {
                   <Star className="h-3 w-3 fill-rating text-rating" />
                   {item.vote_average?.toFixed(1) ?? "—"}
                 </div>
+                <div className="mt-2 flex justify-end">
+                  <PosterActions
+                    media_type={item.media_type}
+                    tmdb_id={item.tmdb_id}
+                    title={item.series_name}
+                    poster_path={item.poster_path}
+                  />
+                </div>
               </div>
             </div>
           ))}
