@@ -276,34 +276,39 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
 
   if (isEditing) {
     return (
-      <div className="mt-2 max-w-xl">
+      <div className="mt-1 max-w-xl">
         <textarea
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          maxLength={240}
-          rows={3}
+          onChange={(e) => setBio(e.target.value.slice(0, MAX_BIO_LENGTH))}
+          maxLength={MAX_BIO_LENGTH}
+          rows={2}
           placeholder="Write a short bio..."
           className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <div className="mt-2 flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => mutation.mutate(bio)}
-            disabled={mutation.isPending}
-          >
-            <Check className="mr-1 h-4 w-4" /> Save
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setBio(profile.bio ?? "");
-              setIsEditing(false);
-            }}
-            disabled={mutation.isPending}
-          >
-            <X className="mr-1 h-4 w-4" /> Cancel
-          </Button>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => mutation.mutate(bio)}
+              disabled={mutation.isPending}
+            >
+              <Check className="mr-1 h-4 w-4" /> Save
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setBio(profile.bio ?? "");
+                setIsEditing(false);
+              }}
+              disabled={mutation.isPending}
+            >
+              <X className="mr-1 h-4 w-4" /> Cancel
+            </Button>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {bio.length}/{MAX_BIO_LENGTH}
+          </span>
         </div>
       </div>
     );
