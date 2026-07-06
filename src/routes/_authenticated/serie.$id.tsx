@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
+import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
