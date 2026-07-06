@@ -108,25 +108,21 @@ function UserProfilePage() {
               )}
             </div>
 
-            <div className="flex flex-1 flex-col justify-between py-1">
-              <div>
-                <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">
-                  {profile.display_name ?? profile.username}
-                </h1>
-                <p className="text-sm text-muted-foreground">@{profile.username}</p>
-              </div>
-              <div>
-                <BioSection profile={profile} />
-                <div className="mt-2 flex gap-4 text-sm">
-                  <span>
-                    <strong>{profile.followers_count}</strong>{" "}
-                    <span className="text-muted-foreground">followers</span>
-                  </span>
-                  <span>
-                    <strong>{profile.following_count}</strong>{" "}
-                    <span className="text-muted-foreground">following</span>
-                  </span>
-                </div>
+            <div className="flex flex-1 flex-col">
+              <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">
+                {profile.display_name ?? profile.username}
+              </h1>
+              <p className="text-sm text-muted-foreground">@{profile.username}</p>
+              <BioSection profile={profile} />
+              <div className="mt-2 flex gap-4 text-sm">
+                <span>
+                  <strong>{profile.followers_count}</strong>{" "}
+                  <span className="text-muted-foreground">followers</span>
+                </span>
+                <span>
+                  <strong>{profile.following_count}</strong>{" "}
+                  <span className="text-muted-foreground">following</span>
+                </span>
               </div>
             </div>
 
