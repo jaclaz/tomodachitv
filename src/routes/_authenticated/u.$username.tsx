@@ -315,8 +315,8 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
   }
 
   return (
-    <div className="mt-2 flex max-w-xl items-start gap-2">
-      <p className="text-sm text-foreground/80">
+    <div className="mt-1 flex max-w-xl items-start gap-2">
+      <p className="line-clamp-2 text-sm text-foreground/80">
         {profile.bio || (profile.is_self ? "No bio yet." : "")}
       </p>
       {profile.is_self && (
