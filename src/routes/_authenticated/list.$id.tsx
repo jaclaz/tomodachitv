@@ -95,8 +95,17 @@ function ListDetailPage() {
                     </div>
                   )}
                 </div>
-                <p className="line-clamp-1 p-2 text-sm font-medium">{item.title}</p>
               </Link>
+              <div className="flex items-start justify-between p-2">
+                <p className="line-clamp-1 text-sm font-medium">{item.title}</p>
+                <PosterActions
+                  media_type={item.media_type}
+                  tmdb_id={item.tmdb_id}
+                  title={item.title}
+                  poster_path={item.poster_path}
+                  showAddToList={false}
+                />
+              </div>
               {canEdit && (
                 <button
                   type="button"
