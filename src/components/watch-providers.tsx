@@ -162,7 +162,7 @@ function RentBuyRow({
         {hasRent && (
           <div className="flex shrink-0 flex-col gap-1.5">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Noleggio
+              Rent
             </div>
             <div className="flex flex-nowrap gap-2">
               {rent!.map((prov) => (
@@ -177,7 +177,7 @@ function RentBuyRow({
         {hasBuy && (
           <div className="flex shrink-0 flex-col gap-1.5">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Acquisto
+              Buy
             </div>
             <div className="flex flex-nowrap gap-2">
               {buy!.map((prov) => (
