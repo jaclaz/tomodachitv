@@ -81,12 +81,13 @@ export function SeriesInfo({ series }: SeriesInfoProps) {
   const productionCompanies = series.production_companies ?? [];
 
   // Merge original language + spoken languages, append country of origin in parentheses.
-  const languageSet = new Set<string>();
-  if (series.original_language) languageSet.add(series.original_language);
+  const allLanguages: string[] = [];
+  if (series.original_language) allLanguages.push(series.original_language);
   for (const l of series.spoken_languages ?? []) {
-    if (l.iso_639_1) languageSet.add(l.iso_639_1);
+    if (l.iso_639_1 && !allLanguages.includes(l.iso_639_1)) {
+      allLanguages.push(l.iso_639_1);
+    }
   }
-  const allLanguages = Array.from(languageSet).sort();
 
   const originCountries = series.origin_country ?? [];
   const countryStr = originCountries.map(regionLabel).join(", ");
