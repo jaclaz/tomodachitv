@@ -19,6 +19,7 @@ function AuthPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth" }) as { redirect?: string };
