@@ -251,7 +251,7 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
     const items: FollowingActivityItem[] = [];
     for (const m of movies ?? []) {
       const p = profileMap.get(m.user_id);
-      if (!p) continue;
+      if (!p || !p.username) continue;
       const c = cacheMap.get(`movie:${m.tmdb_id}`);
       items.push({
         id: `m:${m.id}`,
