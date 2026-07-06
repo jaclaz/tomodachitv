@@ -85,6 +85,25 @@ function mapMovie(r: RawMovie): MediaItem {
 }
 
 // ============ Details ============
+export interface ProductionCompany {
+  id: number;
+  name: string;
+  logo_path: string | null;
+  origin_country: string;
+}
+
+export interface SpokenLanguage {
+  iso_639_1: string;
+  english_name: string;
+  name: string;
+}
+
+export interface Creator {
+  id: number;
+  name: string;
+  profile_path: string | null;
+}
+
 export interface SeriesDetails extends MediaItem {
   media_type: "tv";
   number_of_seasons: number;
@@ -98,6 +117,13 @@ export interface SeriesDetails extends MediaItem {
     air_date?: string;
     poster_path?: string | null;
   }[];
+  production_companies: ProductionCompany[];
+  networks: ProductionCompany[];
+  created_by: Creator[];
+  original_language: string;
+  spoken_languages: SpokenLanguage[];
+  languages: string[];
+  origin_country: string[];
 }
 
 export interface MovieDetails extends MediaItem {
