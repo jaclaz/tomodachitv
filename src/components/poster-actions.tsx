@@ -127,6 +127,7 @@ function AddToListIconButton({
   tmdb_id,
   title,
   poster_path,
+  size,
 }: Omit<PosterActionsProps, "showAddToList" | "className">) {
   const qc = useQueryClient();
   const { data: me } = useQuery({
