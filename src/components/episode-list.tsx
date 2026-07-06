@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,6 +20,26 @@ interface EpisodeListProps {
   series: SeriesDetails;
 }
 
+function getReleaseCountdown(airDate: string | undefined | null): string | null {
+  if (!airDate) return null;
+  const air = new Date(airDate + "T00:00:00");
+  if (isNaN(air.getTime())) return null;
+  const now = new Date();
+  const diffMs = air.getTime() - now.getTime();
+  if (diffMs <= 0) return null;
+  const day = 24 * 60 * 60 * 1000;
+  const days = Math.ceil(diffMs / day);
+  if (days < 1) {
+    const hours = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"}`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"}`;
+  const years = Math.round(days / 365);
+  return `${years} year${years === 1 ? "" : "s"}`;
+}
+
 export function EpisodeList({ series }: EpisodeListProps) {
   const [activeSeason, setActiveSeason] = useState(() => {
     const first = series.seasons.find((s) => s.season_number > 0);
@@ -28,6 +48,14 @@ export function EpisodeList({ series }: EpisodeListProps) {
 
   const tmdbId = series.id;
   const queryClient = useQueryClient();
+
+  // Re-render every minute so countdowns tick down and released episodes
+  // swap from label to checkbox without a page refresh.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const runtimeFallback =
     series.episode_run_time && series.episode_run_time.length > 0
@@ -135,6 +163,8 @@ export function EpisodeList({ series }: EpisodeListProps) {
                   {seasonDetails.episodes.map((ep) => {
                     const watched = isWatched(ep);
                     const still = posterUrl(ep.still_path, "w300");
+                    const countdown = getReleaseCountdown(ep.air_date);
+                    const unreleased = countdown !== null;
                     return (
                       <li
                         key={ep.id}
@@ -156,7 +186,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
                         </div>
                         <label
                           htmlFor={`ep-${ep.id}`}
-                          className="flex-1 cursor-pointer"
+                          className={`flex-1 ${unreleased ? "cursor-default" : "cursor-pointer"}`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-medium text-foreground">
@@ -175,12 +205,18 @@ export function EpisodeList({ series }: EpisodeListProps) {
                             {ep.overview || "No description."}
                           </p>
                         </label>
-                        <Checkbox
-                          id={`ep-${ep.id}`}
-                          checked={watched}
-                          onCheckedChange={() => toggleEpisode(ep)}
-                          className="h-6 w-6 flex-shrink-0"
-                        />
+                        {unreleased ? (
+                          <span className="flex-shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">
+                            in {countdown}
+                          </span>
+                        ) : (
+                          <Checkbox
+                            id={`ep-${ep.id}`}
+                            checked={watched}
+                            onCheckedChange={() => toggleEpisode(ep)}
+                            className="h-6 w-6 flex-shrink-0"
+                          />
+                        )}
                       </li>
                     );
                   })}
