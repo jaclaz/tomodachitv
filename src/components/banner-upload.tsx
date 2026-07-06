@@ -87,7 +87,7 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
       >
         {!shownUrl && (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-            <span className="text-sm text-muted-foreground">No banner</span>
+            <span className="text-sm font-medium text-foreground/60">No banner</span>
           </div>
         )}
       </div>
