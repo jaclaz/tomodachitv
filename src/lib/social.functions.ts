@@ -139,7 +139,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     (input: {
       username?: string;
       display_name?: string;
-      bio?: string;
+      bio?: string | null;
       avatar_url?: string | null;
       banner_url?: string | null;
     }) => input
