@@ -252,6 +252,13 @@ export const getSeriesDetails = createServerFn({ method: "POST" }).middleware([r
       episode_run_time: episodeRunTime,
       genres: raw.genres ?? [],
       seasons: raw.seasons ?? [],
+      production_companies: raw.production_companies ?? [],
+      networks: raw.networks ?? [],
+      created_by: raw.created_by ?? [],
+      original_language: raw.original_language ?? "",
+      spoken_languages: raw.spoken_languages ?? [],
+      languages: raw.languages ?? [],
+      origin_country: raw.origin_country ?? [],
     };
   });
 
