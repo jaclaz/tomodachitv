@@ -174,6 +174,11 @@ function SeriesDetailPage() {
       <WatchProviders tmdbId={tmdbId} type="tv" />
 
       <EpisodeList series={series} />
+
+      <CastList id={tmdbId} type="tv" />
+
+      <SeriesInfo series={series} />
+
     </div>
   );
 }
