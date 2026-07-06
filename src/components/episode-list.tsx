@@ -134,22 +134,31 @@ export function EpisodeList({ series }: EpisodeListProps) {
                 <ul className="divide-y divide-border">
                   {seasonDetails.episodes.map((ep) => {
                     const watched = isWatched(ep);
+                    const still = posterUrl(ep.still_path, "w300");
                     return (
                       <li
                         key={ep.id}
-                        className="flex items-start gap-4 p-4 transition-colors hover:bg-secondary/30"
+                        className="flex items-center gap-4 p-4 transition-colors hover:bg-secondary/30"
                       >
-                        <Checkbox
-                          id={`ep-${ep.id}`}
-                          checked={watched}
-                          onCheckedChange={() => toggleEpisode(ep)}
-                          className="mt-1"
-                        />
+                        <div className="aspect-video w-32 flex-shrink-0 overflow-hidden rounded-md border border-border bg-muted sm:w-40">
+                          {still ? (
+                            <img
+                              src={still}
+                              alt={ep.name}
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                              No image
+                            </div>
+                          )}
+                        </div>
                         <label
                           htmlFor={`ep-${ep.id}`}
                           className="flex-1 cursor-pointer"
                         >
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-medium text-foreground">
                               {ep.episode_number}. {ep.name}
                             </span>
@@ -171,6 +180,12 @@ export function EpisodeList({ series }: EpisodeListProps) {
                             {ep.overview || "No description."}
                           </p>
                         </label>
+                        <Checkbox
+                          id={`ep-${ep.id}`}
+                          checked={watched}
+                          onCheckedChange={() => toggleEpisode(ep)}
+                          className="h-6 w-6 flex-shrink-0"
+                        />
                       </li>
                     );
                   })}
