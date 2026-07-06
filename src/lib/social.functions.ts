@@ -265,12 +265,12 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
     }
     for (const e of episodes ?? []) {
       const p = profileMap.get(e.user_id);
-      if (!p) continue;
+      if (!p || !p.username) continue;
       const c = cacheMap.get(`tv:${e.tmdb_id}`);
       items.push({
         id: `e:${e.id}`,
         kind: "episode",
-        user: p,
+        user: { id: p.id, username: p.username, display_name: p.display_name, avatar_url: p.avatar_url },
         tmdb_id: e.tmdb_id,
         title: c?.title ?? `#${e.tmdb_id}`,
         poster_path: c?.poster_path ?? null,
