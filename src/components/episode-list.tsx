@@ -20,6 +20,26 @@ interface EpisodeListProps {
   series: SeriesDetails;
 }
 
+function getReleaseCountdown(airDate: string | undefined | null): string | null {
+  if (!airDate) return null;
+  const air = new Date(airDate + "T00:00:00");
+  if (isNaN(air.getTime())) return null;
+  const now = new Date();
+  const diffMs = air.getTime() - now.getTime();
+  if (diffMs <= 0) return null;
+  const day = 24 * 60 * 60 * 1000;
+  const days = Math.ceil(diffMs / day);
+  if (days < 1) {
+    const hours = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"}`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"}`;
+  const years = Math.round(days / 365);
+  return `${years} year${years === 1 ? "" : "s"}`;
+}
+
 export function EpisodeList({ series }: EpisodeListProps) {
   const [activeSeason, setActiveSeason] = useState(() => {
     const first = series.seasons.find((s) => s.season_number > 0);
