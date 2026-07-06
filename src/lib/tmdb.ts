@@ -197,16 +197,38 @@ export const getSeriesDetails = createServerFn({ method: "POST" }).middleware([r
   .validator((input: { id: number }) => input)
   .handler(async ({ data }): Promise<SeriesDetails> => {
     const raw = await tmdbFetch(`/tv/${data.id}`);
+    let episodeRunTime: number[] = raw.episode_run_time ?? [];
+
+    // Fallback: if TMDB doesn't provide episode_run_time, compute it from
+    // the first available season's episode runtimes.
+    if (episodeRunTime.length === 0) {
+      const seasons = (raw.seasons ?? []) as { season_number: number; episode_count: number }[];
+      const target = seasons.find((s) => s.season_number > 0 && s.episode_count > 0)
+        ?? seasons.find((s) => s.episode_count > 0);
+      if (target) {
+        try {
+          const season = await tmdbFetch(`/tv/${data.id}/season/${target.season_number}`);
+          const runtimes = ((season.episodes ?? []) as { runtime: number | null }[])
+            .map((e) => e.runtime)
+            .filter((r): r is number => typeof r === "number" && r > 0);
+          if (runtimes.length > 0) episodeRunTime = runtimes;
+        } catch {
+          // ignore fallback errors
+        }
+      }
+    }
+
     return {
       ...mapTv(raw as RawTv),
       media_type: "tv",
       number_of_seasons: raw.number_of_seasons,
       number_of_episodes: raw.number_of_episodes,
-      episode_run_time: raw.episode_run_time ?? [],
+      episode_run_time: episodeRunTime,
       genres: raw.genres ?? [],
       seasons: raw.seasons ?? [],
     };
   });
+
 
 export const getMovieDetails = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { id: number }) => input)
