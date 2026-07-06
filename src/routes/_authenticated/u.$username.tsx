@@ -31,6 +31,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { PosterStrip, type PosterItem } from "@/components/poster-strip";
+import { PosterActions } from "@/components/poster-actions";
 import { UserListsSection } from "@/components/user-lists-section";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
