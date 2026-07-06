@@ -79,7 +79,7 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
   const shownUrl = previewUrl ?? currentUrl ?? undefined;
 
   return (
-    <div className="group relative h-48 w-full overflow-hidden rounded-2xl sm:h-64">
+    <div className="group relative h-32 w-full overflow-hidden rounded-2xl sm:h-40">
       {/* Background image */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
@@ -92,38 +92,40 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
         )}
       </div>
 
-      {/* Blur / darkening overlay */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+      {/* Bottom-only darkening + blur where the profile info sits */}
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-[2px]" />
 
       {/* Edit controls */}
-      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={mutation.isPending || removeMutation.isPending}
-          aria-label="Change banner"
-          className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-colors hover:bg-black/80 disabled:opacity-70"
-        >
-          {mutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Camera className="h-4 w-4" />
-          )}
-          Change banner
-        </button>
-        {shownUrl && (
+      <div className="absolute inset-0 flex items-start justify-end p-3 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => removeMutation.mutate()}
+            onClick={() => inputRef.current?.click()}
             disabled={mutation.isPending || removeMutation.isPending}
-            aria-label="Remove banner"
-            className="inline-flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-colors hover:bg-black/80 disabled:opacity-70"
+            aria-label="Change banner"
+            className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md transition-colors hover:bg-black/80 disabled:opacity-70"
           >
-            <X className="h-4 w-4" />
-            Remove
+            {mutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Camera className="h-3.5 w-3.5" />
+            )}
+            Change banner
           </button>
-        )}
+          {shownUrl && (
+            <button
+              type="button"
+              onClick={() => removeMutation.mutate()}
+              disabled={mutation.isPending || removeMutation.isPending}
+              aria-label="Remove banner"
+              className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md transition-colors hover:bg-black/80 disabled:opacity-70"
+            >
+              <X className="h-3.5 w-3.5" />
+              Remove
+            </button>
+          )}
+        </div>
       </div>
 
       <input
