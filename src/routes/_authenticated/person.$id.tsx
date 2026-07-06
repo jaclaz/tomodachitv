@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   getPersonDetails,
   getPersonCredits,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/tmdb";
 import { MediaCard } from "@/components/media-card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/person/$id")({
@@ -17,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/person/$id")({
 function PersonDetailPage() {
   const { id } = Route.useParams();
   const personId = Number(id);
+  const [tab, setTab] = useState<"movie" | "tv">("movie");
 
   const { data: person, isLoading } = useQuery({
     queryKey: ["person", personId],
@@ -39,7 +42,6 @@ function PersonDetailPage() {
     );
   }
 
-  // Deduplicate credits by id+media_type and sort by popularity proxy (vote_average, release_date desc)
   const all: PersonCreditItem[] = [...(credits?.cast ?? []), ...(credits?.crew ?? [])];
   const seen = new Set<string>();
   const unique = all.filter((c) => {
@@ -54,6 +56,9 @@ function PersonDetailPage() {
     return by - ay;
   });
 
+  const movies = unique.filter((c) => c.media_type === "movie");
+  const series = unique.filter((c) => c.media_type === "tv");
+
   const profile = profileUrl(person.profile_path, "h632");
 
   return (
@@ -65,8 +70,8 @@ function PersonDetailPage() {
         </Link>
       </Button>
 
-      <section className="flex flex-col gap-6 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:p-8">
-        <div className="w-40 flex-shrink-0 sm:w-52">
+      <section className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+        <div className="sm:float-left sm:mr-6 sm:mb-4 w-40 sm:w-52">
           <div className="aspect-[2/3] overflow-hidden rounded-xl border border-border bg-muted">
             {profile ? (
               <img src={profile} alt={person.name} className="h-full w-full object-cover" />
@@ -79,7 +84,7 @@ function PersonDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex-1 space-y-3">
+        <div className="space-y-3">
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             {person.name}
           </h1>
@@ -95,11 +100,12 @@ function PersonDetailPage() {
             </p>
           )}
           {person.biography && (
-            <p className="max-w-3xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
               {person.biography}
             </p>
           )}
         </div>
+        <div className="clear-both" />
       </section>
 
       <section className="space-y-4">
@@ -109,11 +115,34 @@ function PersonDetailPage() {
         {unique.length === 0 ? (
           <p className="text-sm text-muted-foreground">No credits available.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {unique.map((item) => (
-              <MediaCard key={`${item.media_type}-${item.id}`} item={item} />
-            ))}
-          </div>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "movie" | "tv")}>
+            <TabsList>
+              <TabsTrigger value="movie">Movies ({movies.length})</TabsTrigger>
+              <TabsTrigger value="tv">TV Series ({series.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="movie" className="mt-4">
+              {movies.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No movies.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  {movies.map((item) => (
+                    <MediaCard key={`${item.media_type}-${item.id}`} item={item} />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="tv" className="mt-4">
+              {series.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No TV series.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  {series.map((item) => (
+                    <MediaCard key={`${item.media_type}-${item.id}`} item={item} />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </section>
     </div>
