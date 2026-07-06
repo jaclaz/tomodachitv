@@ -14,7 +14,7 @@ import { AvatarUpload } from "@/components/avatar-upload";
 import { BannerUpload } from "@/components/banner-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, UserPlus, UserMinus, Film, Tv, Pencil, Check, X } from "lucide-react";
+import { Lock, UserPlus, UserMinus, Film, Tv, Pencil, Check, X, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
