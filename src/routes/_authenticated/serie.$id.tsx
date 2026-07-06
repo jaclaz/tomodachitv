@@ -7,6 +7,8 @@ import {
   removeFromWatchlist,
 } from "@/lib/watchlist.functions";
 import { EpisodeList } from "@/components/episode-list";
+import { CastList } from "@/components/cast-list";
+import { SeriesInfo } from "@/components/series-info";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
