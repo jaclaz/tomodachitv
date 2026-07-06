@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { backdropUrl, posterUrl, type MediaItem } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Star, Plus, Check } from "lucide-react";
+import { FileText, Star, Plus, Check } from "lucide-react";
 
 interface HeroSectionProps {
   item: MediaItem;
@@ -70,7 +70,7 @@ export function HeroSection({ item, inWatchlist, onToggleWatchlist }: HeroSectio
           <div className="flex flex-wrap gap-3">
             <Button asChild className="gap-2">
               <Link to={to} params={{ id: String(item.id) }}>
-                <Search className="h-4 w-4" />
+                <FileText className="h-4 w-4" />
                 Details
               </Link>
             </Button>
