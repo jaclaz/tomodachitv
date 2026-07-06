@@ -14,7 +14,7 @@ import { AvatarUpload } from "@/components/avatar-upload";
 import { BannerUpload } from "@/components/banner-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, UserPlus, UserMinus, Film, Tv, Pencil, Check, X } from "lucide-react";
+import { Lock, UserPlus, UserMinus, Film, Tv, Pencil, Check, X, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -275,39 +275,51 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
 
   if (isEditing) {
     return (
-      <div className="mt-1 max-w-xl">
+      <div className="mt-1 flex max-w-xl items-start gap-2">
         <textarea
           value={bio}
           onChange={(e) => setBio(e.target.value.slice(0, MAX_BIO_LENGTH))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              mutation.mutate(bio);
+            } else if (e.key === "Escape") {
+              setBio(profile.bio ?? "");
+              setIsEditing(false);
+            }
+          }}
           maxLength={MAX_BIO_LENGTH}
-          rows={2}
+          rows={1}
           placeholder="Write a short bio..."
-          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          autoFocus
+          className="flex-1 resize-none rounded-md border border-border bg-background px-2 py-1 text-sm leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         />
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => mutation.mutate(bio)}
-              disabled={mutation.isPending}
-            >
-              <Check className="mr-1 h-4 w-4" /> Save
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setBio(profile.bio ?? "");
-                setIsEditing(false);
-              }}
-              disabled={mutation.isPending}
-            >
-              <X className="mr-1 h-4 w-4" /> Cancel
-            </Button>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {bio.length}/{MAX_BIO_LENGTH}
-          </span>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => mutation.mutate(bio)}
+            disabled={mutation.isPending}
+            aria-label="Save bio"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+          >
+            {mutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setBio(profile.bio ?? "");
+              setIsEditing(false);
+            }}
+            disabled={mutation.isPending}
+            aria-label="Cancel"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     );
