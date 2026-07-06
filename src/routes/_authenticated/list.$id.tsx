@@ -103,7 +103,6 @@ function ListDetailPage() {
                   tmdb_id={item.tmdb_id}
                   title={item.title}
                   poster_path={item.poster_path}
-                  showAddToList={false}
                 />
               </div>
               {canEdit && (

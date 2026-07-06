@@ -37,6 +37,7 @@ interface PosterActionsProps {
   poster_path: string | null;
   showAddToList?: boolean;
   className?: string;
+  size?: "sm" | "default";
 }
 
 export function PosterActions({
@@ -46,6 +47,7 @@ export function PosterActions({
   poster_path,
   showAddToList = true,
   className,
+  size = "default",
 }: PosterActionsProps) {
   return (
     <div className={`flex items-center gap-1 ${className ?? ""}`}>
@@ -54,6 +56,7 @@ export function PosterActions({
         tmdb_id={tmdb_id}
         title={title}
         poster_path={poster_path}
+        size={size}
       />
       {showAddToList && (
         <AddToListIconButton
@@ -61,6 +64,7 @@ export function PosterActions({
           tmdb_id={tmdb_id}
           title={title}
           poster_path={poster_path}
+          size={size}
         />
       )}
     </div>
@@ -72,6 +76,7 @@ function FavoriteIconButton({
   tmdb_id,
   title,
   poster_path,
+  size,
 }: Omit<PosterActionsProps, "showAddToList" | "className">) {
   const qc = useQueryClient();
   const { data: favorites = [] } = useQuery({
@@ -103,12 +108,12 @@ function FavoriteIconButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8"
+      className={size === "sm" ? "h-7 w-7" : "h-8 w-8"}
       onClick={() => mut.mutate()}
       disabled={mut.isPending}
     >
       <Heart
-        className={`h-4 w-4 ${isFav ? "fill-red-500 text-red-500" : ""}`}
+        className={`${size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} ${isFav ? "fill-red-500 text-red-500" : ""}`}
       />
       <span className="sr-only">
         {isFav ? "Remove from favorites" : "Add to favorites"}
@@ -122,6 +127,7 @@ function AddToListIconButton({
   tmdb_id,
   title,
   poster_path,
+  size,
 }: Omit<PosterActionsProps, "showAddToList" | "className">) {
   const qc = useQueryClient();
   const { data: me } = useQuery({
@@ -180,8 +186,14 @@ function AddToListIconButton({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <ListPlus className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={size === "sm" ? "h-7 w-7" : "h-8 w-8"}
+          >
+            <ListPlus
+              className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
+            />
             <span className="sr-only">Add to list</span>
           </Button>
         </DropdownMenuTrigger>
