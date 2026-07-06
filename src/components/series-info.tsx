@@ -95,7 +95,7 @@ export function SeriesInfo({ series }: SeriesInfoProps) {
   // Dubs: audio languages available for the series.
   const dubLanguages = Array.from(
     new Set((series.languages ?? []).filter(Boolean))
-  ).sort();
+  ).sort((a, b) => languageLabel(a).localeCompare(languageLabel(b)));
 
   // Subtitles: metadata translations grouped by language with their countries.
   const subGroups = new Map<string, Set<string>>();
@@ -143,7 +143,7 @@ export function SeriesInfo({ series }: SeriesInfoProps) {
         </Row>
         {dubLanguages.length > 0 && (
           <Row label="Dubs">
-            <LangTags languages={dubLanguages} countries={originCountries} />
+            <LangTags languages={dubLanguages} countries={[]} />
           </Row>
         )}
         {subLanguages.length > 0 && (
