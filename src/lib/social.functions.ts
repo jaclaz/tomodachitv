@@ -25,7 +25,7 @@ export const searchUsers = createServerFn({ method: "POST" })
     if (q.length < 2) return [];
     const { data: rows, error } = await context.supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, bio")
+      .select("id, username, display_name, avatar_url, banner_url, bio")
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .neq("id", context.userId)
       .not("username", "is", null)
@@ -41,7 +41,7 @@ export const getProfileByUsername = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<ProfileWithStats | null> => {
     const { data: profile, error } = await context.supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, bio")
+      .select("id, username, display_name, avatar_url, banner_url, bio")
       .ilike("username", data.username)
       .maybeSingle();
     if (error) throw error;
@@ -141,6 +141,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       display_name?: string;
       bio?: string;
       avatar_url?: string | null;
+      banner_url?: string | null;
     }) => input
   )
   .handler(async ({ context, data }) => {
@@ -153,6 +154,12 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       const base = process.env.SUPABASE_URL;
       if (!base || !data.avatar_url.startsWith(`${base}/storage/v1/`)) {
         throw new Error("Invalid avatar URL");
+      }
+    }
+    if (data.banner_url) {
+      const base = process.env.SUPABASE_URL;
+      if (!base || !data.banner_url.startsWith(`${base}/storage/v1/`)) {
+        throw new Error("Invalid banner URL");
       }
     }
     const { error } = await context.supabase
@@ -168,7 +175,7 @@ export const getMyProfile = createServerFn({ method: "POST" })
   .handler(async ({ context }): Promise<PublicProfile | null> => {
     const { data, error } = await context.supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, bio")
+      .select("id, username, display_name, avatar_url, banner_url, bio")
       .eq("id", context.userId)
       .maybeSingle();
     if (error) throw error;
