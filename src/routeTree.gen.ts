@@ -20,6 +20,7 @@ import { Route as AuthenticatedSocialRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedUUsernameRouteImport } from './routes/_authenticated/u.$username'
 import { Route as AuthenticatedSerieIdRouteImport } from './routes/_authenticated/serie.$id'
+import { Route as AuthenticatedPersonIdRouteImport } from './routes/_authenticated/person.$id'
 import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticated/movie.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -76,6 +77,11 @@ const AuthenticatedSerieIdRoute = AuthenticatedSerieIdRouteImport.update({
   path: '/serie/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPersonIdRoute = AuthenticatedPersonIdRouteImport.update({
+  id: '/person/$id',
+  path: '/person/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMovieIdRoute = AuthenticatedMovieIdRouteImport.update({
   id: '/movie/$id',
   path: '/movie/$id',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/watched': typeof AuthenticatedWatchedRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
+  '/person/$id': typeof AuthenticatedPersonIdRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
 }
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/': typeof AuthenticatedIndexRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
+  '/person/$id': typeof AuthenticatedPersonIdRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
 }
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_authenticated/watchlist': typeof AuthenticatedWatchlistRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/movie/$id': typeof AuthenticatedMovieIdRoute
+  '/_authenticated/person/$id': typeof AuthenticatedPersonIdRoute
   '/_authenticated/serie/$id': typeof AuthenticatedSerieIdRoute
   '/_authenticated/u/$username': typeof AuthenticatedUUsernameRoute
 }
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/watched'
     | '/watchlist'
     | '/movie/$id'
+    | '/person/$id'
     | '/serie/$id'
     | '/u/$username'
   fileRoutesByTo: FileRoutesByTo
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/watchlist'
     | '/'
     | '/movie/$id'
+    | '/person/$id'
     | '/serie/$id'
     | '/u/$username'
   id:
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/_authenticated/watchlist'
     | '/_authenticated/'
     | '/_authenticated/movie/$id'
+    | '/_authenticated/person/$id'
     | '/_authenticated/serie/$id'
     | '/_authenticated/u/$username'
   fileRoutesById: FileRoutesById
@@ -250,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSerieIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/person/$id': {
+      id: '/_authenticated/person/$id'
+      path: '/person/$id'
+      fullPath: '/person/$id'
+      preLoaderRoute: typeof AuthenticatedPersonIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/movie/$id': {
       id: '/_authenticated/movie/$id'
       path: '/movie/$id'
@@ -269,6 +288,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWatchlistRoute: typeof AuthenticatedWatchlistRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedMovieIdRoute: typeof AuthenticatedMovieIdRoute
+  AuthenticatedPersonIdRoute: typeof AuthenticatedPersonIdRoute
   AuthenticatedSerieIdRoute: typeof AuthenticatedSerieIdRoute
   AuthenticatedUUsernameRoute: typeof AuthenticatedUUsernameRoute
 }
@@ -282,6 +302,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWatchlistRoute: AuthenticatedWatchlistRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedMovieIdRoute: AuthenticatedMovieIdRoute,
+  AuthenticatedPersonIdRoute: AuthenticatedPersonIdRoute,
   AuthenticatedSerieIdRoute: AuthenticatedSerieIdRoute,
   AuthenticatedUUsernameRoute: AuthenticatedUUsernameRoute,
 }

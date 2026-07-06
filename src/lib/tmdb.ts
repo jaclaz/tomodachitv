@@ -85,6 +85,25 @@ function mapMovie(r: RawMovie): MediaItem {
 }
 
 // ============ Details ============
+export interface ProductionCompany {
+  id: number;
+  name: string;
+  logo_path: string | null;
+  origin_country: string;
+}
+
+export interface SpokenLanguage {
+  iso_639_1: string;
+  english_name: string;
+  name: string;
+}
+
+export interface Creator {
+  id: number;
+  name: string;
+  profile_path: string | null;
+}
+
 export interface SeriesDetails extends MediaItem {
   media_type: "tv";
   number_of_seasons: number;
@@ -98,6 +117,13 @@ export interface SeriesDetails extends MediaItem {
     air_date?: string;
     poster_path?: string | null;
   }[];
+  production_companies: ProductionCompany[];
+  networks: ProductionCompany[];
+  created_by: Creator[];
+  original_language: string;
+  spoken_languages: SpokenLanguage[];
+  languages: string[];
+  origin_country: string[];
 }
 
 export interface MovieDetails extends MediaItem {
@@ -226,6 +252,13 @@ export const getSeriesDetails = createServerFn({ method: "POST" }).middleware([r
       episode_run_time: episodeRunTime,
       genres: raw.genres ?? [],
       seasons: raw.seasons ?? [],
+      production_companies: raw.production_companies ?? [],
+      networks: raw.networks ?? [],
+      created_by: raw.created_by ?? [],
+      original_language: raw.original_language ?? "",
+      spoken_languages: raw.spoken_languages ?? [],
+      languages: raw.languages ?? [],
+      origin_country: raw.origin_country ?? [],
     };
   });
 
@@ -337,5 +370,113 @@ export const getWatchProviders = createServerFn({ method: "POST" })
       };
     }
   );
+
+// ============ Profile images ============
+export function profileUrl(
+  path: string | null | undefined,
+  size: "w45" | "w185" | "h632" | "original" = "w185"
+) {
+  return path ? `${TMDB_IMAGE}/${size}${path}` : "";
+}
+
+// ============ Credits (cast/crew) ============
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+  order: number;
+}
+
+export interface CrewMember {
+  id: number;
+  name: string;
+  job: string;
+  department: string;
+  profile_path: string | null;
+}
+
+export const getCredits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { id: number; type: MediaType }) => input)
+  .handler(async ({ data }): Promise<{ cast: CastMember[]; crew: CrewMember[] }> => {
+    const res = await tmdbFetch(`/${data.type}/${data.id}/credits`);
+    return { cast: res.cast ?? [], crew: res.crew ?? [] };
+  });
+
+// ============ Translations (used to show available dubs) ============
+export interface Translation {
+  iso_639_1: string;
+  iso_3166_1: string;
+  name: string;
+  english_name: string;
+}
+
+export const getTranslations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { id: number; type: MediaType }) => input)
+  .handler(async ({ data }): Promise<{ translations: Translation[] }> => {
+    const res = await tmdbFetch(`/${data.type}/${data.id}/translations`);
+    return { translations: res.translations ?? [] };
+  });
+
+// ============ Person ============
+export interface PersonDetails {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  place_of_birth: string | null;
+  profile_path: string | null;
+  known_for_department: string;
+}
+
+export interface PersonCreditItem extends MediaItem {
+  character?: string;
+  job?: string;
+  department?: string;
+}
+
+export const getPersonDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { id: number }) => input)
+  .handler(async ({ data }): Promise<PersonDetails> => {
+    const raw = await tmdbFetch(`/person/${data.id}`);
+    return {
+      id: raw.id,
+      name: raw.name,
+      biography: raw.biography ?? "",
+      birthday: raw.birthday ?? null,
+      deathday: raw.deathday ?? null,
+      place_of_birth: raw.place_of_birth ?? null,
+      profile_path: raw.profile_path ?? null,
+      known_for_department: raw.known_for_department ?? "",
+    };
+  });
+
+export const getPersonCredits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { id: number }) => input)
+  .handler(async ({ data }): Promise<{ cast: PersonCreditItem[]; crew: PersonCreditItem[] }> => {
+    const res = await tmdbFetch(`/person/${data.id}/combined_credits`);
+    const mapItem = (r: RawMulti & { character?: string; job?: string; department?: string }): PersonCreditItem | null => {
+      if (r.media_type === "tv") {
+        return { ...mapTv(r as RawTv), character: r.character, job: r.job, department: r.department };
+      }
+      if (r.media_type === "movie") {
+        return { ...mapMovie(r as RawMovie), character: r.character, job: r.job, department: r.department };
+      }
+      return null;
+    };
+    const cast = ((res.cast ?? []) as (RawMulti & { character?: string })[])
+      .map(mapItem)
+      .filter((x): x is PersonCreditItem => x !== null);
+    const crew = ((res.crew ?? []) as (RawMulti & { job?: string; department?: string })[])
+      .map(mapItem)
+      .filter((x): x is PersonCreditItem => x !== null);
+    return { cast, crew };
+  });
+
 
 
