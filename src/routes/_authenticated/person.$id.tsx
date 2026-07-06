@@ -88,11 +88,6 @@ function PersonDetailPage() {
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             {person.name}
           </h1>
-          {person.known_for_department && (
-            <p className="text-sm text-muted-foreground">
-              Known for {person.known_for_department}
-            </p>
-          )}
           {(person.birthday || person.place_of_birth) && (
             <p className="text-sm text-muted-foreground">
               {person.birthday && <>Born {person.birthday}</>}
