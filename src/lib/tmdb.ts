@@ -200,20 +200,52 @@ export const getTrendingAll = createServerFn({ method: "POST" }).middleware([req
   }
 );
 
+export interface PersonSearchItem {
+  id: number;
+  media_type: "person";
+  title: string; // person's name (kept as `title` for UI convenience)
+  profile_path: string | null;
+  known_for_department: string | null;
+  known_for_titles: string[];
+}
+
+export type SearchResultItem = MediaItem | PersonSearchItem;
+
+interface RawPerson {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  known_for_department?: string | null;
+  known_for?: Array<{ title?: string; name?: string }>;
+}
+
 export const searchMulti = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { query: string }) => input)
-  .handler(async ({ data }): Promise<{ results: MediaItem[] }> => {
+  .handler(async ({ data }): Promise<{ results: SearchResultItem[] }> => {
     if (!data.query.trim()) return { results: [] };
     const res = await tmdbFetch("/search/multi", {
       query: data.query,
       include_adult: "false",
     });
-    const results: MediaItem[] = [];
-    for (const raw of res.results as RawMulti[]) {
+    const results: SearchResultItem[] = [];
+    for (const raw of res.results as (RawMulti | (RawPerson & { media_type: "person" }))[]) {
       if (raw.media_type === "tv") {
         results.push(mapTv(raw as RawTv));
       } else if (raw.media_type === "movie") {
         results.push(mapMovie(raw as RawMovie));
+      } else if (raw.media_type === "person") {
+        const p = raw as RawPerson;
+        results.push({
+          id: p.id,
+          media_type: "person",
+          title: p.name,
+          profile_path: p.profile_path,
+          known_for_department: p.known_for_department ?? null,
+          known_for_titles: (p.known_for ?? [])
+            .map((k) => k.title ?? k.name ?? "")
+            .filter(Boolean)
+            .slice(0, 3),
+        });
       }
     }
     return { results };
