@@ -283,7 +283,19 @@ function UserProfilePage() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <Tv className="h-4 w-4" /> Favorite series
                 </h3>
-                <PosterStrip items={favTv} emptyLabel="No favorite series yet." />
+                <PosterStrip
+                  items={favTv}
+                  emptyLabel="No favorite series yet."
+                  actions={(item) => (
+                    <PosterActions
+                      media_type={item.media_type}
+                      tmdb_id={item.tmdb_id}
+                      title={item.title}
+                      poster_path={item.poster_path}
+                      size="sm"
+                    />
+                  )}
+                />
               </div>
             )}
             {(profile.is_self || favMovies.length > 0) && (
@@ -291,7 +303,19 @@ function UserProfilePage() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <Film className="h-4 w-4" /> Favorite movies
                 </h3>
-                <PosterStrip items={favMovies} emptyLabel="No favorite movies yet." />
+                <PosterStrip
+                  items={favMovies}
+                  emptyLabel="No favorite movies yet."
+                  actions={(item) => (
+                    <PosterActions
+                      media_type={item.media_type}
+                      tmdb_id={item.tmdb_id}
+                      title={item.title}
+                      poster_path={item.poster_path}
+                      size="sm"
+                    />
+                  )}
+                />
               </div>
             )}
           </div>
