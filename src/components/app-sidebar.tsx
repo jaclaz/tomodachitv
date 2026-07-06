@@ -19,6 +19,7 @@ import {
   Menu,
   Download,
   CheckCircle2,
+  CalendarDays,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { to: "/trending", icon: Flame, label: "Trending" },
   { to: "/watchlist", icon: ListVideo, label: "Watchlist" },
   { to: "/watched", icon: CheckCircle2, label: "Watched" },
+  { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/social", icon: Users, label: "Social" },
   { to: "/stats", icon: BarChart3, label: "Stats" },
   { to: "/import", icon: Download, label: "Import" },
