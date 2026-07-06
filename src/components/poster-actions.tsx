@@ -47,6 +47,7 @@ export function PosterActions({
   poster_path,
   showAddToList = true,
   className,
+  size = "default",
 }: PosterActionsProps) {
   return (
     <div className={`flex items-center gap-1 ${className ?? ""}`}>
@@ -55,6 +56,7 @@ export function PosterActions({
         tmdb_id={tmdb_id}
         title={title}
         poster_path={poster_path}
+        size={size}
       />
       {showAddToList && (
         <AddToListIconButton
@@ -62,6 +64,7 @@ export function PosterActions({
           tmdb_id={tmdb_id}
           title={title}
           poster_path={poster_path}
+          size={size}
         />
       )}
     </div>
