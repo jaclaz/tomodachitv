@@ -49,6 +49,14 @@ export function EpisodeList({ series }: EpisodeListProps) {
   const tmdbId = series.id;
   const queryClient = useQueryClient();
 
+  // Re-render every minute so countdowns tick down and released episodes
+  // swap from label to checkbox without a page refresh.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const runtimeFallback =
     series.episode_run_time && series.episode_run_time.length > 0
       ? series.episode_run_time[0]
