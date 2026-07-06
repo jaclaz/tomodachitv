@@ -135,6 +135,8 @@ export function EpisodeList({ series }: EpisodeListProps) {
                   {seasonDetails.episodes.map((ep) => {
                     const watched = isWatched(ep);
                     const still = posterUrl(ep.still_path, "w300");
+                    const countdown = getReleaseCountdown(ep.air_date);
+                    const unreleased = countdown !== null;
                     return (
                       <li
                         key={ep.id}
@@ -156,7 +158,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
                         </div>
                         <label
                           htmlFor={`ep-${ep.id}`}
-                          className="flex-1 cursor-pointer"
+                          className={`flex-1 ${unreleased ? "cursor-default" : "cursor-pointer"}`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-medium text-foreground">
@@ -175,12 +177,18 @@ export function EpisodeList({ series }: EpisodeListProps) {
                             {ep.overview || "No description."}
                           </p>
                         </label>
-                        <Checkbox
-                          id={`ep-${ep.id}`}
-                          checked={watched}
-                          onCheckedChange={() => toggleEpisode(ep)}
-                          className="h-6 w-6 flex-shrink-0"
-                        />
+                        {unreleased ? (
+                          <span className="flex-shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">
+                            in {countdown}
+                          </span>
+                        ) : (
+                          <Checkbox
+                            id={`ep-${ep.id}`}
+                            checked={watched}
+                            onCheckedChange={() => toggleEpisode(ep)}
+                            className="h-6 w-6 flex-shrink-0"
+                          />
+                        )}
                       </li>
                     );
                   })}
