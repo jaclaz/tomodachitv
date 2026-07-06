@@ -264,8 +264,8 @@ function UserProfilePage() {
         </TabsContent>
       </Tabs>
 
-      {/* Favorites */}
-      {canSeeWatched && (
+      {/* Favorites — always for self; only if non-empty for others */}
+      {canSeeWatched && (profile.is_self || favorites.length > 0) && (
         <section className="space-y-4">
           <div>
             <h2 className="font-display text-lg font-semibold">Favorites</h2>
@@ -276,26 +276,39 @@ function UserProfilePage() {
             </p>
           </div>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Tv className="h-4 w-4" /> Favorite series
-              </h3>
-              <PosterStrip items={favTv} emptyLabel="No favorite series yet." />
-            </div>
-            <div className="space-y-2">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Film className="h-4 w-4" /> Favorite movies
-              </h3>
-              <PosterStrip items={favMovies} emptyLabel="No favorite movies yet." />
-            </div>
+            {(profile.is_self || favTv.length > 0) && (
+              <div className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Tv className="h-4 w-4" /> Favorite series
+                </h3>
+                <PosterStrip items={favTv} emptyLabel="No favorite series yet." />
+              </div>
+            )}
+            {(profile.is_self || favMovies.length > 0) && (
+              <div className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Film className="h-4 w-4" /> Favorite movies
+                </h3>
+                <PosterStrip items={favMovies} emptyLabel="No favorite movies yet." />
+              </div>
+            )}
           </div>
         </section>
       )}
 
-      {/* Personal lists */}
-      <UserListsSection userId={profile.id} isSelf={profile.is_self} />
+      {/* Personal lists — always for self; only if any exist for others */}
+      <ListsSectionGate userId={profile.id} isSelf={profile.is_self} />
     </div>
   );
+}
+
+function ListsSectionGate({ userId, isSelf }: { userId: string; isSelf: boolean }) {
+  const { data: lists = [] } = useQuery({
+    queryKey: ["user-lists", userId],
+    queryFn: () => getUserLists({ data: { user_id: userId } }),
+  });
+  if (!isSelf && lists.length === 0) return null;
+  return <UserListsSection userId={userId} isSelf={isSelf} />;
 }
 
 function BioSection({ profile }: { profile: { id: string; bio: string | null; is_self: boolean } }) {
