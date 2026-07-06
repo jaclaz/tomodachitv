@@ -150,21 +150,38 @@ function RentBuyRow({
   buy?: WatchProvider[];
 }) {
   if ((!rent || rent.length === 0) && (!buy || buy.length === 0)) return null;
+  const hasRent = rent && rent.length > 0;
+  const hasBuy = buy && buy.length > 0;
   return (
     <div>
-      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Noleggio / Acquisto
-      </div>
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <div className="flex flex-nowrap gap-2">
-          {rent?.map((prov) => <ProviderPill key={prov.provider_id} prov={prov} />).filter(Boolean)}
-        </div>
-        {rent && rent.length > 0 && buy && buy.length > 0 && (
-          <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+      <div className="flex items-start gap-3 overflow-x-auto pb-1">
+        {hasRent && (
+          <div className="flex shrink-0 flex-col gap-1.5">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Noleggio
+            </div>
+            <div className="flex flex-nowrap gap-2">
+              {rent!.map((prov) => (
+                <ProviderPill key={prov.provider_id} prov={prov} />
+              ))}
+            </div>
+          </div>
         )}
-        <div className="flex flex-nowrap gap-2">
-          {buy?.map((prov) => <ProviderPill key={prov.provider_id} prov={prov} />).filter(Boolean)}
-        </div>
+        {hasRent && hasBuy && (
+          <div className="mt-5 h-11 w-0.5 shrink-0 rounded-full bg-muted-foreground/40" />
+        )}
+        {hasBuy && (
+          <div className="flex shrink-0 flex-col gap-1.5">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Acquisto
+            </div>
+            <div className="flex flex-nowrap gap-2">
+              {buy!.map((prov) => (
+                <ProviderPill key={prov.provider_id} prov={prov} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
