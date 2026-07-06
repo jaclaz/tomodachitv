@@ -9,6 +9,7 @@ import {
 } from "@/lib/social.functions";
 import {
   getUserFavorites,
+  getUserLists,
   getUserRecentWatchedMedia,
 } from "@/lib/lists.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
