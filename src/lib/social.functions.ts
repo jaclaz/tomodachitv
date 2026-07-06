@@ -181,3 +181,105 @@ export const getMyProfile = createServerFn({ method: "POST" })
     if (error) throw error;
     return data as PublicProfile | null;
   });
+
+// ---------- Following activity feed ----------
+
+export interface FollowingActivityItem {
+  id: string;
+  kind: "movie" | "episode";
+  user: { id: string; username: string; display_name: string | null; avatar_url: string | null };
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  watched_at: string;
+  // episode-only
+  season_number?: number;
+  episode_number?: number;
+  episode_name?: string | null;
+}
+
+export const getFollowingActivity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<FollowingActivityItem[]> => {
+    const { data: follows } = await context.supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", context.userId);
+    const ids = (follows ?? []).map((f) => f.following_id);
+    if (ids.length === 0) return [];
+
+    const [{ data: movies }, { data: episodes }] = await Promise.all([
+      context.supabase
+        .from("watched_movies")
+        .select("id, user_id, tmdb_id, title, watched_at")
+        .in("user_id", ids)
+        .order("watched_at", { ascending: false })
+        .limit(40),
+      context.supabase
+        .from("watched_episodes")
+        .select("id, user_id, tmdb_id, season_number, episode_number, episode_name, watched_at")
+        .in("user_id", ids)
+        .order("watched_at", { ascending: false })
+        .limit(40),
+    ]);
+
+    const allUserIds = [
+      ...new Set([...(movies ?? []).map((m) => m.user_id), ...(episodes ?? []).map((e) => e.user_id)]),
+    ];
+    const allTmdbIds = [
+      ...new Set([...(movies ?? []).map((m) => m.tmdb_id), ...(episodes ?? []).map((e) => e.tmdb_id)]),
+    ];
+
+    const [{ data: profiles }, { data: cache }] = await Promise.all([
+      allUserIds.length
+        ? context.supabase
+            .from("profiles")
+            .select("id, username, display_name, avatar_url")
+            .in("id", allUserIds)
+        : Promise.resolve({ data: [] as { id: string; username: string; display_name: string | null; avatar_url: string | null }[] }),
+      allTmdbIds.length
+        ? context.supabase
+            .from("media_cache")
+            .select("media_type, tmdb_id, title, poster_path")
+            .in("tmdb_id", allTmdbIds)
+        : Promise.resolve({ data: [] as { media_type: string; tmdb_id: number; title: string | null; poster_path: string | null }[] }),
+    ]);
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const cacheMap = new Map((cache ?? []).map((c) => [`${c.media_type}:${c.tmdb_id}`, c]));
+
+    const items: FollowingActivityItem[] = [];
+    for (const m of movies ?? []) {
+      const p = profileMap.get(m.user_id);
+      if (!p || !p.username) continue;
+      const c = cacheMap.get(`movie:${m.tmdb_id}`);
+      items.push({
+        id: `m:${m.id}`,
+        kind: "movie",
+        user: { id: p.id, username: p.username, display_name: p.display_name, avatar_url: p.avatar_url },
+        tmdb_id: m.tmdb_id,
+        title: m.title ?? c?.title ?? `#${m.tmdb_id}`,
+        poster_path: c?.poster_path ?? null,
+        watched_at: m.watched_at,
+      });
+    }
+    for (const e of episodes ?? []) {
+      const p = profileMap.get(e.user_id);
+      if (!p || !p.username) continue;
+      const c = cacheMap.get(`tv:${e.tmdb_id}`);
+      items.push({
+        id: `e:${e.id}`,
+        kind: "episode",
+        user: { id: p.id, username: p.username, display_name: p.display_name, avatar_url: p.avatar_url },
+        tmdb_id: e.tmdb_id,
+        title: c?.title ?? `#${e.tmdb_id}`,
+        poster_path: c?.poster_path ?? null,
+        watched_at: e.watched_at,
+        season_number: e.season_number,
+        episode_number: e.episode_number,
+        episode_name: e.episode_name,
+      });
+    }
+    items.sort((a, b) => (a.watched_at < b.watched_at ? 1 : -1));
+    return items.slice(0, 50);
+  });
