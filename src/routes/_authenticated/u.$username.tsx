@@ -62,42 +62,44 @@ function UserProfilePage() {
   return (
     <div className="space-y-8">
       {/* Banner + profile header */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
-        {profile.is_self ? (
-          <BannerUpload userId={profile.id} currentUrl={profile.banner_url} />
-        ) : (
-          <div className="relative h-32 w-full overflow-hidden sm:h-40">
-            {profile.banner_url ? (
-              <>
-                <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${profile.banner_url})` }}
-                />
-                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-[2px]" />
-              </>
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                <span className="text-sm font-medium text-foreground/60">No banner</span>
-              </div>
-            )}
-          </div>
-        )}
+      <div className="relative rounded-2xl border border-border bg-card">
+        <div className="relative h-32 w-full overflow-hidden rounded-t-2xl sm:h-40">
+          {profile.is_self ? (
+            <BannerUpload userId={profile.id} currentUrl={profile.banner_url} />
+          ) : (
+            <>
+              {profile.banner_url ? (
+                <>
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${profile.banner_url})` }}
+                  />
+                  <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-[2px]" />
+                </>
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                  <span className="text-sm font-medium text-foreground/60">No banner</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Profile info layered over the bottom of the banner */}
-        <div className="relative px-4 pb-4 pt-0 sm:px-6 sm:pb-5">
+        <div className="absolute inset-x-0 bottom-0 px-4 pb-3 sm:px-6 sm:pb-4">
           <div className="flex items-stretch gap-4">
-            <div className="flex-shrink-0 -mt-8 sm:-mt-10">
+            <div className="flex-shrink-0">
               {profile.is_self ? (
-              <AvatarUpload
-                userId={profile.id}
-                currentUrl={profile.avatar_url}
-                fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
-                className="h-28 w-28 sm:h-32 sm:w-32"
-                fallbackClassName="text-2xl sm:text-3xl"
-              />
+                <AvatarUpload
+                  userId={profile.id}
+                  currentUrl={profile.avatar_url}
+                  fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+                  className="h-28 w-28 sm:h-32 sm:w-32"
+                  fallbackClassName="text-2xl sm:text-3xl"
+                />
               ) : (
-                <Avatar className="h-28 w-28 border-4 border-background sm:h-32 sm:w-32">
+                <Avatar className="h-28 w-28 border-4 border-background/80 sm:h-32 sm:w-32">
                   <AvatarImage src={profile.avatar_url ?? undefined} />
                   <AvatarFallback className="text-2xl sm:text-3xl">
                     {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
@@ -134,7 +136,7 @@ function UserProfilePage() {
                   variant="secondary"
                   onClick={() => unfollowMut.mutate(profile.id)}
                   disabled={unfollowMut.isPending}
-                  className="self-start"
+                  className="self-end"
                 >
                   <UserMinus className="mr-2 h-4 w-4" /> Unfollow
                 </Button>
@@ -142,7 +144,7 @@ function UserProfilePage() {
                 <Button
                   onClick={() => followMut.mutate(profile.id)}
                   disabled={followMut.isPending}
-                  className="self-start"
+                  className="self-end"
                 >
                   <UserPlus className="mr-2 h-4 w-4" /> Follow
                 </Button>
