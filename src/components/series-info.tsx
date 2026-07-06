@@ -6,6 +6,7 @@ interface SeriesInfoProps {
 }
 
 const LANG_DISPLAY = new Intl.DisplayNames(["en"], { type: "language" });
+const REGION_DISPLAY = new Intl.DisplayNames(["en"], { type: "region" });
 
 function languageLabel(code: string) {
   if (!code) return "—";
@@ -16,11 +17,46 @@ function languageLabel(code: string) {
   }
 }
 
+function regionLabel(code: string) {
+  if (!code) return "";
+  try {
+    return REGION_DISPLAY.of(code) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-1 gap-1 border-b border-border py-3 last:border-b-0 sm:grid-cols-[180px_1fr] sm:gap-4">
       <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
       <dd className="text-sm text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+function LangTags({
+  languages,
+  countries,
+}: {
+  languages: string[];
+  countries?: string[];
+}) {
+  if (languages.length === 0) return "—";
+  const countryStr = Array.from(new Set(countries?.filter(Boolean) ?? []))
+    .map(regionLabel)
+    .join(", ");
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {languages.map((code) => (
+        <span
+          key={code}
+          className="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
+        >
+          {languageLabel(code)}
+          {countryStr && ` (${countryStr})`}
+        </span>
+      ))}
     </div>
   );
 }
@@ -42,27 +78,44 @@ export function SeriesInfo({ series }: SeriesInfoProps) {
     .slice(0, 6);
 
   const creators = series.created_by ?? [];
-
   const productionCompanies = series.production_companies ?? [];
-  const networks = series.networks ?? [];
 
-  const availableLangs = Array.from(
-    new Set(
-      (translationsData?.translations ?? []).map((t) => t.iso_639_1).filter(Boolean)
-    )
+  // Merge original language + spoken languages, append country of origin in parentheses.
+  const allLanguages: string[] = [];
+  if (series.original_language) allLanguages.push(series.original_language);
+  for (const l of series.spoken_languages ?? []) {
+    if (l.iso_639_1 && !allLanguages.includes(l.iso_639_1)) {
+      allLanguages.push(l.iso_639_1);
+    }
+  }
+
+  const originCountries = series.origin_country ?? [];
+  const countryStr = originCountries.map(regionLabel).join(", ");
+
+  // Dubs: audio languages available for the series.
+  const dubLanguages = Array.from(
+    new Set((series.languages ?? []).filter(Boolean))
   ).sort();
 
-  const spokenLangs = series.spoken_languages ?? [];
+  // Subtitles: metadata translations grouped by language with their countries.
+  const subGroups = new Map<string, Set<string>>();
+  for (const t of translationsData?.translations ?? []) {
+    if (!t.iso_639_1) continue;
+    const countries = subGroups.get(t.iso_639_1) ?? new Set<string>();
+    if (t.iso_3166_1) countries.add(t.iso_3166_1);
+    subGroups.set(t.iso_639_1, countries);
+  }
+  const subLanguages = Array.from(subGroups.entries())
+    .map(([code, countries]) => ({
+      code,
+      countries: Array.from(countries).sort(),
+    }))
+    .sort((a, b) => languageLabel(a.code).localeCompare(languageLabel(b.code)));
 
   return (
     <section className="space-y-3">
       <h2 className="font-display text-xl font-semibold text-foreground">Details</h2>
       <dl className="rounded-xl border border-border bg-surface px-5 py-1">
-        {networks.length > 0 && (
-          <Row label="Network">
-            {networks.map((n) => n.name).join(", ")}
-          </Row>
-        )}
         {productionCompanies.length > 0 && (
           <Row label="Production">
             {productionCompanies.map((c) => c.name).join(", ")}
@@ -78,33 +131,35 @@ export function SeriesInfo({ series }: SeriesInfoProps) {
             {directors.map((d) => d.name).join(", ")}
           </Row>
         )}
-        <Row label="Original language">
-          {languageLabel(series.original_language)}
+        <Row label="Languages">
+          {allLanguages.length > 0 ? (
+            <>
+              {allLanguages.map(languageLabel).join(", ")}
+              {countryStr && ` (${countryStr})`}
+            </>
+          ) : (
+            "—"
+          )}
         </Row>
-        {spokenLangs.length > 0 && (
-          <Row label="Spoken languages">
-            {spokenLangs
-              .map((l) => l.english_name || languageLabel(l.iso_639_1))
-              .join(", ")}
+        {dubLanguages.length > 0 && (
+          <Row label="Dubs">
+            <LangTags languages={dubLanguages} countries={originCountries} />
           </Row>
         )}
-        {availableLangs.length > 0 && (
-          <Row label="Available dubs / subtitles">
+        {subLanguages.length > 0 && (
+          <Row label="Subtitles">
             <div className="flex flex-wrap gap-1.5">
-              {availableLangs.map((code) => (
+              {subLanguages.map(({ code, countries }) => (
                 <span
                   key={code}
                   className="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
                 >
                   {languageLabel(code)}
+                  {countries.length > 0 &&
+                    ` (${countries.map(regionLabel).join(", ")})`}
                 </span>
               ))}
             </div>
-          </Row>
-        )}
-        {series.origin_country && series.origin_country.length > 0 && (
-          <Row label="Country of origin">
-            {series.origin_country.join(", ")}
           </Row>
         )}
       </dl>
