@@ -6,13 +6,17 @@ import {
   unfollowUser,
   getUserWatchlist,
   getUserWatched,
+  updateMyProfile,
 } from "@/lib/social.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/avatar-upload";
+import { BannerUpload } from "@/components/banner-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, UserPlus, UserMinus, Film, Tv } from "lucide-react";
+import { Lock, UserPlus, UserMinus, Film, Tv, Pencil, Check, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
   component: UserProfilePage,
@@ -57,57 +61,86 @@ function UserProfilePage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-6 pt-12 sm:pt-0 sm:flex-row sm:items-center">
+      {/* Banner + profile header */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
         {profile.is_self ? (
-          <AvatarUpload
-            userId={profile.id}
-            currentUrl={profile.avatar_url}
-            fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
-          />
+          <BannerUpload userId={profile.id} currentUrl={profile.banner_url} />
         ) : (
-          <Avatar className="h-24 w-24">
-            <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="text-2xl">
-              {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative h-48 w-full overflow-hidden sm:h-64">
+            {profile.banner_url ? (
+              <>
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${profile.banner_url})` }}
+                />
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+              </>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                <span className="text-sm text-muted-foreground">No banner</span>
+              </div>
+            )}
+          </div>
         )}
-        <div className="flex-1">
-          <h1 className="font-display text-2xl font-bold">
-            {profile.display_name ?? profile.username}
-          </h1>
-          <p className="text-sm text-muted-foreground">@{profile.username}</p>
-          {profile.bio && (
-            <p className="mt-2 text-sm text-foreground/80">{profile.bio}</p>
-          )}
-          <div className="mt-3 flex gap-4 text-sm">
-            <span>
-              <strong>{profile.followers_count}</strong>{" "}
-              <span className="text-muted-foreground">followers</span>
-            </span>
-            <span>
-              <strong>{profile.following_count}</strong>{" "}
-              <span className="text-muted-foreground">following</span>
-            </span>
+
+        {/* Profile info layered over the banner */}
+        <div className="relative -mt-12 px-4 pb-5 sm:-mt-16 sm:px-6 sm:pb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="flex-shrink-0">
+              {profile.is_self ? (
+                <AvatarUpload
+                  userId={profile.id}
+                  currentUrl={profile.avatar_url}
+                  fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+                />
+              ) : (
+                <Avatar className="h-24 w-24 border-4 border-background">
+                  <AvatarImage src={profile.avatar_url ?? undefined} />
+                  <AvatarFallback className="text-2xl">
+                    {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="font-display text-2xl font-bold text-foreground">
+                {profile.display_name ?? profile.username}
+              </h1>
+              <p className="text-sm text-muted-foreground">@{profile.username}</p>
+              <BioSection profile={profile} />
+              <div className="mt-3 flex gap-4 text-sm">
+                <span>
+                  <strong>{profile.followers_count}</strong>{" "}
+                  <span className="text-muted-foreground">followers</span>
+                </span>
+                <span>
+                  <strong>{profile.following_count}</strong>{" "}
+                  <span className="text-muted-foreground">following</span>
+                </span>
+              </div>
+            </div>
+
+            {!profile.is_self &&
+              (profile.is_following ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => unfollowMut.mutate(profile.id)}
+                  disabled={unfollowMut.isPending}
+                >
+                  <UserMinus className="mr-2 h-4 w-4" /> Unfollow
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => followMut.mutate(profile.id)}
+                  disabled={followMut.isPending}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" /> Follow
+                </Button>
+              ))}
           </div>
         </div>
-        {!profile.is_self &&
-          (profile.is_following ? (
-            <Button
-              variant="secondary"
-              onClick={() => unfollowMut.mutate(profile.id)}
-              disabled={unfollowMut.isPending}
-            >
-              <UserMinus className="mr-2 h-4 w-4" /> Unfollow
-            </Button>
-          ) : (
-            <Button
-              onClick={() => followMut.mutate(profile.id)}
-              disabled={followMut.isPending}
-            >
-              <UserPlus className="mr-2 h-4 w-4" /> Follow
-            </Button>
-          ))}
       </div>
 
       <Tabs defaultValue="watchlist">
@@ -209,6 +242,80 @@ function UserProfilePage() {
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function BioSection({ profile }: { profile: { id: string; bio: string | null; is_self: boolean } }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [bio, setBio] = useState(profile.bio ?? "");
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (newBio: string) => {
+      await updateMyProfile({ data: { bio: newBio.trim() || null } });
+    },
+    onSuccess: () => {
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      toast.success("Bio updated");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  if (!profile.is_self && !profile.bio) return null;
+
+  if (isEditing) {
+    return (
+      <div className="mt-2 max-w-xl">
+        <textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          maxLength={240}
+          rows={3}
+          placeholder="Write a short bio..."
+          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        <div className="mt-2 flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => mutation.mutate(bio)}
+            disabled={mutation.isPending}
+          >
+            <Check className="mr-1 h-4 w-4" /> Save
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setBio(profile.bio ?? "");
+              setIsEditing(false);
+            }}
+            disabled={mutation.isPending}
+          >
+            <X className="mr-1 h-4 w-4" /> Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex max-w-xl items-start gap-2">
+      <p className="text-sm text-foreground/80">
+        {profile.bio || (profile.is_self ? "No bio yet." : "")}
+      </p>
+      {profile.is_self && (
+        <button
+          type="button"
+          onClick={() => setIsEditing(true)}
+          aria-label="Edit bio"
+          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
