@@ -166,7 +166,11 @@ export const updateList = createServerFn({ method: "POST" })
     }) => input,
   )
   .handler(async ({ context, data }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      title?: string;
+      description?: string | null;
+      is_public?: boolean;
+    } = {};
     if (data.title !== undefined) patch.title = data.title.trim().slice(0, 80);
     if (data.description !== undefined)
       patch.description = data.description?.trim().slice(0, 500) || null;
