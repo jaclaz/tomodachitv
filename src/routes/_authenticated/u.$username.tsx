@@ -63,7 +63,7 @@ function UserProfilePage() {
     <div className="space-y-8">
       {/* Banner + profile header */}
       <div className="relative rounded-2xl border border-border bg-card">
-        <div className="relative h-36 w-full overflow-hidden rounded-t-2xl sm:h-44">
+        <div className="relative h-40 w-full overflow-hidden rounded-t-2xl sm:h-[200px]">
           {profile.is_self ? (
             <BannerUpload userId={profile.id} currentUrl={profile.banner_url} />
           ) : (
