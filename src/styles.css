@@ -108,6 +108,20 @@
     background-image: radial-gradient(circle at 50% 0%, var(--tw-gradient-stops));
   }
 
+  /* Uniform, smooth fade-to-dark overlay for poster/backdrop images.
+     Applied to an absolutely-positioned element covering the image. */
+  .poster-fade {
+    background-image: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.92) 0%,
+      rgba(0, 0, 0, 0.78) 18%,
+      rgba(0, 0, 0, 0.55) 36%,
+      rgba(0, 0, 0, 0.28) 55%,
+      rgba(0, 0, 0, 0.08) 75%,
+      rgba(0, 0, 0, 0) 100%
+    );
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
