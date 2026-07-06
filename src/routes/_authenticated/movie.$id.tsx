@@ -220,6 +220,10 @@ function MovieDetailPage() {
       </section>
 
       <WatchProviders tmdbId={tmdbId} type="movie" />
+
+      <CastList id={tmdbId} type="movie" />
+
+      <MovieInfo movie={movie} />
     </div>
   );
 }
