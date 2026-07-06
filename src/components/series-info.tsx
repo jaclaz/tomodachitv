@@ -149,14 +149,12 @@ export function SeriesInfo({ series }: SeriesInfoProps) {
         {subLanguages.length > 0 && (
           <Row label="Subtitles">
             <div className="flex flex-wrap gap-1.5">
-              {subLanguages.map(({ code, countries }) => (
+              {subLanguages.map(({ code }) => (
                 <span
                   key={code}
                   className="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
                 >
                   {languageLabel(code)}
-                  {countries.length > 0 &&
-                    ` (${countries.map(regionLabel).join(", ")})`}
                 </span>
               ))}
             </div>
