@@ -108,12 +108,12 @@ function FavoriteIconButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8"
+      className={size === "sm" ? "h-7 w-7" : "h-8 w-8"}
       onClick={() => mut.mutate()}
       disabled={mut.isPending}
     >
       <Heart
-        className={`h-4 w-4 ${isFav ? "fill-red-500 text-red-500" : ""}`}
+        className={`${size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} ${isFav ? "fill-red-500 text-red-500" : ""}`}
       />
       <span className="sr-only">
         {isFav ? "Remove from favorites" : "Add to favorites"}
