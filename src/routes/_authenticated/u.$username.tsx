@@ -95,7 +95,7 @@ function UserProfilePage() {
                   userId={profile.id}
                   currentUrl={profile.avatar_url}
                   fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
-                  className="h-28 w-28 sm:h-32 sm:w-32"
+                  className="h-28 w-28 border-4 border-background/80 sm:h-32 sm:w-32"
                   fallbackClassName="text-2xl sm:text-3xl"
                 />
               ) : (
