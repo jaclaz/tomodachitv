@@ -9,6 +9,7 @@ import {
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PosterActions } from "@/components/poster-actions";
 import { Trash2, Star } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
@@ -123,6 +124,14 @@ function WatchlistPage() {
                 <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <Star className="h-3 w-3 fill-rating text-rating" />
                   {item.vote_average?.toFixed(1) ?? "—"}
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <PosterActions
+                    media_type={item.media_type}
+                    tmdb_id={item.tmdb_id}
+                    title={item.series_name}
+                    poster_path={item.poster_path}
+                  />
                 </div>
               </div>
             </div>
