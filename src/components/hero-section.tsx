@@ -26,7 +26,7 @@ export function HeroSection({ item, inWatchlist, onToggleWatchlist }: HeroSectio
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-primary/20 to-accent/20" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/80 to-canvas/40" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_top,var(--canvas)_0%,color-mix(in_oklab,var(--canvas)_88%,transparent)_22%,color-mix(in_oklab,var(--canvas)_65%,transparent)_45%,color-mix(in_oklab,var(--canvas)_35%,transparent)_70%,transparent_100%)]" />
       </div>
 
       <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:p-8 lg:p-10">

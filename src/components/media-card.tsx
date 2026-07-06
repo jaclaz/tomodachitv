@@ -40,7 +40,8 @@ export function MediaCard({ item }: MediaCardProps) {
           {item.media_type === "tv" ? "TV" : "Movie"}
         </span>
       </div>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-16">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 poster-fade" />
+      <div className="absolute inset-x-0 bottom-0 p-4">
         <h3 className="font-display text-base font-semibold leading-tight text-white line-clamp-2">
           {item.title}
         </h3>
