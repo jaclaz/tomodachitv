@@ -173,6 +173,9 @@ function ProvidersRow({
     <div className="flex items-center gap-2 overflow-x-auto pb-1">
       {hasStreaming && (
         <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Streaming
+          </span>
           {streaming.map(({ prov, kind }) => (
             <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
           ))}
@@ -183,6 +186,9 @@ function ProvidersRow({
       )}
       {hasRent && (
         <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Rent
+          </span>
           {rent!.map((prov) => (
             <ProviderPill key={prov.provider_id} prov={prov} kind="rent" />
           ))}
@@ -193,6 +199,9 @@ function ProvidersRow({
       )}
       {hasBuy && (
         <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Buy
+          </span>
           {buy!.map((prov) => (
             <ProviderPill key={prov.provider_id} prov={prov} kind="buy" />
           ))}
@@ -201,6 +210,7 @@ function ProvidersRow({
     </div>
   );
 }
+
 
 function ProviderPill({
   prov,
