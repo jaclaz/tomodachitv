@@ -63,32 +63,8 @@ function HomePage() {
     `${m.media_type}-${m.tmdb_id}`;
   const watchlistSet = new Set(watchlist.map(watchlistKey));
 
-  const addMutation = useMutation({
-    mutationFn: (item: MediaItem) =>
-      addToWatchlist({
-        data: {
-          tmdb_id: item.id,
-          media_type: item.media_type,
-          series_name: item.title,
-          poster_path: item.poster_path,
-          backdrop_path: item.backdrop_path,
-          first_air_date: item.release_date,
-          vote_average: item.vote_average,
-        },
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
-  });
 
-  const removeMutation = useMutation({
-    mutationFn: (item: MediaItem) =>
-      removeFromWatchlist({
-        data: { tmdb_id: item.id, media_type: item.media_type },
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
-  });
 
-  void addMutation;
-  void removeMutation;
 
   return (
     <div className="space-y-8">
