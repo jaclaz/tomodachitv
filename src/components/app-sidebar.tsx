@@ -47,6 +47,13 @@ export function AppSidebar() {
     queryFn: () => getMyProfile(),
   });
 
+  const { data: adminInfo } = useQuery({
+    queryKey: ["me-admin"],
+    queryFn: () => isCurrentUserAdmin(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const isAdmin = adminInfo?.admin ?? false;
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     await router.navigate({ to: "/auth" });
