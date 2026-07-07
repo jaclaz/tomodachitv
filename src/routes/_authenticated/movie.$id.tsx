@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft, Clock, Eye, EyeOff } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
+import { WatchLanguages } from "@/components/watch-languages";
 import { CastList } from "@/components/cast-list";
 import { MovieInfo } from "@/components/movie-info";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
