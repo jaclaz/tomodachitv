@@ -105,8 +105,8 @@ function SeriesDetailPage() {
           <div className="absolute inset-0 bg-[linear-gradient(to_top,var(--canvas)_0%,color-mix(in_oklab,var(--canvas)_88%,transparent)_22%,color-mix(in_oklab,var(--canvas)_65%,transparent)_45%,color-mix(in_oklab,var(--canvas)_35%,transparent)_70%,transparent_100%)]" />
         </div>
 
-        <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:p-8">
-          <div className="hidden sm:block sm:w-40 md:w-48 lg:w-52 flex-shrink-0">
+        <div className="relative grid grid-cols-1 gap-6 p-6 sm:grid-cols-[auto_1fr] sm:p-8">
+          <div className="hidden sm:block sm:w-40 md:w-48 lg:w-52">
             <div className="aspect-[2/3] overflow-hidden rounded-xl border border-border shadow-2xl">
               {poster ? (
                 <img
@@ -124,7 +124,7 @@ function SeriesDetailPage() {
             </div>
           </div>
 
-          <div className="flex-1 space-y-4">
+          <div className="min-h-0 overflow-y-auto space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">TV Series</Badge>
               {year && <Badge variant="secondary">{year}</Badge>}
@@ -153,7 +153,7 @@ function SeriesDetailPage() {
               {series.title}
             </h1>
 
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-3 sm:text-base sm:line-clamp-4">
               {series.overview || "No description available."}
             </p>
 
