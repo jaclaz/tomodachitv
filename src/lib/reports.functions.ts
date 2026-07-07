@@ -64,14 +64,6 @@ export type AdminReport = {
   reported_banner_url: string | null;
 };
 
-async function requireAdmin(
-  supabase: Awaited<ReturnType<typeof requireSupabaseAuth>> extends never
-    ? never
-    : Parameters<Parameters<typeof requireSupabaseAuth>[0] extends never ? never : never>[0],
-) {
-  void supabase;
-}
-
 export const listProfileReports = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
