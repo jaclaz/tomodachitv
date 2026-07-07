@@ -61,6 +61,16 @@ export function AvatarUpload({
         throw signedError ?? new Error("Could not generate avatar URL");
       }
 
+      // Content moderation — reject NSFW / unsafe images.
+      const check = await moderateProfileImage({
+        data: { url: signed.signedUrl, bucket: "avatars", path },
+      });
+      if (!check.safe) {
+        throw new Error(
+          "This image was blocked by our content filter. Please choose a different one.",
+        );
+      }
+
       await updateMyProfile({ data: { avatar_url: signed.signedUrl } });
       return signed.signedUrl;
     },
