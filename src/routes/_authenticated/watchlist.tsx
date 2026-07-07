@@ -82,14 +82,14 @@ function WatchlistPage() {
           {filtered.map((item) => (
             <div
               key={item.id}
-              className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md"
+              className="group relative overflow-hidden rounded-xl border border-t-0 border-border bg-card shadow-sm transition-shadow hover:shadow-md"
             >
               <Link
                 to={item.media_type === "tv" ? "/serie/$id" : "/movie/$id"}
                 params={{ id: String(item.tmdb_id) }}
-                className="block p-2 pb-0"
+                className="block"
               >
-                <div className="aspect-[2/3] overflow-hidden rounded-xl bg-muted">
+                <div className="aspect-[2/3] overflow-hidden rounded-t-xl bg-muted">
                   {item.poster_path ? (
                     <img
                       src={posterUrl(item.poster_path)}
@@ -105,7 +105,7 @@ function WatchlistPage() {
                   )}
                 </div>
               </Link>
-              <div className="absolute right-3 top-3">
+              <div className="absolute right-2 top-2">
                 <span className="rounded-md bg-background/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
                   {item.media_type === "tv" ? "TV" : "Movie"}
                 </span>
@@ -113,7 +113,7 @@ function WatchlistPage() {
               <Button
                 size="icon"
                 variant="secondary"
-                className="absolute left-3 top-3 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute left-2 top-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={() => removeMutation.mutate(item)}
               >
                 <Trash2 className="h-4 w-4 text-accent" />
