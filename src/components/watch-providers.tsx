@@ -231,21 +231,10 @@ function ProvidersRow({
 
 function ProviderPill({
   prov,
-  kind,
 }: {
   prov: WatchProvider;
   kind?: "free" | "sub" | "ads" | "rent" | "buy";
 }) {
-  const badge =
-    kind === "free"
-      ? { label: "Free", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" }
-      : kind === "ads"
-        ? { label: "Ads", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" }
-        : kind === "rent"
-          ? { label: "Rent", cls: "bg-sky-500/15 text-sky-400 border-sky-500/30" }
-          : kind === "buy"
-            ? { label: "Buy", cls: "bg-violet-500/15 text-violet-400 border-violet-500/30" }
-            : null;
   return (
     <div
       title={prov.provider_name}
@@ -262,13 +251,6 @@ function ProviderPill({
         <div className="h-7 w-7 rounded-md bg-muted" />
       )}
       <span className="text-sm font-medium whitespace-nowrap">{prov.provider_name}</span>
-      {badge && (
-        <span
-          className={`ml-0.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badge.cls}`}
-        >
-          {badge.label}
-        </span>
-      )}
     </div>
   );
 }
