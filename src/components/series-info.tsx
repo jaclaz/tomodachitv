@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCredits, getTranslations, type SeriesDetails } from "@/lib/tmdb";
+import { getCredits, type SeriesDetails } from "@/lib/tmdb";
 
 interface SeriesInfoProps {
   series: SeriesDetails;
