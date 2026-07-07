@@ -240,6 +240,13 @@ function MovieDetailPage() {
 
       <WatchProviders tmdbId={tmdbId} type="movie" />
 
+      <WatchLanguages
+        tmdbId={tmdbId}
+        mediaType="movie"
+        title={movie.title}
+        year={year ?? undefined}
+      />
+
       <CastList id={tmdbId} type="movie" />
 
       <MovieInfo movie={movie} />
