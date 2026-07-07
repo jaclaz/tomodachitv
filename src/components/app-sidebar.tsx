@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getMyProfile } from "@/lib/social.functions";
+import { isCurrentUserAdmin } from "@/lib/reports.functions";
 import logoUrl from "@/assets/logo.png";
 import {
   Compass,
@@ -21,6 +22,7 @@ import {
   CheckCircle2,
   CalendarDays,
   Youtube,
+  ShieldAlert,
 } from "lucide-react";
 
 const navItems = [
