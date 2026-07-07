@@ -24,6 +24,7 @@ function SeriesDetailPage() {
   const { id } = Route.useParams();
   const tmdbId = Number(id);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: series, isLoading: seriesLoading } = useQuery({
     queryKey: ["series", tmdbId],

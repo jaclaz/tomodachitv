@@ -28,6 +28,7 @@ function MovieDetailPage() {
   const { id } = Route.useParams();
   const tmdbId = Number(id);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: movie, isLoading } = useQuery({
     queryKey: ["movie", tmdbId],
