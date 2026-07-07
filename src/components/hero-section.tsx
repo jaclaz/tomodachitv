@@ -63,9 +63,14 @@ export function HeroSection({ item, inWatchlist, onToggleWatchlist, label = "Tre
             </Badge>
           </div>
 
+          {reason && (
+            <p className="text-xs uppercase tracking-wide text-primary/80">{reason}</p>
+          )}
+
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             {item.title}
           </h1>
+
 
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             {item.overview || "No description available."}
