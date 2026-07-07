@@ -153,7 +153,7 @@ function MovieDetailPage() {
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto space-y-4">
+          <div className="min-h-0 overflow-y-auto flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Movie</Badge>
               {year && <Badge variant="secondary">{year}</Badge>}
@@ -182,7 +182,7 @@ function MovieDetailPage() {
               {movie.overview || "No description available."}
             </p>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="mt-auto flex flex-wrap gap-3">
               {isUnreleased ? (
                 <Button variant="secondary" className="gap-2" disabled>
                   <Clock className="h-4 w-4" />
