@@ -124,7 +124,7 @@ function SeriesDetailPage() {
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto space-y-4">
+          <div className="min-h-0 overflow-y-auto flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">TV Series</Badge>
               {year && <Badge variant="secondary">{year}</Badge>}
@@ -157,7 +157,7 @@ function SeriesDetailPage() {
               {series.overview || "No description available."}
             </p>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="mt-auto flex flex-wrap gap-3">
               <Button
                 variant={inWatchlist ? "secondary" : "default"}
                 className="gap-2"
