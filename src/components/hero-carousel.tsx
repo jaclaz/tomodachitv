@@ -81,7 +81,7 @@ export function HeroCarousel({ watchlistKeys }: HeroCarouselProps) {
       <Carousel
         setApi={setApi}
         opts={{ loop: true }}
-        plugins={[Autoplay({ delay: 7000, stopOnInteraction: true })]}
+        plugins={[Autoplay({ delay: 15000, stopOnInteraction: true })]}
       >
         <CarouselContent>
           {slides.map((slide, i) => {
