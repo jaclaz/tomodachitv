@@ -170,53 +170,58 @@ function ProvidersRow({
   if (!hasStreaming && !hasRent && !hasBuy) return null;
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-3">
-        {hasStreaming && (
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Streaming
-          </span>
-        )}
-        {hasRent && (
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Rent
-          </span>
-        )}
-        {hasBuy && (
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Buy
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-3 overflow-x-auto pb-1">
-        {hasStreaming && (
-          <div className="flex items-center gap-2">
-            {streaming.map(({ prov, kind }) => (
-              <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
-            ))}
+    <div className="flex items-end gap-3 overflow-x-auto pb-1">
+      {hasStreaming && (
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Streaming
+            </span>
+            <div className="h-10">
+              <ProviderPill prov={streaming[0].prov} kind={streaming[0].kind} />
+            </div>
           </div>
-        )}
-        {hasStreaming && (hasRent || hasBuy) && (
-          <div className="h-10 w-px shrink-0 bg-muted-foreground/40" />
-        )}
-        {hasRent && (
-          <div className="flex items-center gap-2">
-            {rent!.map((prov) => (
-              <ProviderPill key={prov.provider_id} prov={prov} kind="rent" />
-            ))}
+          {streaming.slice(1).map(({ prov, kind }) => (
+            <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
+          ))}
+        </div>
+      )}
+      {hasStreaming && (hasRent || hasBuy) && (
+        <div className="h-10 w-px shrink-0 bg-muted-foreground/40" />
+      )}
+      {hasRent && (
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Rent
+            </span>
+            <div className="h-10">
+              <ProviderPill prov={rent![0]} kind="rent" />
+            </div>
           </div>
-        )}
-        {hasRent && hasBuy && (
-          <div className="h-10 w-px shrink-0 bg-muted-foreground/40" />
-        )}
-        {hasBuy && (
-          <div className="flex items-center gap-2">
-            {buy!.map((prov) => (
-              <ProviderPill key={prov.provider_id} prov={prov} kind="buy" />
-            ))}
+          {rent!.slice(1).map((prov) => (
+            <ProviderPill key={prov.provider_id} prov={prov} kind="rent" />
+          ))}
+        </div>
+      )}
+      {hasRent && hasBuy && (
+        <div className="h-10 w-px shrink-0 bg-muted-foreground/40" />
+      )}
+      {hasBuy && (
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Buy
+            </span>
+            <div className="h-10">
+              <ProviderPill prov={buy![0]} kind="buy" />
+            </div>
           </div>
-        )}
-      </div>
+          {buy!.slice(1).map((prov) => (
+            <ProviderPill key={prov.provider_id} prov={prov} kind="buy" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
