@@ -58,7 +58,6 @@ function HomePage() {
   const source =
     filter === "tv" ? tvTrending : filter === "movie" ? movieTrending : allTrending;
   const results: MediaItem[] = source?.results ?? [];
-  const featured = allTrending?.results?.[0];
 
   const watchlistKey = (m: { media_type: string; tmdb_id: number }) =>
     `${m.media_type}-${m.tmdb_id}`;
@@ -88,14 +87,8 @@ function HomePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
-  const toggleFeaturedWatchlist = () => {
-    if (!featured) return;
-    const inList = watchlistSet.has(
-      `${featured.media_type}-${featured.id}`
-    );
-    if (inList) removeMutation.mutate(featured);
-    else addMutation.mutate(featured);
-  };
+  void addMutation;
+  void removeMutation;
 
   return (
     <div className="space-y-8">
@@ -109,15 +102,8 @@ function HomePage() {
         <SearchBar />
       </div>
 
-      {featured && (
-        <HeroSection
-          item={featured}
-          inWatchlist={watchlistSet.has(
-            `${featured.media_type}-${featured.id}`
-          )}
-          onToggleWatchlist={toggleFeaturedWatchlist}
-        />
-      )}
+      <HeroCarousel watchlistKeys={watchlistSet} />
+
 
       <StatsStrip
         totalEpisodes={stats?.totalEpisodes ?? 0}
