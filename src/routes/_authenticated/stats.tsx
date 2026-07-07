@@ -128,6 +128,67 @@ function StatsPage() {
         </div>
       </div>
 
+      {/* ============ Habits ============ */}
+      <section className="space-y-4">
+        <h2 className="font-display text-xl font-semibold">Your habits</h2>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card title="Last 7 days">
+            <p className="font-display text-3xl font-bold">
+              {formatHours(adv?.minutesLast7 ?? 0)}
+            </p>
+          </Card>
+          <Card title="Last 30 days">
+            <p className="font-display text-3xl font-bold">
+              {formatHours(adv?.minutesLast30 ?? 0)}
+            </p>
+          </Card>
+          <Card title="Last 90 days">
+            <p className="font-display text-3xl font-bold">
+              {formatHours(adv?.minutesLast90 ?? 0)}
+            </p>
+          </Card>
+        </div>
+
+        <Card
+          title="Weekday habits"
+          subtitle={
+            adv?.busiestWeekday
+              ? `You watch the most on ${adv.busiestWeekday}`
+              : "When you tend to watch"
+          }
+        >
+          {advLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : maxWeekday === 0 ? (
+            <p className="text-sm text-muted-foreground">No data yet.</p>
+          ) : (
+            <div className="flex items-end justify-between gap-2 h-32">
+              {adv?.weekdayMinutes.map((d) => {
+                const h = maxWeekday > 0 ? (d.minutes / maxWeekday) * 100 : 0;
+                return (
+                  <div
+                    key={d.day}
+                    className="flex flex-1 flex-col items-center gap-2"
+                  >
+                    <div className="flex h-24 w-full items-end">
+                      <div
+                        className="w-full rounded-t bg-primary transition-all"
+                        style={{ height: `${h}%` }}
+                        title={`${d.day}: ${formatHours(d.minutes)}`}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {d.day}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </section>
+
       {/* ============ Tastes ============ */}
       <section className="space-y-4">
         <h2 className="font-display text-xl font-semibold">Your tastes</h2>
@@ -230,67 +291,6 @@ function StatsPage() {
             )}
           </Card>
         </div>
-      </section>
-
-      {/* ============ Habits ============ */}
-      <section className="space-y-4">
-        <h2 className="font-display text-xl font-semibold">Your habits</h2>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card title="Last 7 days">
-            <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast7 ?? 0)}
-            </p>
-          </Card>
-          <Card title="Last 30 days">
-            <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast30 ?? 0)}
-            </p>
-          </Card>
-          <Card title="Last 90 days">
-            <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast90 ?? 0)}
-            </p>
-          </Card>
-        </div>
-
-        <Card
-          title="Weekday habits"
-          subtitle={
-            adv?.busiestWeekday
-              ? `You watch the most on ${adv.busiestWeekday}`
-              : "When you tend to watch"
-          }
-        >
-          {advLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : maxWeekday === 0 ? (
-            <p className="text-sm text-muted-foreground">No data yet.</p>
-          ) : (
-            <div className="flex items-end justify-between gap-2 h-32">
-              {adv?.weekdayMinutes.map((d) => {
-                const h = maxWeekday > 0 ? (d.minutes / maxWeekday) * 100 : 0;
-                return (
-                  <div
-                    key={d.day}
-                    className="flex flex-1 flex-col items-center gap-2"
-                  >
-                    <div className="flex h-24 w-full items-end">
-                      <div
-                        className="w-full rounded-t bg-primary transition-all"
-                        style={{ height: `${h}%` }}
-                        title={`${d.day}: ${formatHours(d.minutes)}`}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {d.day}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
       </section>
 
       {/* ============ Progress ============ */}
