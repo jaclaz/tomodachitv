@@ -263,14 +263,14 @@ function WatchedPage() {
           {filtered.map((item) => (
             <div
               key={`${item.media_type}-${item.tmdb_id}`}
-              className="group relative overflow-hidden rounded-xl bg-card"
+              className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md"
             >
               <Link
                 to={item.media_type === "tv" ? "/serie/$id" : "/movie/$id"}
                 params={{ id: String(item.tmdb_id) }}
-                className="block"
+                className="block p-2 pb-0"
               >
-                <div className="aspect-[2/3] overflow-hidden">
+                <div className="aspect-[2/3] overflow-hidden rounded-xl bg-muted">
                   {item.poster_path ? (
                     <img
                       src={posterUrl(item.poster_path)}
@@ -287,7 +287,7 @@ function WatchedPage() {
                   )}
                 </div>
               </Link>
-              <div className="absolute right-2 top-2">
+              <div className="absolute right-3 top-3">
                 <span className="rounded-md bg-background/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
                   {item.media_type === "tv" ? "TV" : "Movie"}
                 </span>
