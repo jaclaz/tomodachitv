@@ -103,12 +103,13 @@ export function WatchProviders({ tmdbId, type }: Props) {
         </p>
       ) : (
         <div className="space-y-3">
-          <StreamingRow
+          <ProvidersRow
             free={p!.free}
             flatrate={p!.flatrate}
             ads={p!.ads}
+            rent={p!.rent}
+            buy={p!.buy}
           />
-          <RentBuyRow rent={p!.rent} buy={p!.buy} />
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             {p!.link ? (
               <a
@@ -127,93 +128,76 @@ export function WatchProviders({ tmdbId, type }: Props) {
             </p>
           </div>
         </div>
+
       )}
     </section>
   );
 }
 
-function StreamingRow({
+function ProvidersRow({
   free,
   flatrate,
   ads,
+  rent,
+  buy,
 }: {
   free?: WatchProvider[];
   flatrate?: WatchProvider[];
   ads?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
 }) {
   // Order: Free first, then subscription streaming, then ad-supported.
   // Deduplicate by provider_id so a provider offering both free and flatrate
   // isn't shown twice — the first occurrence wins.
-  const ordered: { prov: WatchProvider; kind: "free" | "sub" | "ads" }[] = [];
+  const streaming: { prov: WatchProvider; kind: "free" | "sub" | "ads" }[] = [];
   const seen = new Set<number>();
   const push = (list: WatchProvider[] | undefined, kind: "free" | "sub" | "ads") => {
     (list ?? []).forEach((prov) => {
       if (seen.has(prov.provider_id)) return;
       seen.add(prov.provider_id);
-      ordered.push({ prov, kind });
+      streaming.push({ prov, kind });
     });
   };
   push(free, "free");
   push(flatrate, "sub");
   push(ads, "ads");
 
-  if (ordered.length === 0) return null;
+  const hasStreaming = streaming.length > 0;
+  const hasRent = (rent?.length ?? 0) > 0;
+  const hasBuy = (buy?.length ?? 0) > 0;
+
+  if (!hasStreaming && !hasRent && !hasBuy) return null;
 
   return (
-    <div>
-      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Streaming
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {ordered.map(({ prov, kind }) => (
-          <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function RentBuyRow({
-  rent,
-  buy,
-}: {
-  rent?: WatchProvider[];
-  buy?: WatchProvider[];
-}) {
-  if ((!rent || rent.length === 0) && (!buy || buy.length === 0)) return null;
-  const hasRent = rent && rent.length > 0;
-  const hasBuy = buy && buy.length > 0;
-  return (
-    <div>
-      <div className="flex items-start gap-3 overflow-x-auto pb-1">
-        {hasRent && (
-          <div className="flex shrink-0 flex-col gap-1.5">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Rent
-            </div>
-            <div className="flex flex-nowrap gap-2">
-              {rent!.map((prov) => (
-                <ProviderPill key={prov.provider_id} prov={prov} />
-              ))}
-            </div>
-          </div>
-        )}
-        {hasRent && hasBuy && (
-          <div className="mt-5 h-11 w-0.5 shrink-0 rounded-full bg-muted-foreground/40" />
-        )}
-        {hasBuy && (
-          <div className="flex shrink-0 flex-col gap-1.5">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Buy
-            </div>
-            <div className="flex flex-nowrap gap-2">
-              {buy!.map((prov) => (
-                <ProviderPill key={prov.provider_id} prov={prov} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      {hasStreaming && (
+        <div className="flex items-center gap-2">
+          {streaming.map(({ prov, kind }) => (
+            <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
+          ))}
+        </div>
+      )}
+      {hasStreaming && (hasRent || hasBuy) && (
+        <div className="h-9 w-px shrink-0 bg-muted-foreground/40" />
+      )}
+      {hasRent && (
+        <div className="flex items-center gap-2">
+          {rent!.map((prov) => (
+            <ProviderPill key={prov.provider_id} prov={prov} kind="rent" />
+          ))}
+        </div>
+      )}
+      {hasRent && hasBuy && (
+        <div className="h-9 w-px shrink-0 bg-muted-foreground/40" />
+      )}
+      {hasBuy && (
+        <div className="flex items-center gap-2">
+          {buy!.map((prov) => (
+            <ProviderPill key={prov.provider_id} prov={prov} kind="buy" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -223,28 +207,32 @@ function ProviderPill({
   kind,
 }: {
   prov: WatchProvider;
-  kind?: "free" | "sub" | "ads";
+  kind?: "free" | "sub" | "ads" | "rent" | "buy";
 }) {
   const badge =
     kind === "free"
       ? { label: "Free", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" }
       : kind === "ads"
         ? { label: "Ads", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" }
-        : null;
+        : kind === "rent"
+          ? { label: "Rent", cls: "bg-sky-500/15 text-sky-400 border-sky-500/30" }
+          : kind === "buy"
+            ? { label: "Buy", cls: "bg-violet-500/15 text-violet-400 border-violet-500/30" }
+            : null;
   return (
     <div
       title={prov.provider_name}
-      className="flex h-12 shrink-0 items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
+      className="flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
     >
       {prov.logo_path ? (
         <img
           src={providerLogoUrl(prov.logo_path)}
           alt={prov.provider_name}
-          className="h-8 w-8 rounded-md object-cover"
+          className="h-7 w-7 rounded-md object-cover"
           loading="lazy"
         />
       ) : (
-        <div className="h-8 w-8 rounded-md bg-muted" />
+        <div className="h-7 w-7 rounded-md bg-muted" />
       )}
       <span className="text-sm font-medium whitespace-nowrap">{prov.provider_name}</span>
       {badge && (
@@ -257,3 +245,4 @@ function ProviderPill({
     </div>
   );
 }
+
