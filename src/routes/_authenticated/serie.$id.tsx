@@ -153,7 +153,7 @@ function SeriesDetailPage() {
               {series.title}
             </h1>
 
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-3 sm:text-base sm:line-clamp-4">
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-5 sm:text-base">
               {series.overview || "No description available."}
             </p>
 
