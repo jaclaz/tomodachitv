@@ -45,6 +45,15 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
         throw signedError ?? new Error("Could not generate banner URL");
       }
 
+      const check = await moderateProfileImage({
+        data: { url: signed.signedUrl, bucket: "banners", path },
+      });
+      if (!check.safe) {
+        throw new Error(
+          "This image was blocked by our content filter. Please choose a different one.",
+        );
+      }
+
       await updateMyProfile({ data: { banner_url: signed.signedUrl } });
       return signed.signedUrl;
     },
