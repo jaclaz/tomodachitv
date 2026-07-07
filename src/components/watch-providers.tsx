@@ -170,52 +170,57 @@ function ProvidersRow({
   if (!hasStreaming && !hasRent && !hasBuy) return null;
 
   return (
-    <div className="flex items-start gap-3 overflow-x-auto pb-1">
-      {hasStreaming && (
-        <div className="flex flex-col gap-1.5">
+    <div className="space-y-1">
+      <div className="flex items-center gap-3">
+        {hasStreaming && (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Streaming
           </span>
+        )}
+        {hasRent && (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Rent
+          </span>
+        )}
+        {hasBuy && (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Buy
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 overflow-x-auto pb-1">
+        {hasStreaming && (
           <div className="flex items-center gap-2">
             {streaming.map(({ prov, kind }) => (
               <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
             ))}
           </div>
-        </div>
-      )}
-      {hasStreaming && (hasRent || hasBuy) && (
-        <div className="h-10 w-px shrink-0 self-center bg-muted-foreground/40" />
-      )}
-      {hasRent && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Rent
-          </span>
+        )}
+        {hasStreaming && (hasRent || hasBuy) && (
+          <div className="h-10 w-px shrink-0 bg-muted-foreground/40" />
+        )}
+        {hasRent && (
           <div className="flex items-center gap-2">
             {rent!.map((prov) => (
               <ProviderPill key={prov.provider_id} prov={prov} kind="rent" />
             ))}
           </div>
-        </div>
-      )}
-      {hasRent && hasBuy && (
-        <div className="h-10 w-px shrink-0 self-center bg-muted-foreground/40" />
-      )}
-      {hasBuy && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Buy
-          </span>
+        )}
+        {hasRent && hasBuy && (
+          <div className="h-10 w-px shrink-0 bg-muted-foreground/40" />
+        )}
+        {hasBuy && (
           <div className="flex items-center gap-2">
             {buy!.map((prov) => (
               <ProviderPill key={prov.provider_id} prov={prov} kind="buy" />
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
+
 
 
 
