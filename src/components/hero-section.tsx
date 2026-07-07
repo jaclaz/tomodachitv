@@ -8,9 +8,12 @@ interface HeroSectionProps {
   item: MediaItem;
   inWatchlist?: boolean;
   onToggleWatchlist?: () => void;
+  label?: string;
+  reason?: string;
 }
 
-export function HeroSection({ item, inWatchlist, onToggleWatchlist }: HeroSectionProps) {
+export function HeroSection({ item, inWatchlist, onToggleWatchlist, label = "Trending", reason }: HeroSectionProps) {
+
   const backdrop = backdropUrl(item.backdrop_path);
   const poster = posterUrl(item.poster_path);
   const year = item.release_date
