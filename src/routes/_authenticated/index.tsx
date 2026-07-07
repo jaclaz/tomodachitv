@@ -1,25 +1,23 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   getTrendingAll,
   getTrendingSeries,
   getTrendingMovies,
   type MediaItem,
 } from "@/lib/tmdb";
-import {
-  getWatchlist,
-  addToWatchlist,
-  removeFromWatchlist,
-} from "@/lib/watchlist.functions";
+import { getWatchlist } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
-import { HeroSection } from "@/components/hero-section";
+import { HeroCarousel } from "@/components/hero-carousel";
 import { StatsStrip } from "@/components/stats-strip";
 import { MediaCard } from "@/components/media-card";
 import { SearchBar } from "@/components/search-bar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CurrentlyWatching } from "@/components/currently-watching";
 import { UpcomingPreview } from "@/components/upcoming-preview";
+
+
 
 export const Route = createFileRoute("/_authenticated/")({
   component: HomePage,
@@ -28,8 +26,8 @@ export const Route = createFileRoute("/_authenticated/")({
 type Filter = "all" | "tv" | "movie";
 
 function HomePage() {
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
+
 
   const { data: allTrending } = useQuery({
     queryKey: ["trending", "all"],
@@ -57,44 +55,13 @@ function HomePage() {
   const source =
     filter === "tv" ? tvTrending : filter === "movie" ? movieTrending : allTrending;
   const results: MediaItem[] = source?.results ?? [];
-  const featured = allTrending?.results?.[0];
 
   const watchlistKey = (m: { media_type: string; tmdb_id: number }) =>
     `${m.media_type}-${m.tmdb_id}`;
   const watchlistSet = new Set(watchlist.map(watchlistKey));
 
-  const addMutation = useMutation({
-    mutationFn: (item: MediaItem) =>
-      addToWatchlist({
-        data: {
-          tmdb_id: item.id,
-          media_type: item.media_type,
-          series_name: item.title,
-          poster_path: item.poster_path,
-          backdrop_path: item.backdrop_path,
-          first_air_date: item.release_date,
-          vote_average: item.vote_average,
-        },
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
-  });
 
-  const removeMutation = useMutation({
-    mutationFn: (item: MediaItem) =>
-      removeFromWatchlist({
-        data: { tmdb_id: item.id, media_type: item.media_type },
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
-  });
 
-  const toggleFeaturedWatchlist = () => {
-    if (!featured) return;
-    const inList = watchlistSet.has(
-      `${featured.media_type}-${featured.id}`
-    );
-    if (inList) removeMutation.mutate(featured);
-    else addMutation.mutate(featured);
-  };
 
   return (
     <div className="space-y-8">
@@ -108,15 +75,8 @@ function HomePage() {
         <SearchBar />
       </div>
 
-      {featured && (
-        <HeroSection
-          item={featured}
-          inWatchlist={watchlistSet.has(
-            `${featured.media_type}-${featured.id}`
-          )}
-          onToggleWatchlist={toggleFeaturedWatchlist}
-        />
-      )}
+      <HeroCarousel watchlistKeys={watchlistSet} />
+
 
       <StatsStrip
         totalEpisodes={stats?.totalEpisodes ?? 0}

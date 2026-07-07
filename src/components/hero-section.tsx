@@ -8,9 +8,12 @@ interface HeroSectionProps {
   item: MediaItem;
   inWatchlist?: boolean;
   onToggleWatchlist?: () => void;
+  label?: string;
+  reason?: string;
 }
 
-export function HeroSection({ item, inWatchlist, onToggleWatchlist }: HeroSectionProps) {
+export function HeroSection({ item, inWatchlist, onToggleWatchlist, label = "Trending", reason }: HeroSectionProps) {
+
   const backdrop = backdropUrl(item.backdrop_path);
   const poster = posterUrl(item.poster_path);
   const year = item.release_date
@@ -47,8 +50,9 @@ export function HeroSection({ item, inWatchlist, onToggleWatchlist }: HeroSectio
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
-              Trending
+              {label}
             </Badge>
+
             <Badge variant="secondary">
               {item.media_type === "tv" ? "TV Series" : "Movie"}
             </Badge>
@@ -59,9 +63,14 @@ export function HeroSection({ item, inWatchlist, onToggleWatchlist }: HeroSectio
             </Badge>
           </div>
 
+          {reason && (
+            <p className="text-xs uppercase tracking-wide text-primary/80">{reason}</p>
+          )}
+
           <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             {item.title}
           </h1>
+
 
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             {item.overview || "No description available."}
