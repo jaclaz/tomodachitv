@@ -195,25 +195,30 @@ function UserProfilePage() {
               </div>
             </div>
 
-            {!profile.is_self &&
-              (profile.is_following ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => unfollowMut.mutate(profile.id)}
-                  disabled={unfollowMut.isPending}
-                  className="self-end"
-                >
-                  <UserMinus className="mr-2 h-4 w-4" /> Unfollow
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => followMut.mutate(profile.id)}
-                  disabled={followMut.isPending}
-                  className="self-end"
-                >
-                  <UserPlus className="mr-2 h-4 w-4" /> Follow
-                </Button>
-              ))}
+            {!profile.is_self && (
+              <div className="flex items-end gap-1 self-end">
+                {profile.is_following ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => unfollowMut.mutate(profile.id)}
+                    disabled={unfollowMut.isPending}
+                  >
+                    <UserMinus className="mr-2 h-4 w-4" /> Unfollow
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => followMut.mutate(profile.id)}
+                    disabled={followMut.isPending}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" /> Follow
+                  </Button>
+                )}
+                <ReportProfileButton
+                  reportedUserId={profile.id}
+                  username={profile.username}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
