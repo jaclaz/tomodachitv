@@ -107,7 +107,7 @@ export function HeroSection({
           <Link
             to={to}
             params={params}
-            className="max-w-2xl text-sm leading-relaxed text-white/85 line-clamp-2 hover:text-white sm:line-clamp-3"
+            className="max-w-2xl text-sm leading-relaxed text-white/85 line-clamp-3 hover:text-white sm:line-clamp-4"
           >
             {item.overview || "No description available."}
           </Link>
