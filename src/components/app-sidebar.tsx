@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getMyProfile } from "@/lib/social.functions";
+import { isCurrentUserAdmin } from "@/lib/reports.functions";
 import logoUrl from "@/assets/logo.png";
 import {
   Compass,
@@ -21,6 +22,7 @@ import {
   CheckCircle2,
   CalendarDays,
   Youtube,
+  ShieldAlert,
 } from "lucide-react";
 
 const navItems = [
@@ -44,6 +46,13 @@ export function AppSidebar() {
     queryKey: ["me"],
     queryFn: () => getMyProfile(),
   });
+
+  const { data: adminInfo } = useQuery({
+    queryKey: ["me-admin"],
+    queryFn: () => isCurrentUserAdmin(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const isAdmin = adminInfo?.admin ?? false;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -77,6 +86,16 @@ export function AppSidebar() {
               {item.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin/reports"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface hover:text-foreground [&[data-status=active]]:bg-primary/10 [&[data-status=active]]:text-primary"
+            >
+              <ShieldAlert className="h-5 w-5" />
+              Reports
+            </Link>
+          )}
         </nav>
 
         <Separator className="my-4 bg-border" />
