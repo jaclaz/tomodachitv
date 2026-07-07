@@ -520,5 +520,128 @@ export const getPersonCredits = createServerFn({ method: "POST" })
     return { cast, crew };
   });
 
+// ============ Home highlights (randomized carousel) ============
+export interface HighlightSlide {
+  item: MediaItem;
+  label: string;
+  reason?: string;
+}
+
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const copy = [...arr];
+  const out: T[] = [];
+  while (copy.length && out.length < n) {
+    const i = Math.floor(Math.random() * copy.length);
+    out.push(copy.splice(i, 1)[0]);
+  }
+  return out;
+}
+
+export const getHomeHighlights = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ slides: HighlightSlide[] }> => {
+    const [trendingTv, trendingMovie, recentEpisodes, recentMovies] =
+      await Promise.all([
+        tmdbFetch("/trending/tv/week"),
+        tmdbFetch("/trending/movie/week"),
+        context.supabase
+          .from("watched_episodes")
+          .select("tmdb_id, watched_at")
+          .eq("user_id", context.userId)
+          .order("watched_at", { ascending: false })
+          .limit(50),
+        context.supabase
+          .from("watched_movies")
+          .select("tmdb_id, title, watched_at")
+          .eq("user_id", context.userId)
+          .order("watched_at", { ascending: false })
+          .limit(20),
+      ]);
+
+    const tvTop = ((trendingTv.results as RawTv[]) ?? [])
+      .filter((r) => r.backdrop_path)
+      .slice(0, 10)
+      .map(mapTv);
+    const movieTop = ((trendingMovie.results as RawMovie[]) ?? [])
+      .filter((r) => r.backdrop_path)
+      .slice(0, 10)
+      .map(mapMovie);
+
+    const slides: HighlightSlide[] = [];
+
+    const [tvPick] = pickRandom(tvTop, 1);
+    if (tvPick)
+      slides.push({ item: tvPick, label: "Trending TV this week" });
+
+    const [moviePick] = pickRandom(movieTop, 1);
+    if (moviePick)
+      slides.push({ item: moviePick, label: "Trending Movie this week" });
+
+    // Series recommendation
+    const seriesIds = [
+      ...new Set(((recentEpisodes.data ?? []) as { tmdb_id: number }[]).map((e) => e.tmdb_id)),
+    ].slice(0, 10);
+    const [seedTvId] = pickRandom(seriesIds, 1);
+    if (seedTvId) {
+      try {
+        const recs = await tmdbFetch(`/tv/${seedTvId}/recommendations`);
+        const list = ((recs.results as RawTv[]) ?? []).filter((r) => r.backdrop_path);
+        const [pick] = pickRandom(list, 1);
+        if (pick) {
+          const { data: seed } = await context.supabase
+            .from("media_cache")
+            .select("title")
+            .eq("media_type", "tv")
+            .eq("tmdb_id", seedTvId)
+            .maybeSingle();
+          slides.push({
+            item: mapTv(pick),
+            label: "Recommended series",
+            reason: seed?.title ? `Because you watched ${seed.title}` : undefined,
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Movie recommendation
+    const movieHistory = ((recentMovies.data ?? []) as {
+      tmdb_id: number;
+      title: string | null;
+    }[]).slice(0, 10);
+    const [seedMovie] = pickRandom(movieHistory, 1);
+    if (seedMovie) {
+      try {
+        const recs = await tmdbFetch(`/movie/${seedMovie.tmdb_id}/recommendations`);
+        const list = ((recs.results as RawMovie[]) ?? []).filter((r) => r.backdrop_path);
+        const [pick] = pickRandom(list, 1);
+        if (pick) {
+          slides.push({
+            item: mapMovie(pick),
+            label: "Recommended movie",
+            reason: seedMovie.title ? `Because you watched ${seedMovie.title}` : undefined,
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Fallback: if we have fewer than 3 slides, add more random trending picks
+    if (slides.length < 3) {
+      const extras = pickRandom([...tvTop, ...movieTop], 3 - slides.length);
+      for (const item of extras) {
+        slides.push({
+          item,
+          label: item.media_type === "tv" ? "Trending TV" : "Trending Movie",
+        });
+      }
+    }
+
+    return { slides };
+  });
+
+
 
 
