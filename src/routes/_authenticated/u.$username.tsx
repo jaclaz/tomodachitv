@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { PosterStrip, type PosterItem } from "@/components/poster-strip";
 import { PosterActions } from "@/components/poster-actions";
 import { UserListsSection } from "@/components/user-lists-section";
+import { ReportProfileButton } from "@/components/report-profile-button";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
   component: UserProfilePage,
