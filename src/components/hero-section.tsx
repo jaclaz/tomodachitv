@@ -12,31 +12,54 @@ interface HeroSectionProps {
   reason?: string;
 }
 
-export function HeroSection({ item, inWatchlist, onToggleWatchlist, label = "Trending", reason }: HeroSectionProps) {
-
+export function HeroSection({
+  item,
+  inWatchlist,
+  onToggleWatchlist,
+  label = "Trending",
+  reason,
+}: HeroSectionProps) {
   const backdrop = backdropUrl(item.backdrop_path);
   const poster = posterUrl(item.poster_path);
   const year = item.release_date
     ? new Date(item.release_date).getFullYear()
     : null;
   const to = item.media_type === "tv" ? "/serie/$id" : "/movie/$id";
+  const params = { id: String(item.id) };
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border">
+      {/* Background */}
       <div className="absolute inset-0">
         {backdrop ? (
-          <img src={backdrop} alt="" className="h-full w-full object-cover" />
+          <img
+            src={backdrop}
+            alt=""
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-primary/20 to-accent/20" />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(to_top,var(--canvas)_0%,color-mix(in_oklab,var(--canvas)_88%,transparent)_22%,color-mix(in_oklab,var(--canvas)_65%,transparent)_45%,color-mix(in_oklab,var(--canvas)_35%,transparent)_70%,transparent_100%)]" />
+        {/* Strong readability overlay: dark base + left-to-right dark fade + bottom fade */}
+        <div className="absolute inset-0 bg-black/45" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
       </div>
 
-      <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:p-8 lg:p-10">
+      <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-stretch sm:p-8 lg:p-10">
+        {/* Poster */}
         <div className="hidden sm:block sm:w-40 md:w-48 lg:w-52 flex-shrink-0">
-          <div className="aspect-[2/3] overflow-hidden rounded-xl border border-border shadow-2xl">
+          <Link
+            to={to}
+            params={params}
+            className="block aspect-[2/3] overflow-hidden rounded-xl border border-border shadow-2xl"
+          >
             {poster ? (
-              <img src={poster} alt={item.title} className="h-full w-full object-cover" />
+              <img
+                src={poster}
+                alt={item.title}
+                className="h-full w-full object-cover transition-transform hover:scale-105"
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-muted">
                 <span className="font-display text-3xl font-bold text-muted-foreground">
@@ -44,48 +67,65 @@ export function HeroSection({ item, inWatchlist, onToggleWatchlist, label = "Tre
                 </span>
               </div>
             )}
-          </div>
+          </Link>
         </div>
 
-        <div className="flex-1 space-y-4">
+        {/* Content — constrained to poster height on sm+ */}
+        <div className="flex flex-1 min-w-0 flex-col gap-3 sm:max-h-60 md:max-h-72 lg:max-h-[19.5rem] sm:overflow-hidden">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
+            <Badge className="bg-primary text-primary-foreground hover:bg-primary shadow">
               {label}
             </Badge>
-
-            <Badge variant="secondary">
+            <Badge className="bg-white/15 text-white backdrop-blur hover:bg-white/25 border-white/20">
               {item.media_type === "tv" ? "TV Series" : "Movie"}
             </Badge>
-            {year && <Badge variant="secondary">{year}</Badge>}
-            <Badge variant="secondary" className="flex items-center gap-1">
+            {year && (
+              <Badge className="bg-white/15 text-white backdrop-blur hover:bg-white/25 border-white/20">
+                {year}
+              </Badge>
+            )}
+            <Badge className="bg-white/15 text-white backdrop-blur hover:bg-white/25 border-white/20 flex items-center gap-1">
               <Star className="h-3 w-3 fill-rating text-rating" />
               {item.vote_average.toFixed(1)}
             </Badge>
           </div>
 
           {reason && (
-            <p className="text-xs uppercase tracking-wide text-primary/80">{reason}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-white/80 line-clamp-1">
+              {reason}
+            </p>
           )}
 
-          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+          <Link
+            to={to}
+            params={params}
+            className="font-display text-2xl font-bold tracking-tight text-white line-clamp-2 hover:underline sm:text-3xl lg:text-4xl"
+          >
             {item.title}
-          </h1>
+          </Link>
 
-
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <Link
+            to={to}
+            params={params}
+            className="max-w-2xl text-sm leading-relaxed text-white/85 line-clamp-2 hover:text-white sm:line-clamp-3"
+          >
             {item.overview || "No description available."}
-          </p>
+          </Link>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="mt-auto flex flex-wrap gap-3 pt-1">
             <Button asChild className="gap-2">
-              <Link to={to} params={{ id: String(item.id) }}>
+              <Link to={to} params={params}>
                 <FileText className="h-4 w-4" />
                 Details
               </Link>
             </Button>
             <Button
               variant={inWatchlist ? "secondary" : "outline"}
-              className="gap-2"
+              className={
+                inWatchlist
+                  ? "gap-2"
+                  : "gap-2 bg-white/10 text-white border-white/30 backdrop-blur hover:bg-white/20 hover:text-white"
+              }
               onClick={onToggleWatchlist}
             >
               {inWatchlist ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
