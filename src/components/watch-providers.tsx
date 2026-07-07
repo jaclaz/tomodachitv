@@ -173,14 +173,14 @@ function ProvidersRow({
     <div className="flex items-end gap-3 overflow-x-auto pb-1">
       {hasStreaming && (
         <div className="flex items-end gap-2">
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Streaming
-            </span>
-            <div className="h-10">
-              <ProviderPill prov={streaming[0].prov} kind={streaming[0].kind} />
-            </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Streaming
+          </span>
+          <div className="h-10">
+            <ProviderPill prov={streaming[0].prov} kind={streaming[0].kind} />
           </div>
+        </div>
           {streaming.slice(1).map(({ prov, kind }) => (
             <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
           ))}
@@ -191,7 +191,7 @@ function ProvidersRow({
       )}
       {hasRent && (
         <div className="flex items-end gap-2">
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Rent
             </span>
@@ -209,7 +209,7 @@ function ProvidersRow({
       )}
       {hasBuy && (
         <div className="flex items-end gap-2">
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Buy
             </span>
