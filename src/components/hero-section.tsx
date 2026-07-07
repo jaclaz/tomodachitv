@@ -50,8 +50,9 @@ export function HeroSection({ item, inWatchlist, onToggleWatchlist, label = "Tre
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
-              Trending
+              {label}
             </Badge>
+
             <Badge variant="secondary">
               {item.media_type === "tv" ? "TV Series" : "Movie"}
             </Badge>
