@@ -1,8 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   getSeasonDetails,
   posterUrl,
@@ -12,9 +23,10 @@ import {
 import {
   getWatchedEpisodes,
   markEpisodeWatched,
+  markEpisodesBulk,
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
-import { Clock } from "lucide-react";
+import { Clock, CheckCheck } from "lucide-react";
 
 interface EpisodeListProps {
   series: SeriesDetails;
@@ -39,6 +51,12 @@ function getReleaseCountdown(airDate: string | undefined | null): string | null 
   const years = Math.round(days / 365);
   return `${years} year${years === 1 ? "" : "s"}`;
 }
+
+function isReleased(ep: Episode): boolean {
+  return getReleaseCountdown(ep.air_date) === null;
+}
+
+const skipPromptKey = (tmdbId: number) => `skip-prev-prompt-${tmdbId}`;
 
 export function EpisodeList({ series }: EpisodeListProps) {
   const [activeSeason, setActiveSeason] = useState(() => {
@@ -73,6 +91,11 @@ export function EpisodeList({ series }: EpisodeListProps) {
     queryFn: () => getWatchedEpisodes({ data: { tmdb_id: tmdbId } }),
   });
 
+  const invalidateWatched = () => {
+    queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
+    queryClient.invalidateQueries({ queryKey: ["stats"] });
+  };
+
   const markMutation = useMutation({
     mutationFn: (vars: {
       tmdb_id: number;
@@ -81,10 +104,20 @@ export function EpisodeList({ series }: EpisodeListProps) {
       episode_name?: string;
       runtime_minutes?: number | null;
     }) => markEpisodeWatched({ data: vars }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
-    },
+    onSuccess: invalidateWatched,
+  });
+
+  const bulkMutation = useMutation({
+    mutationFn: (vars: {
+      tmdb_id: number;
+      episodes: {
+        season_number: number;
+        episode_number: number;
+        episode_name?: string;
+        runtime_minutes?: number | null;
+      }[];
+    }) => markEpisodesBulk({ data: vars }),
+    onSuccess: invalidateWatched,
   });
 
   const unmarkMutation = useMutation({
@@ -93,18 +126,29 @@ export function EpisodeList({ series }: EpisodeListProps) {
       season_number: number;
       episode_number: number;
     }) => unmarkEpisodeWatched({ data: vars }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
-    },
+    onSuccess: invalidateWatched,
   });
 
-  const watchedSet = new Set(
-    watched.map((w) => `${w.season_number}-${w.episode_number}`)
+  const watchedSet = useMemo(
+    () => new Set(watched.map((w) => `${w.season_number}-${w.episode_number}`)),
+    [watched]
   );
 
   const isWatched = (ep: Episode) =>
     watchedSet.has(`${ep.season_number}-${ep.episode_number}`);
+
+  // Bulk-mark prompt state
+  const [pendingPrompt, setPendingPrompt] = useState<{
+    trigger: Episode;
+    previous: Episode[];
+  } | null>(null);
+
+  const toEpisodePayload = (ep: Episode) => ({
+    season_number: ep.season_number,
+    episode_number: ep.episode_number,
+    episode_name: ep.name,
+    runtime_minutes: ep.runtime ?? runtimeFallback,
+  });
 
   const toggleEpisode = (ep: Episode) => {
     if (isWatched(ep)) {
@@ -113,23 +157,79 @@ export function EpisodeList({ series }: EpisodeListProps) {
         season_number: ep.season_number,
         episode_number: ep.episode_number,
       });
-    } else {
-      markMutation.mutate({
-        tmdb_id: tmdbId,
-        season_number: ep.season_number,
-        episode_number: ep.episode_number,
-        episode_name: ep.name,
-        runtime_minutes: ep.runtime ?? runtimeFallback,
-      });
+      return;
     }
+
+    // Find previous released & unwatched episodes in this season, up to this ep
+    const episodes = seasonDetails?.episodes ?? [];
+    const previous = episodes.filter(
+      (e) =>
+        e.episode_number < ep.episode_number &&
+        isReleased(e) &&
+        !isWatched(e)
+    );
+
+    const skip =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(skipPromptKey(tmdbId)) === "1";
+
+    if (previous.length > 0 && !skip) {
+      setPendingPrompt({ trigger: ep, previous });
+      return;
+    }
+
+    markMutation.mutate({ tmdb_id: tmdbId, ...toEpisodePayload(ep) });
+  };
+
+  const confirmMarkPrevious = () => {
+    if (!pendingPrompt) return;
+    bulkMutation.mutate({
+      tmdb_id: tmdbId,
+      episodes: [
+        ...pendingPrompt.previous.map(toEpisodePayload),
+        toEpisodePayload(pendingPrompt.trigger),
+      ],
+    });
+    setPendingPrompt(null);
+  };
+
+  const markOnlyThis = () => {
+    if (!pendingPrompt) return;
+    markMutation.mutate({
+      tmdb_id: tmdbId,
+      ...toEpisodePayload(pendingPrompt.trigger),
+    });
+    setPendingPrompt(null);
+  };
+
+  const neverAskAgain = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(skipPromptKey(tmdbId), "1");
+    }
+    markOnlyThis();
+  };
+
+  const markWholeSeason = () => {
+    const episodes = seasonDetails?.episodes ?? [];
+    const toMark = episodes.filter((e) => isReleased(e) && !isWatched(e));
+    if (!toMark.length) return;
+    bulkMutation.mutate({
+      tmdb_id: tmdbId,
+      episodes: toMark.map(toEpisodePayload),
+    });
   };
 
   const seasons = series.seasons.filter((s) => s.season_number > 0);
 
+  const currentEpisodes = seasonDetails?.episodes ?? [];
+  const releasedInSeason = currentEpisodes.filter(isReleased);
+  const allSeasonWatched =
+    releasedInSeason.length > 0 && releasedInSeason.every(isWatched);
+
   return (
     <div className="rounded-xl border border-border bg-surface">
       <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
-        <div className="border-b border-border px-4 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 pt-4">
           <TabsList className="bg-transparent p-0">
             {seasons.map((seasonInfo) => (
               <TabsTrigger
@@ -141,6 +241,21 @@ export function EpisodeList({ series }: EpisodeListProps) {
               </TabsTrigger>
             ))}
           </TabsList>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={markWholeSeason}
+            disabled={
+              isLoading ||
+              allSeasonWatched ||
+              bulkMutation.isPending ||
+              releasedInSeason.length === 0
+            }
+            className="mb-2"
+          >
+            <CheckCheck className="mr-1.5 h-4 w-4" />
+            {allSeasonWatched ? "Season watched" : "Mark season as watched"}
+          </Button>
         </div>
 
         {seasons.map((seasonInfo) => (
@@ -226,6 +341,36 @@ export function EpisodeList({ series }: EpisodeListProps) {
           </TabsContent>
         ))}
       </Tabs>
+
+      <AlertDialog
+        open={pendingPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingPrompt(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark previous episodes as watched?</AlertDialogTitle>
+            <AlertDialogDescription>
+              There {pendingPrompt && pendingPrompt.previous.length === 1 ? "is" : "are"}{" "}
+              {pendingPrompt?.previous.length} earlier episode
+              {pendingPrompt && pendingPrompt.previous.length === 1 ? "" : "s"} in this
+              season that you haven't marked yet. Do you want to mark them as watched too?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel onClick={neverAskAgain} className="sm:mr-auto">
+              Never for this series
+            </AlertDialogCancel>
+            <AlertDialogCancel onClick={markOnlyThis}>
+              Only this one
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMarkPrevious}>
+              Yes, mark all previous
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

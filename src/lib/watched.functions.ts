@@ -81,6 +81,35 @@ export const unmarkEpisodeWatched = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export const markEpisodesBulk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    (input: {
+      tmdb_id: number;
+      episodes: {
+        season_number: number;
+        episode_number: number;
+        episode_name?: string;
+        runtime_minutes?: number | null;
+      }[];
+    }) => input
+  )
+  .handler(async ({ context, data }) => {
+    if (!data.episodes.length) return { success: true, count: 0 };
+    const rows = data.episodes.map((e) => ({
+      user_id: context.userId,
+      tmdb_id: data.tmdb_id,
+      ...e,
+    }));
+    const { error } = await context.supabase
+      .from("watched_episodes")
+      .upsert(rows, {
+        onConflict: "user_id, tmdb_id, season_number, episode_number",
+      });
+    if (error) throw error;
+    return { success: true, count: rows.length };
+  });
+
 // ============ Movies ============
 export const getWatchedMovies = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
