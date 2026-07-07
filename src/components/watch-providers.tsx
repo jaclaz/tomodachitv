@@ -103,12 +103,13 @@ export function WatchProviders({ tmdbId, type }: Props) {
         </p>
       ) : (
         <div className="space-y-3">
-          <StreamingRow
+          <ProvidersRow
             free={p!.free}
             flatrate={p!.flatrate}
             ads={p!.ads}
+            rent={p!.rent}
+            buy={p!.buy}
           />
-          <RentBuyRow rent={p!.rent} buy={p!.buy} />
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             {p!.link ? (
               <a
@@ -127,6 +128,7 @@ export function WatchProviders({ tmdbId, type }: Props) {
             </p>
           </div>
         </div>
+
       )}
     </section>
   );
