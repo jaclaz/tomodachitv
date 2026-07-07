@@ -25,6 +25,8 @@ interface Props {
 
 export function YouTubeActions(props: Props) {
   const { size = "default", className } = props;
+  // Videos are not trackable — only channels & playlists (like TVTime seasons).
+  if (props.kind === "video") return null;
   const qc = useQueryClient();
 
   const { data: watchlist = [] } = useQuery({

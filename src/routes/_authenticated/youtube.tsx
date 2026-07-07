@@ -69,7 +69,7 @@ function YouTubePage() {
           <h1 className="font-display text-2xl font-bold text-foreground">YouTube</h1>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Track channels, playlists and videos. Paste a YouTube URL or search by keyword.
+          Follow channels and playlists — think of a channel as a show and a playlist as a season. Paste any YouTube URL or search by keyword.
         </p>
       </div>
 

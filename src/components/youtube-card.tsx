@@ -52,7 +52,7 @@ export function YouTubeCard(props: Props) {
           YT · {kind}
         </Badge>
       </div>
-      {showActions && (
+      {showActions && kind !== "video" && (
         <div className="absolute right-1 top-1 rounded-md bg-background/80 opacity-0 backdrop-blur transition group-hover:opacity-100">
           <YouTubeActions
             yt_id={yt_id}
