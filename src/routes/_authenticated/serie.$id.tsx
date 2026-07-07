@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
+import { WatchLanguages } from "@/components/watch-languages";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 
 
@@ -190,6 +191,13 @@ function SeriesDetailPage() {
       </section>
 
       <WatchProviders tmdbId={tmdbId} type="tv" />
+
+      <WatchLanguages
+        tmdbId={tmdbId}
+        mediaType="tv"
+        title={series.title}
+        year={year ?? undefined}
+      />
 
       <EpisodeList series={series} />
 
