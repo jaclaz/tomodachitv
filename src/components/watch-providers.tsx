@@ -218,11 +218,23 @@ function RentBuyRow({
   );
 }
 
-function ProviderPill({ prov }: { prov: WatchProvider }) {
+function ProviderPill({
+  prov,
+  kind,
+}: {
+  prov: WatchProvider;
+  kind?: "free" | "sub" | "ads";
+}) {
+  const badge =
+    kind === "free"
+      ? { label: "Free", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" }
+      : kind === "ads"
+        ? { label: "Ads", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" }
+        : null;
   return (
     <div
       title={prov.provider_name}
-      className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
+      className="flex h-12 shrink-0 items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
     >
       {prov.logo_path ? (
         <img
@@ -235,6 +247,13 @@ function ProviderPill({ prov }: { prov: WatchProvider }) {
         <div className="h-8 w-8 rounded-md bg-muted" />
       )}
       <span className="text-sm font-medium whitespace-nowrap">{prov.provider_name}</span>
+      {badge && (
+        <span
+          className={`ml-0.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badge.cls}`}
+        >
+          {badge.label}
+        </span>
+      )}
     </div>
   );
 }
