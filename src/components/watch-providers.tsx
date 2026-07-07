@@ -103,9 +103,11 @@ export function WatchProviders({ tmdbId, type }: Props) {
         </p>
       ) : (
         <div className="space-y-3">
-          <ProviderRow label="Streaming" items={p!.flatrate} />
-          <ProviderRow label="Free" items={p!.free} />
-          <ProviderRow label="With ads" items={p!.ads} />
+          <StreamingRow
+            free={p!.free}
+            flatrate={p!.flatrate}
+            ads={p!.ads}
+          />
           <RentBuyRow rent={p!.rent} buy={p!.buy} />
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             {p!.link ? (
@@ -130,16 +132,41 @@ export function WatchProviders({ tmdbId, type }: Props) {
   );
 }
 
-function ProviderRow({ label, items }: { label: string; items?: WatchProvider[] }) {
-  if (!items || items.length === 0) return null;
+function StreamingRow({
+  free,
+  flatrate,
+  ads,
+}: {
+  free?: WatchProvider[];
+  flatrate?: WatchProvider[];
+  ads?: WatchProvider[];
+}) {
+  // Order: Free first, then subscription streaming, then ad-supported.
+  // Deduplicate by provider_id so a provider offering both free and flatrate
+  // isn't shown twice — the first occurrence wins.
+  const ordered: { prov: WatchProvider; kind: "free" | "sub" | "ads" }[] = [];
+  const seen = new Set<number>();
+  const push = (list: WatchProvider[] | undefined, kind: "free" | "sub" | "ads") => {
+    (list ?? []).forEach((prov) => {
+      if (seen.has(prov.provider_id)) return;
+      seen.add(prov.provider_id);
+      ordered.push({ prov, kind });
+    });
+  };
+  push(free, "free");
+  push(flatrate, "sub");
+  push(ads, "ads");
+
+  if (ordered.length === 0) return null;
+
   return (
     <div>
       <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
+        Streaming
       </div>
-      <div className="flex flex-wrap gap-2">
-        {items.map((prov) => (
-          <ProviderPill key={prov.provider_id} prov={prov} />
+      <div className="flex flex-wrap items-center gap-2">
+        {ordered.map(({ prov, kind }) => (
+          <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
         ))}
       </div>
     </div>
