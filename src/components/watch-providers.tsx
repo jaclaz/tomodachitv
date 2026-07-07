@@ -103,9 +103,11 @@ export function WatchProviders({ tmdbId, type }: Props) {
         </p>
       ) : (
         <div className="space-y-3">
-          <ProviderRow label="Streaming" items={p!.flatrate} />
-          <ProviderRow label="Free" items={p!.free} />
-          <ProviderRow label="With ads" items={p!.ads} />
+          <StreamingRow
+            free={p!.free}
+            flatrate={p!.flatrate}
+            ads={p!.ads}
+          />
           <RentBuyRow rent={p!.rent} buy={p!.buy} />
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             {p!.link ? (
@@ -130,16 +132,41 @@ export function WatchProviders({ tmdbId, type }: Props) {
   );
 }
 
-function ProviderRow({ label, items }: { label: string; items?: WatchProvider[] }) {
-  if (!items || items.length === 0) return null;
+function StreamingRow({
+  free,
+  flatrate,
+  ads,
+}: {
+  free?: WatchProvider[];
+  flatrate?: WatchProvider[];
+  ads?: WatchProvider[];
+}) {
+  // Order: Free first, then subscription streaming, then ad-supported.
+  // Deduplicate by provider_id so a provider offering both free and flatrate
+  // isn't shown twice — the first occurrence wins.
+  const ordered: { prov: WatchProvider; kind: "free" | "sub" | "ads" }[] = [];
+  const seen = new Set<number>();
+  const push = (list: WatchProvider[] | undefined, kind: "free" | "sub" | "ads") => {
+    (list ?? []).forEach((prov) => {
+      if (seen.has(prov.provider_id)) return;
+      seen.add(prov.provider_id);
+      ordered.push({ prov, kind });
+    });
+  };
+  push(free, "free");
+  push(flatrate, "sub");
+  push(ads, "ads");
+
+  if (ordered.length === 0) return null;
+
   return (
     <div>
       <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
+        Streaming
       </div>
-      <div className="flex flex-wrap gap-2">
-        {items.map((prov) => (
-          <ProviderPill key={prov.provider_id} prov={prov} />
+      <div className="flex flex-wrap items-center gap-2">
+        {ordered.map(({ prov, kind }) => (
+          <ProviderPill key={prov.provider_id} prov={prov} kind={kind} />
         ))}
       </div>
     </div>
@@ -191,11 +218,23 @@ function RentBuyRow({
   );
 }
 
-function ProviderPill({ prov }: { prov: WatchProvider }) {
+function ProviderPill({
+  prov,
+  kind,
+}: {
+  prov: WatchProvider;
+  kind?: "free" | "sub" | "ads";
+}) {
+  const badge =
+    kind === "free"
+      ? { label: "Free", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" }
+      : kind === "ads"
+        ? { label: "Ads", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" }
+        : null;
   return (
     <div
       title={prov.provider_name}
-      className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
+      className="flex h-12 shrink-0 items-center gap-2 rounded-lg border border-border bg-background/60 p-1.5 pr-3"
     >
       {prov.logo_path ? (
         <img
@@ -208,6 +247,13 @@ function ProviderPill({ prov }: { prov: WatchProvider }) {
         <div className="h-8 w-8 rounded-md bg-muted" />
       )}
       <span className="text-sm font-medium whitespace-nowrap">{prov.provider_name}</span>
+      {badge && (
+        <span
+          className={`ml-0.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badge.cls}`}
+        >
+          {badge.label}
+        </span>
+      )}
     </div>
   );
 }
