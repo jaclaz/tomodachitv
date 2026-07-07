@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSeriesDetails, posterUrl, backdropUrl } from "@/lib/tmdb";
 import {
@@ -85,11 +85,13 @@ function SeriesDetailPage() {
 
   return (
     <div className="space-y-6 pt-12 sm:pt-0">
-      <Button variant="ghost" asChild className="-ml-2 gap-2 text-muted-foreground">
-        <Link to="/">
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Link>
+      <Button
+        variant="ghost"
+        onClick={() => router.history.back()}
+        className="-ml-2 gap-2 text-muted-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
       </Button>
 
       <section className="relative overflow-hidden rounded-2xl border border-border">
