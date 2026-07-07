@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { updateMyProfile } from "@/lib/social.functions";
+import { moderateProfileImage } from "@/lib/moderation.functions";
 import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +43,15 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
         .createSignedUrl(path, SIGNED_URL_TTL);
       if (signedError || !signed?.signedUrl) {
         throw signedError ?? new Error("Could not generate banner URL");
+      }
+
+      const check = await moderateProfileImage({
+        data: { url: signed.signedUrl, bucket: "banners", path },
+      });
+      if (!check.safe) {
+        throw new Error(
+          "This image was blocked by our content filter. Please choose a different one.",
+        );
       }
 
       await updateMyProfile({ data: { banner_url: signed.signedUrl } });

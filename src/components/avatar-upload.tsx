@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { updateMyProfile } from "@/lib/social.functions";
+import { moderateProfileImage } from "@/lib/moderation.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -58,6 +59,16 @@ export function AvatarUpload({
         .createSignedUrl(path, SIGNED_URL_TTL);
       if (signedError || !signed?.signedUrl) {
         throw signedError ?? new Error("Could not generate avatar URL");
+      }
+
+      // Content moderation — reject NSFW / unsafe images.
+      const check = await moderateProfileImage({
+        data: { url: signed.signedUrl, bucket: "avatars", path },
+      });
+      if (!check.safe) {
+        throw new Error(
+          "This image was blocked by our content filter. Please choose a different one.",
+        );
       }
 
       await updateMyProfile({ data: { avatar_url: signed.signedUrl } });

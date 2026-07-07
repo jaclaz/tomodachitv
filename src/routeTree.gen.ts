@@ -25,6 +25,7 @@ import { Route as AuthenticatedSerieIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPersonIdRouteImport } from './routes/_authenticated/person.$id'
 import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticated/movie.$id'
 import { Route as AuthenticatedListIdRouteImport } from './routes/_authenticated/list.$id'
+import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
 import { Route as AuthenticatedYoutubeVideoIdRouteImport } from './routes/_authenticated/youtube.video.$id'
 import { Route as AuthenticatedYoutubePlaylistIdRouteImport } from './routes/_authenticated/youtube.playlist.$id'
 import { Route as AuthenticatedYoutubeChannelIdRouteImport } from './routes/_authenticated/youtube.channel.$id'
@@ -108,6 +109,12 @@ const AuthenticatedListIdRoute = AuthenticatedListIdRouteImport.update({
   path: '/list/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminReportsRoute =
+  AuthenticatedAdminReportsRouteImport.update({
+    id: '/admin/reports',
+    path: '/admin/reports',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedYoutubeVideoIdRoute =
   AuthenticatedYoutubeVideoIdRouteImport.update({
     id: '/video/$id',
@@ -138,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/watched': typeof AuthenticatedWatchedRoute
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/youtube': typeof AuthenticatedYoutubeRouteWithChildren
+  '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/list/$id': typeof AuthenticatedListIdRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/person/$id': typeof AuthenticatedPersonIdRoute
@@ -158,6 +166,7 @@ export interface FileRoutesByTo {
   '/watchlist': typeof AuthenticatedWatchlistRoute
   '/youtube': typeof AuthenticatedYoutubeRouteWithChildren
   '/': typeof AuthenticatedIndexRoute
+  '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/list/$id': typeof AuthenticatedListIdRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/person/$id': typeof AuthenticatedPersonIdRoute
@@ -180,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/watchlist': typeof AuthenticatedWatchlistRoute
   '/_authenticated/youtube': typeof AuthenticatedYoutubeRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/list/$id': typeof AuthenticatedListIdRoute
   '/_authenticated/movie/$id': typeof AuthenticatedMovieIdRoute
   '/_authenticated/person/$id': typeof AuthenticatedPersonIdRoute
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/watched'
     | '/watchlist'
     | '/youtube'
+    | '/admin/reports'
     | '/list/$id'
     | '/movie/$id'
     | '/person/$id'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/watchlist'
     | '/youtube'
     | '/'
+    | '/admin/reports'
     | '/list/$id'
     | '/movie/$id'
     | '/person/$id'
@@ -243,6 +255,7 @@ export interface FileRouteTypes {
     | '/_authenticated/watchlist'
     | '/_authenticated/youtube'
     | '/_authenticated/'
+    | '/_authenticated/admin/reports'
     | '/_authenticated/list/$id'
     | '/_authenticated/movie/$id'
     | '/_authenticated/person/$id'
@@ -372,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/reports': {
+      id: '/_authenticated/admin/reports'
+      path: '/admin/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AuthenticatedAdminReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/youtube/video/$id': {
       id: '/_authenticated/youtube/video/$id'
       path: '/video/$id'
@@ -421,6 +441,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWatchlistRoute: typeof AuthenticatedWatchlistRoute
   AuthenticatedYoutubeRoute: typeof AuthenticatedYoutubeRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedListIdRoute: typeof AuthenticatedListIdRoute
   AuthenticatedMovieIdRoute: typeof AuthenticatedMovieIdRoute
   AuthenticatedPersonIdRoute: typeof AuthenticatedPersonIdRoute
@@ -438,6 +459,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWatchlistRoute: AuthenticatedWatchlistRoute,
   AuthenticatedYoutubeRoute: AuthenticatedYoutubeRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
   AuthenticatedListIdRoute: AuthenticatedListIdRoute,
   AuthenticatedMovieIdRoute: AuthenticatedMovieIdRoute,
   AuthenticatedPersonIdRoute: AuthenticatedPersonIdRoute,
