@@ -26,8 +26,8 @@ export const Route = createFileRoute("/_authenticated/")({
 type Filter = "all" | "tv" | "movie";
 
 function HomePage() {
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
+
 
   const { data: allTrending } = useQuery({
     queryKey: ["trending", "all"],
