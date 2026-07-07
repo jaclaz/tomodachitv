@@ -191,7 +191,7 @@ function ProvidersRow({
       )}
       {hasRent && (
         <div className="flex items-end gap-2">
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Rent
             </span>
@@ -209,7 +209,7 @@ function ProvidersRow({
       )}
       {hasBuy && (
         <div className="flex items-end gap-2">
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Buy
             </span>
