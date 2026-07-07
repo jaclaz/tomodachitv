@@ -1,10 +1,9 @@
-import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  getTrendingAll,
   getTrendingSeries,
   getTrendingMovies,
+  getUserRecommendations,
   type MediaItem,
 } from "@/lib/tmdb";
 import { getWatchlist } from "@/lib/watchlist.functions";
@@ -13,33 +12,72 @@ import { HeroCarousel } from "@/components/hero-carousel";
 import { StatsStrip } from "@/components/stats-strip";
 import { MediaCard } from "@/components/media-card";
 import { SearchBar } from "@/components/search-bar";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CurrentlyWatching } from "@/components/currently-watching";
 import { UpcomingPreview } from "@/components/upcoming-preview";
-
-
 
 export const Route = createFileRoute("/_authenticated/")({
   component: HomePage,
 });
 
-type Filter = "all" | "tv" | "movie";
+function MediaRow({
+  title,
+  items,
+  loading,
+  emptyLabel,
+}: {
+  title: string;
+  items: MediaItem[];
+  loading: boolean;
+  emptyLabel?: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <h3 className="font-display text-base font-semibold text-foreground">
+        {title}
+      </h3>
+      {loading && items.length === 0 ? (
+        <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-[2/3] w-[140px] flex-shrink-0 animate-pulse rounded-xl bg-muted sm:w-[160px]"
+            />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {emptyLabel ?? "Nothing to show yet."}
+        </p>
+      ) : (
+        <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-2">
+          {items.map((item) => (
+            <div
+              key={`${item.media_type}-${item.id}`}
+              className="w-[140px] flex-shrink-0 snap-start sm:w-[160px]"
+            >
+              <MediaCard item={item} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function HomePage() {
-  const [filter, setFilter] = useState<Filter>("all");
-
-
-  const { data: allTrending } = useQuery({
-    queryKey: ["trending", "all"],
-    queryFn: () => getTrendingAll(),
-  });
-  const { data: tvTrending } = useQuery({
+  const { data: tvTrending, isFetching: tvLoading } = useQuery({
     queryKey: ["trending", "tv"],
     queryFn: () => getTrendingSeries(),
   });
-  const { data: movieTrending } = useQuery({
+  const { data: movieTrending, isFetching: movieLoading } = useQuery({
     queryKey: ["trending", "movie"],
     queryFn: () => getTrendingMovies(),
+  });
+
+  const { data: recommendations, isFetching: recLoading } = useQuery({
+    queryKey: ["recommendations"],
+    queryFn: () => getUserRecommendations(),
+    staleTime: 1000 * 60 * 10,
   });
 
   const { data: watchlist = [] } = useQuery({
@@ -52,16 +90,14 @@ function HomePage() {
     queryFn: () => getAllWatchedStats(),
   });
 
-  const source =
-    filter === "tv" ? tvTrending : filter === "movie" ? movieTrending : allTrending;
-  const results: MediaItem[] = source?.results ?? [];
-
   const watchlistKey = (m: { media_type: string; tmdb_id: number }) =>
     `${m.media_type}-${m.tmdb_id}`;
   const watchlistSet = new Set(watchlist.map(watchlistKey));
 
-
-
+  const tvItems: MediaItem[] = tvTrending?.results ?? [];
+  const movieItems: MediaItem[] = movieTrending?.results ?? [];
+  const recTv = recommendations?.tv ?? [];
+  const recMovies = recommendations?.movie ?? [];
 
   return (
     <div className="space-y-8">
@@ -77,7 +113,6 @@ function HomePage() {
 
       <HeroCarousel watchlistKeys={watchlistSet} />
 
-
       <StatsStrip
         totalEpisodes={stats?.totalEpisodes ?? 0}
         totalMovies={stats?.totalMovies ?? 0}
@@ -89,36 +124,35 @@ function HomePage() {
 
       <UpcomingPreview />
 
-      <section>
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-semibold text-foreground">
-            Trending
-          </h2>
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="tv">TV</TabsTrigger>
-              <TabsTrigger value="movie">Movies</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+      <section className="space-y-5">
+        <h2 className="font-display text-xl font-semibold text-foreground">
+          Trending this week
+        </h2>
+        <MediaRow title="TV Shows" items={tvItems} loading={tvLoading} />
+        <MediaRow title="Movies" items={movieItems} loading={movieLoading} />
+      </section>
 
-        {!source ? (
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-[2/3] animate-pulse rounded-xl bg-muted"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {results.slice(filter === "all" ? 1 : 0).map((item) => (
-              <MediaCard key={`${item.media_type}-${item.id}`} item={item} />
-            ))}
-          </div>
-        )}
+      <section className="space-y-5">
+        <div>
+          <h2 className="font-display text-xl font-semibold text-foreground">
+            Recommended for you
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Based on what you've been watching.
+          </p>
+        </div>
+        <MediaRow
+          title="TV Shows"
+          items={recTv}
+          loading={recLoading}
+          emptyLabel="Watch some episodes to get TV recommendations."
+        />
+        <MediaRow
+          title="Movies"
+          items={recMovies}
+          loading={recLoading}
+          emptyLabel="Mark some movies as watched to get recommendations."
+        />
       </section>
 
       <p className="text-xs text-muted-foreground">
