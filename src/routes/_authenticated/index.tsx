@@ -13,13 +13,14 @@ import {
   removeFromWatchlist,
 } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
-import { HeroSection } from "@/components/hero-section";
+import { HeroCarousel } from "@/components/hero-carousel";
 import { StatsStrip } from "@/components/stats-strip";
 import { MediaCard } from "@/components/media-card";
 import { SearchBar } from "@/components/search-bar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CurrentlyWatching } from "@/components/currently-watching";
 import { UpcomingPreview } from "@/components/upcoming-preview";
+
 
 export const Route = createFileRoute("/_authenticated/")({
   component: HomePage,
