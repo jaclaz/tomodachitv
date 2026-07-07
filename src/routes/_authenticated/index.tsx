@@ -1,17 +1,13 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   getTrendingAll,
   getTrendingSeries,
   getTrendingMovies,
   type MediaItem,
 } from "@/lib/tmdb";
-import {
-  getWatchlist,
-  addToWatchlist,
-  removeFromWatchlist,
-} from "@/lib/watchlist.functions";
+import { getWatchlist } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { StatsStrip } from "@/components/stats-strip";
@@ -20,6 +16,7 @@ import { SearchBar } from "@/components/search-bar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CurrentlyWatching } from "@/components/currently-watching";
 import { UpcomingPreview } from "@/components/upcoming-preview";
+
 
 
 export const Route = createFileRoute("/_authenticated/")({
