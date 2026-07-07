@@ -642,6 +642,88 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
     return { slides };
   });
 
+// ============ Personalized recommendations ============
+export const getUserRecommendations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    async ({ context }): Promise<{ tv: MediaItem[]; movie: MediaItem[] }> => {
+      const [recentEpisodes, recentMovies] = await Promise.all([
+        context.supabase
+          .from("watched_episodes")
+          .select("tmdb_id, watched_at")
+          .eq("user_id", context.userId)
+          .order("watched_at", { ascending: false })
+          .limit(100),
+        context.supabase
+          .from("watched_movies")
+          .select("tmdb_id, watched_at")
+          .eq("user_id", context.userId)
+          .order("watched_at", { ascending: false })
+          .limit(20),
+      ]);
+
+      const tvSeedIds = [
+        ...new Set(
+          ((recentEpisodes.data ?? []) as { tmdb_id: number }[]).map(
+            (e) => e.tmdb_id
+          )
+        ),
+      ].slice(0, 5);
+      const movieSeedIds = [
+        ...new Set(
+          ((recentMovies.data ?? []) as { tmdb_id: number }[]).map(
+            (m) => m.tmdb_id
+          )
+        ),
+      ].slice(0, 5);
+
+      async function aggregate<T>(
+        seedIds: number[],
+        kind: "tv" | "movie",
+        map: (r: T) => MediaItem
+      ): Promise<MediaItem[]> {
+        const seen = new Set<number>(seedIds);
+        const scored = new Map<number, { item: MediaItem; score: number }>();
+        const responses = await Promise.all(
+          seedIds.map((id) =>
+            tmdbFetch(`/${kind}/${id}/recommendations`).catch(() => null)
+          )
+        );
+        for (const res of responses) {
+          const list = ((res?.results ?? []) as T[]).slice(0, 20);
+          for (const raw of list) {
+            const item = map(raw);
+            if (seen.has(item.id)) continue;
+            if (!item.poster_path) continue;
+            const cur = scored.get(item.id);
+            if (cur) cur.score += 1;
+            else scored.set(item.id, { item, score: 1 });
+          }
+        }
+        return [...scored.values()]
+          .sort(
+            (a, b) =>
+              b.score - a.score ||
+              (b.item.vote_average ?? 0) - (a.item.vote_average ?? 0)
+          )
+          .slice(0, 20)
+          .map((s) => s.item);
+      }
+
+      const [tv, movie] = await Promise.all([
+        tvSeedIds.length
+          ? aggregate<RawTv>(tvSeedIds, "tv", mapTv)
+          : Promise.resolve([] as MediaItem[]),
+        movieSeedIds.length
+          ? aggregate<RawMovie>(movieSeedIds, "movie", mapMovie)
+          : Promise.resolve([] as MediaItem[]),
+      ]);
+
+      return { tv, movie };
+    }
+  );
+
+
 
 
 
