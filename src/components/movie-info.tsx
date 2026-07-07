@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCredits, getTranslations, type MovieDetails } from "@/lib/tmdb";
+import { getCredits, type MovieDetails } from "@/lib/tmdb";
 
 interface MovieInfoProps {
   movie: MovieDetails;
