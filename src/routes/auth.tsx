@@ -57,6 +57,23 @@ function AuthPage() {
       return;
     }
 
+    const usernameCheck = checkNameSafety(normalizedUsername);
+    if (!usernameCheck.ok) {
+      setError(nameSafetyMessage(usernameCheck.reason));
+      setLoading(false);
+      return;
+    }
+    const trimmedDisplay = displayName.trim();
+    if (trimmedDisplay) {
+      const displayCheck = checkNameSafety(trimmedDisplay);
+      if (!displayCheck.ok) {
+        setError(nameSafetyMessage(displayCheck.reason));
+        setLoading(false);
+        return;
+      }
+    }
+
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
