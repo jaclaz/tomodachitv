@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import logoUrl from "@/assets/logo.png";
+import { checkNameSafety, nameSafetyMessage } from "@/lib/profanity";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -55,6 +56,23 @@ function AuthPage() {
       setLoading(false);
       return;
     }
+
+    const usernameCheck = checkNameSafety(normalizedUsername);
+    if (!usernameCheck.ok) {
+      setError(nameSafetyMessage(usernameCheck.reason));
+      setLoading(false);
+      return;
+    }
+    const trimmedDisplay = displayName.trim();
+    if (trimmedDisplay) {
+      const displayCheck = checkNameSafety(trimmedDisplay);
+      if (!displayCheck.ok) {
+        setError(nameSafetyMessage(displayCheck.reason));
+        setLoading(false);
+        return;
+      }
+    }
+
 
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
