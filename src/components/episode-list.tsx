@@ -367,13 +367,6 @@ export function EpisodeList({ series }: EpisodeListProps) {
               Yes, mark all previous
             </Button>
           </DialogFooter>
-          {/* TEMP: force dialog open for screenshot */}
-          {(() => {
-            if (!pendingPrompt) {
-              setPendingPrompt({ trigger: seasonDetails?.episodes?.[0]!, previous: seasonDetails?.episodes?.slice(0, 2) ?? [] });
-            }
-            return null;
-          })()}
         </DialogContent>
       </Dialog>
     </div>
