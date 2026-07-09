@@ -56,6 +56,7 @@ const DEFAULTS: Filters = {
 };
 
 function WatchedPage() {
+  const qc = useQueryClient();
   const [type, setType] = useState<TypeTab>("all");
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
 
@@ -64,6 +65,64 @@ function WatchedPage() {
     queryFn: () => getWatchedLibrary(),
     staleTime: 60_000,
   });
+
+  // ---- Background auto-resolver for pending TMDB imports ----
+  const { data: pendingInit } = useQuery({
+    queryKey: ["pending-imports-count"],
+    queryFn: () => getPendingImportsCount(),
+    staleTime: 10_000,
+  });
+  const [remaining, setRemaining] = useState<number>(0);
+  const [pauseUntil, setPauseUntil] = useState<number>(0);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
+  const runningRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingInit?.count != null) setRemaining(pendingInit.count);
+  }, [pendingInit?.count]);
+
+  // tick every second so the "resume in Xs" countdown updates
+  useEffect(() => {
+    if (remaining <= 0) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [remaining]);
+
+  useEffect(() => {
+    if (remaining <= 0) return;
+    if (runningRef.current) return;
+    if (Date.now() < pauseUntil) return;
+    runningRef.current = true;
+    (async () => {
+      try {
+        const r = await retryPendingImports();
+        setRemaining(r.remaining);
+        if (r.pauseSeconds > 0) {
+          setPauseUntil(Date.now() + r.pauseSeconds * 1000);
+        }
+        if (r.resolved > 0) {
+          qc.invalidateQueries({ queryKey: ["watched-library"] });
+          qc.invalidateQueries({ queryKey: ["watchlist"] });
+        }
+      } catch {
+        // brief pause on unexpected error
+        setPauseUntil(Date.now() + 5000);
+      } finally {
+        runningRef.current = false;
+        // trigger the next tick
+        setNowTs(Date.now());
+      }
+    })();
+  }, [remaining, pauseUntil, nowTs, qc]);
+
+  const pausedSecondsLeft = Math.max(0, Math.ceil((pauseUntil - nowTs) / 1000));
+
+  // ---- Split counters ----
+  const tvCount = library.filter((i) => i.media_type === "tv").length;
+  const movieCount = library.filter((i) => i.media_type === "movie").length;
+  const tvEpisodesCount = library
+    .filter((i) => i.media_type === "tv")
+    .reduce((s, i) => s + (i.episodes_watched ?? 0), 0);
 
   const genreType: MediaType = type === "movie" ? "movie" : "tv";
   const { data: genresData } = useQuery({
