@@ -324,7 +324,7 @@ export const getTrendingLists = createServerFn({ method: "POST" })
           preview_posters: g?.posters ?? [],
           saves_count: counts.get(l.id) ?? 0,
           is_saved_by_me: mySaveSet.has(l.id),
-          owner: o
+          owner: o && o.username
             ? { username: o.username, display_name: o.display_name, avatar_url: o.avatar_url }
             : null,
         };
