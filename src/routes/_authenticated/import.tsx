@@ -544,6 +544,13 @@ function ImportPage() {
       }
       bump();
 
+      setPhase("Cleaning up watchlist…");
+      try {
+        await cleanupWatchedFromWatchlist();
+      } catch (e) {
+        console.error("cleanup failed", e);
+      }
+
       setPhase("Done");
       setProgress(100);
       toast.success("Import complete");
