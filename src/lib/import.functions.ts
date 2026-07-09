@@ -14,7 +14,6 @@ export const resetLibrary = createServerFn({ method: "POST" })
       "watchlist",
       "pending_media_imports",
       "favorites",
-      "user_list_items",
     ] as const;
     for (const t of tables) {
       const { error } = await (context.supabase as any).from(t).delete().eq("user_id", uid);
