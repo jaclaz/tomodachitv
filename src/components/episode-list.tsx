@@ -26,7 +26,7 @@ import {
   markEpisodesBulk,
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
-import { Clock, CheckCheck } from "lucide-react";
+import { Clock, CheckCheck, X } from "lucide-react";
 
 interface EpisodeListProps {
   series: SeriesDetails;
