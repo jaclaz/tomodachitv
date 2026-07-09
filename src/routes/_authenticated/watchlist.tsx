@@ -23,6 +23,8 @@ type Filter = "all" | "tv" | "movie";
 function WatchlistPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["watchlist"],
