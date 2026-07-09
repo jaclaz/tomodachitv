@@ -464,164 +464,183 @@ export const getPendingImportsCount = createServerFn({ method: "POST" })
     return { count: count ?? 0 };
   });
 
+// Process a batch of unresolved imports. The caller is expected to invoke this
+// repeatedly (in a background loop) until `remaining === 0`. Between TMDB
+// calls we sleep 250ms; on a 429 we stop early and return `pauseSeconds` so
+// the client knows how long to wait before hitting us again.
 export const retryPendingImports = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const BATCH = 150;
+    const DELAY_MS = 250;
     const { data: pending, error } = await (context.supabase as any)
       .from("pending_media_imports")
       .select("*")
       .eq("user_id", context.userId)
-      .limit(500);
+      .order("attempts", { ascending: true })
+      .limit(BATCH);
     if (error) throw error;
-    if (!pending?.length) return { resolved: 0, remaining: 0 };
 
     let resolved = 0;
-    for (const p of pending) {
-      let ok = false;
-      try {
-        if (p.kind === "follow_show" || p.kind === "watched_episode") {
-          let show: ResolvedShow | null = null;
-          if (p.source === "tvdb") {
-            const d = await tmdbFetch(`/find/${p.source_id}`, { external_source: "tvdb_id" });
-            const tv = d?.tv_results?.[0];
-            if (tv) {
-              const details = await tmdbFetch(`/tv/${tv.id}`);
-              show = {
-                tmdb_id: tv.id,
-                name: tv.name,
-                poster_path: tv.poster_path ?? null,
-                backdrop_path: tv.backdrop_path ?? null,
-                first_air_date: tv.first_air_date ?? null,
-                vote_average: tv.vote_average ?? null,
-                runtime: details?.episode_run_time?.[0] ?? null,
-              };
+    let pauseSeconds = 0;
+
+    if (pending?.length) {
+      for (let idx = 0; idx < pending.length; idx++) {
+        const p = pending[idx];
+        if (idx > 0) await new Promise((r) => setTimeout(r, DELAY_MS));
+
+        let ok = false;
+        let rateLimited = false;
+        try {
+          if (p.kind === "follow_show" || p.kind === "watched_episode") {
+            let show: ResolvedShow | null = null;
+            if (p.source === "tvdb") {
+              const d = await tmdbFetch(`/find/${p.source_id}`, { external_source: "tvdb_id" });
+              const tv = d?.tv_results?.[0];
+              if (tv) {
+                const details = await tmdbFetch(`/tv/${tv.id}`);
+                show = {
+                  tmdb_id: tv.id,
+                  name: tv.name,
+                  poster_path: tv.poster_path ?? null,
+                  backdrop_path: tv.backdrop_path ?? null,
+                  first_air_date: tv.first_air_date ?? null,
+                  vote_average: tv.vote_average ?? null,
+                  runtime: details?.episode_run_time?.[0] ?? null,
+                };
+              }
+            } else if (p.source === "tmdb") {
+              const d = await tmdbFetch(`/tv/${p.source_id}`);
+              if (d?.id)
+                show = {
+                  tmdb_id: d.id,
+                  name: d.name,
+                  poster_path: d.poster_path ?? null,
+                  backdrop_path: d.backdrop_path ?? null,
+                  first_air_date: d.first_air_date ?? null,
+                  vote_average: d.vote_average ?? null,
+                  runtime: d.episode_run_time?.[0] ?? null,
+                };
             }
-          } else if (p.source === "tmdb") {
-            const d = await tmdbFetch(`/tv/${p.source_id}`);
-            if (d?.id)
-              show = {
-                tmdb_id: d.id,
-                name: d.name,
-                poster_path: d.poster_path ?? null,
-                backdrop_path: d.backdrop_path ?? null,
-                first_air_date: d.first_air_date ?? null,
-                vote_average: d.vote_average ?? null,
-                runtime: d.episode_run_time?.[0] ?? null,
-              };
-          }
-          if (show) {
-            await context.supabase.from("watchlist").upsert(
-              {
-                user_id: context.userId,
-                tmdb_id: show.tmdb_id,
-                media_type: "tv",
-                series_name: show.name,
-                poster_path: show.poster_path,
-                backdrop_path: show.backdrop_path,
-                first_air_date: show.first_air_date,
-                vote_average: show.vote_average,
-              },
-              { onConflict: "user_id, media_type, tmdb_id" },
-            );
-            if (p.kind === "watched_episode" && p.season_number != null && p.episode_number != null) {
-              await context.supabase.from("watched_episodes").upsert(
-                {
-                  user_id: context.userId,
-                  tmdb_id: show.tmdb_id,
-                  season_number: p.season_number,
-                  episode_number: p.episode_number,
-                  runtime_minutes: show.runtime,
-                  watched_at: p.watched_at ?? new Date().toISOString(),
-                },
-                { onConflict: "user_id, tmdb_id, season_number, episode_number" },
-              );
-            }
-            ok = true;
-          }
-        } else if (p.kind === "watched_movie" || p.kind === "follow_movie") {
-          let movie: ResolvedMovie | null = null;
-          if (p.source === "tmdb") {
-            const d = await tmdbFetch(`/movie/${p.source_id}`);
-            if (d?.id)
-              movie = {
-                tmdb_id: d.id,
-                title: d.title,
-                poster_path: d.poster_path ?? null,
-                backdrop_path: d.backdrop_path ?? null,
-                release_date: d.release_date ?? null,
-                vote_average: d.vote_average ?? null,
-                runtime: d.runtime ?? null,
-              };
-          } else if (p.source === "imdb") {
-            const d = await tmdbFetch(`/find/${p.source_id}`, { external_source: "imdb_id" });
-            const mv = d?.movie_results?.[0];
-            if (mv)
-              movie = {
-                tmdb_id: mv.id,
-                title: mv.title,
-                poster_path: mv.poster_path ?? null,
-                backdrop_path: mv.backdrop_path ?? null,
-                release_date: mv.release_date ?? null,
-                vote_average: mv.vote_average ?? null,
-                runtime: null,
-              };
-          } else if (p.source === "name" && p.title) {
-            const params: Record<string, string> = { query: p.title };
-            if (p.year) params.year = String(p.year);
-            const d = await tmdbFetch(`/search/movie`, params);
-            const mv = d?.results?.[0];
-            if (mv)
-              movie = {
-                tmdb_id: mv.id,
-                title: mv.title,
-                poster_path: mv.poster_path ?? null,
-                backdrop_path: mv.backdrop_path ?? null,
-                release_date: mv.release_date ?? null,
-                vote_average: mv.vote_average ?? null,
-                runtime: null,
-              };
-          }
-          if (movie) {
-            if (p.kind === "watched_movie") {
-              await context.supabase.from("watched_movies").upsert(
-                {
-                  user_id: context.userId,
-                  tmdb_id: movie.tmdb_id,
-                  title: movie.title,
-                  runtime_minutes: movie.runtime ?? p.runtime_minutes ?? null,
-                  watched_at: p.watched_at ?? new Date().toISOString(),
-                },
-                { onConflict: "user_id, tmdb_id" },
-              );
-            } else {
+            if (show) {
               await context.supabase.from("watchlist").upsert(
                 {
                   user_id: context.userId,
-                  tmdb_id: movie.tmdb_id,
-                  media_type: "movie",
-                  series_name: movie.title,
-                  poster_path: movie.poster_path,
-                  backdrop_path: movie.backdrop_path,
-                  first_air_date: movie.release_date,
-                  vote_average: movie.vote_average,
+                  tmdb_id: show.tmdb_id,
+                  media_type: "tv",
+                  series_name: show.name,
+                  poster_path: show.poster_path,
+                  backdrop_path: show.backdrop_path,
+                  first_air_date: show.first_air_date,
+                  vote_average: show.vote_average,
                 },
                 { onConflict: "user_id, media_type, tmdb_id" },
               );
+              if (p.kind === "watched_episode" && p.season_number != null && p.episode_number != null) {
+                await context.supabase.from("watched_episodes").upsert(
+                  {
+                    user_id: context.userId,
+                    tmdb_id: show.tmdb_id,
+                    season_number: p.season_number,
+                    episode_number: p.episode_number,
+                    runtime_minutes: show.runtime,
+                    watched_at: p.watched_at ?? new Date().toISOString(),
+                  },
+                  { onConflict: "user_id, tmdb_id, season_number, episode_number" },
+                );
+              }
+              ok = true;
             }
-            ok = true;
+          } else if (p.kind === "watched_movie" || p.kind === "follow_movie") {
+            let movie: ResolvedMovie | null = null;
+            if (p.source === "tmdb") {
+              const d = await tmdbFetch(`/movie/${p.source_id}`);
+              if (d?.id)
+                movie = {
+                  tmdb_id: d.id,
+                  title: d.title,
+                  poster_path: d.poster_path ?? null,
+                  backdrop_path: d.backdrop_path ?? null,
+                  release_date: d.release_date ?? null,
+                  vote_average: d.vote_average ?? null,
+                  runtime: d.runtime ?? null,
+                };
+            } else if (p.source === "imdb") {
+              const d = await tmdbFetch(`/find/${p.source_id}`, { external_source: "imdb_id" });
+              const mv = d?.movie_results?.[0];
+              if (mv)
+                movie = {
+                  tmdb_id: mv.id,
+                  title: mv.title,
+                  poster_path: mv.poster_path ?? null,
+                  backdrop_path: mv.backdrop_path ?? null,
+                  release_date: mv.release_date ?? null,
+                  vote_average: mv.vote_average ?? null,
+                  runtime: null,
+                };
+            } else if (p.source === "name" && p.title) {
+              const params: Record<string, string> = { query: p.title };
+              if (p.year) params.year = String(p.year);
+              const d = await tmdbFetch(`/search/movie`, params);
+              const mv = d?.results?.[0];
+              if (mv)
+                movie = {
+                  tmdb_id: mv.id,
+                  title: mv.title,
+                  poster_path: mv.poster_path ?? null,
+                  backdrop_path: mv.backdrop_path ?? null,
+                  release_date: mv.release_date ?? null,
+                  vote_average: mv.vote_average ?? null,
+                  runtime: null,
+                };
+            }
+            if (movie) {
+              if (p.kind === "watched_movie") {
+                await context.supabase.from("watched_movies").upsert(
+                  {
+                    user_id: context.userId,
+                    tmdb_id: movie.tmdb_id,
+                    title: movie.title,
+                    runtime_minutes: movie.runtime ?? p.runtime_minutes ?? null,
+                    watched_at: p.watched_at ?? new Date().toISOString(),
+                  },
+                  { onConflict: "user_id, tmdb_id" },
+                );
+              } else {
+                await context.supabase.from("watchlist").upsert(
+                  {
+                    user_id: context.userId,
+                    tmdb_id: movie.tmdb_id,
+                    media_type: "movie",
+                    series_name: movie.title,
+                    poster_path: movie.poster_path,
+                    backdrop_path: movie.backdrop_path,
+                    first_air_date: movie.release_date,
+                    vote_average: movie.vote_average,
+                  },
+                  { onConflict: "user_id, media_type, tmdb_id" },
+                );
+              }
+              ok = true;
+            }
           }
+        } catch (e) {
+          if (e instanceof TmdbRateLimitError) {
+            rateLimited = true;
+            pauseSeconds = e.retryAfterSeconds;
+          }
+          ok = false;
         }
-      } catch {
-        ok = false;
-      }
-      if (ok) {
-        await (context.supabase as any).from("pending_media_imports").delete().eq("id", p.id);
-        resolved++;
-      } else {
-        await (context.supabase as any)
-          .from("pending_media_imports")
-          .update({ attempts: (p.attempts ?? 0) + 1 })
-          .eq("id", p.id);
+        if (ok) {
+          await (context.supabase as any).from("pending_media_imports").delete().eq("id", p.id);
+          resolved++;
+        } else {
+          await (context.supabase as any)
+            .from("pending_media_imports")
+            .update({ attempts: (p.attempts ?? 0) + 1 })
+            .eq("id", p.id);
+        }
+        if (rateLimited) break;
       }
     }
 
@@ -630,7 +649,7 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       .select("id", { count: "exact", head: true })
       .eq("user_id", context.userId);
 
-    return { resolved, remaining: count ?? 0 };
+    return { resolved, remaining: count ?? 0, pauseSeconds };
   });
 
 // ---- Export (paginated to bypass 1000-row cap) ----
