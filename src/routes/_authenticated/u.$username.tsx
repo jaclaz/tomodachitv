@@ -34,6 +34,7 @@ import { PosterStrip, type PosterItem } from "@/components/poster-strip";
 import { PosterActions } from "@/components/poster-actions";
 import { UserListsSection } from "@/components/user-lists-section";
 import { ReportProfileButton } from "@/components/report-profile-button";
+import { FollowListDialog } from "@/components/follow-list-dialog";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
   component: UserProfilePage,
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/_authenticated/u/$username")({
 function UserProfilePage() {
   const { username } = Route.useParams();
   const queryClient = useQueryClient();
+  const [followDialogMode, setFollowDialogMode] = useState<"followers" | "following" | null>(null);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", username],
@@ -184,14 +186,22 @@ function UserProfilePage() {
               <p className="text-sm text-muted-foreground">@{profile.username}</p>
               <BioSection profile={profile} />
               <div className="mt-2 flex gap-4 text-sm">
-                <span>
+                <button
+                  type="button"
+                  onClick={() => setFollowDialogMode("followers")}
+                  className="transition-colors hover:text-primary"
+                >
                   <strong>{profile.followers_count}</strong>{" "}
                   <span className="text-muted-foreground">followers</span>
-                </span>
-                <span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFollowDialogMode("following")}
+                  className="transition-colors hover:text-primary"
+                >
                   <strong>{profile.following_count}</strong>{" "}
                   <span className="text-muted-foreground">following</span>
-                </span>
+                </button>
               </div>
             </div>
 
@@ -330,6 +340,13 @@ function UserProfilePage() {
 
       {/* Personal lists — always for self; only if any exist for others */}
       <ListsSectionGate userId={profile.id} isSelf={profile.is_self} />
+
+      <FollowListDialog
+        userId={profile.id}
+        username={profile.username}
+        mode={followDialogMode}
+        onClose={() => setFollowDialogMode(null)}
+      />
     </div>
   );
 }

@@ -17,6 +17,62 @@ export interface ProfileWithStats extends PublicProfile {
   is_self: boolean;
 }
 
+export interface FollowUserItem extends PublicProfile {
+  is_following: boolean;
+  is_self: boolean;
+}
+
+async function fetchFollowList(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  userIds: string[],
+  currentUserId: string
+): Promise<FollowUserItem[]> {
+  if (userIds.length === 0) return [];
+  const [{ data: profiles }, { data: myFollows }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url, banner_url, bio")
+      .in("id", userIds),
+    supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", currentUserId)
+      .in("following_id", userIds),
+  ]);
+  const followingSet = new Set((myFollows ?? []).map((f) => f.following_id));
+  return (profiles ?? []).map((p) => ({
+    ...(p as PublicProfile),
+    is_following: followingSet.has(p.id),
+    is_self: p.id === currentUserId,
+  }));
+}
+
+export const getFollowers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { user_id: string }) => input)
+  .handler(async ({ context, data }): Promise<FollowUserItem[]> => {
+    const { data: rows, error } = await context.supabase
+      .from("follows")
+      .select("follower_id")
+      .eq("following_id", data.user_id);
+    if (error) throw error;
+    const ids = (rows ?? []).map((r) => r.follower_id);
+    return fetchFollowList(context.supabase, ids, context.userId);
+  });
+
+export const getFollowing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { user_id: string }) => input)
+  .handler(async ({ context, data }): Promise<FollowUserItem[]> => {
+    const { data: rows, error } = await context.supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", data.user_id);
+    if (error) throw error;
+    const ids = (rows ?? []).map((r) => r.following_id);
+    return fetchFollowList(context.supabase, ids, context.userId);
+  });
+
 export const searchUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { query: string }) => input)
