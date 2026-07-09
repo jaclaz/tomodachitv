@@ -300,49 +300,78 @@ export const bulkInsertWatchlist = createServerFn({ method: "POST" })
 
   });
 
-// Remove from watchlist items the user has already watched:
-// - movies present in watched_movies
-// - TV shows with at least one watched episode (started = no longer "to watch")
+// Classify shows/movies and keep watchlist consistent with watch state:
+// - Movie in watched_movies                → remove from watchlist (WATCHED)
+// - TV show with watched == total episodes → remove from watchlist (COMPLETED)
+// - TV show with 1..total-1 watched         → keep in watchlist (IN PROGRESS)
+// - TV show with 0 watched                  → keep in watchlist (TO WATCH)
 export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const PAGE = 1000;
-    const fetchAllIds = async (
-      run: (from: number, to: number) => PromiseLike<{ data: { tmdb_id: number }[] | null; error: unknown }>,
-    ) => {
-      const ids = new Set<number>();
+
+    // Movies fully watched
+    const watchedMovieIds = new Set<number>();
+    {
       let from = 0;
       while (true) {
-        const { data, error } = await run(from, from + PAGE - 1);
-        if (error) throw error;
-        const chunk = data ?? [];
-        for (const r of chunk) ids.add(r.tmdb_id);
-        if (chunk.length < PAGE) break;
-        from += PAGE;
-      }
-      return [...ids];
-    };
-
-    const [movieIds, showIds] = await Promise.all([
-      fetchAllIds((f, t) =>
-        context.supabase
+        const { data, error } = await context.supabase
           .from("watched_movies")
           .select("tmdb_id")
           .eq("user_id", context.userId)
-          .range(f, t),
-      ),
-      fetchAllIds((f, t) =>
-        context.supabase
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = data ?? [];
+        for (const r of chunk) watchedMovieIds.add(r.tmdb_id);
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
+    // Count watched episodes per show
+    const watchedPerShow = new Map<number, number>();
+    {
+      let from = 0;
+      while (true) {
+        const { data, error } = await context.supabase
           .from("watched_episodes")
-          .select("tmdb_id")
+          .select("tmdb_id, season_number")
           .eq("user_id", context.userId)
-          .range(f, t),
-      ),
-    ]);
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = data ?? [];
+        for (const r of chunk) {
+          // exclude specials (season 0) from the "completion" count
+          if ((r.season_number ?? 0) <= 0) continue;
+          watchedPerShow.set(r.tmdb_id, (watchedPerShow.get(r.tmdb_id) ?? 0) + 1);
+        }
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
+    // Fetch total episode count from TMDB for each show with watched eps
+    const completedShowIds: number[] = [];
+    let inProgress = 0;
+    const showIds = [...watchedPerShow.keys()];
+    await mapPool(showIds, 6, async (id) => {
+      const watched = watchedPerShow.get(id) ?? 0;
+      if (watched === 0) return;
+      const details = await tmdbFetch(`/tv/${id}`);
+      if (!details?.id) return;
+      const seasons: { season_number: number; episode_count: number }[] = details.seasons ?? [];
+      const total =
+        seasons.filter((s) => s.season_number > 0).reduce((a, s) => a + (s.episode_count ?? 0), 0) ||
+        details.number_of_episodes ||
+        0;
+      if (total > 0 && watched >= total) completedShowIds.push(id);
+      else inProgress++;
+    });
 
     let removedMovies = 0;
     let removedShows = 0;
     const CHUNK = 200;
+    const movieIds = [...watchedMovieIds];
     for (let i = 0; i < movieIds.length; i += CHUNK) {
       const slice = movieIds.slice(i, i + CHUNK);
       const { error, count } = await context.supabase
@@ -354,8 +383,8 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       if (error) throw error;
       removedMovies += count ?? 0;
     }
-    for (let i = 0; i < showIds.length; i += CHUNK) {
-      const slice = showIds.slice(i, i + CHUNK);
+    for (let i = 0; i < completedShowIds.length; i += CHUNK) {
+      const slice = completedShowIds.slice(i, i + CHUNK);
       const { error, count } = await context.supabase
         .from("watchlist")
         .delete({ count: "exact" })
@@ -365,7 +394,7 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       if (error) throw error;
       removedShows += count ?? 0;
     }
-    return { removedMovies, removedShows };
+    return { removedMovies, removedShows, completedShows: completedShowIds.length, inProgress };
   });
 
 // ---- Pending imports (unresolved) ----
