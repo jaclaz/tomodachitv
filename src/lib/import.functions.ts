@@ -268,12 +268,17 @@ export const bulkInsertWatchlist = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     if (!data.rows.length) return { inserted: 0 };
-    const rows = data.rows.map((r) => ({ user_id: context.userId, ...r }));
+    const dedup = new Map<string, any>();
+    for (const r of data.rows) {
+      dedup.set(`${r.media_type}:${r.tmdb_id}`, { user_id: context.userId, ...r });
+    }
+    const rows = Array.from(dedup.values());
     const { error } = await context.supabase
       .from("watchlist")
       .upsert(rows, { onConflict: "user_id, media_type, tmdb_id" });
     if (error) throw error;
     return { inserted: rows.length };
+
   });
 
 // ---- Pending imports (unresolved) ----
