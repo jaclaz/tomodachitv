@@ -786,6 +786,37 @@ function ImportPage() {
           {exporting ? "Preparing…" : "Export ZIP"}
         </Button>
       </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-display text-base font-semibold">Reset library</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Deletes all your watched episodes, watched movies, watchlist, favorites and pending
+            imports. Your profile and lists are kept. This cannot be undone.
+          </p>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button type="button" variant="destructive" disabled={resetting || busy}>
+              {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {resetting ? "Clearing…" : "Reset library"}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset your library?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete every watched episode, watched movie, watchlist entry,
+                favorite and pending import from your account. You can then re-import from scratch.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleReset}>Yes, wipe everything</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }
