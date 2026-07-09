@@ -186,14 +186,22 @@ function UserProfilePage() {
               <p className="text-sm text-muted-foreground">@{profile.username}</p>
               <BioSection profile={profile} />
               <div className="mt-2 flex gap-4 text-sm">
-                <span>
+                <button
+                  type="button"
+                  onClick={() => setFollowDialogMode("followers")}
+                  className="transition-colors hover:text-primary"
+                >
                   <strong>{profile.followers_count}</strong>{" "}
                   <span className="text-muted-foreground">followers</span>
-                </span>
-                <span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFollowDialogMode("following")}
+                  className="transition-colors hover:text-primary"
+                >
                   <strong>{profile.following_count}</strong>{" "}
                   <span className="text-muted-foreground">following</span>
-                </span>
+                </button>
               </div>
             </div>
 
