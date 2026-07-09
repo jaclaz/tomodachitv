@@ -356,14 +356,14 @@ export function EpisodeList({ series }: EpisodeListProps) {
               season that you haven't marked yet. Do you want to mark them as watched too?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button variant="ghost" onClick={neverAskAgain} className="sm:mr-auto">
+          <DialogFooter className="flex-col flex-wrap gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={neverAskAgain} className="whitespace-normal text-left sm:mr-auto">
               Never for this series
             </Button>
-            <Button variant="outline" onClick={markOnlyThis}>
+            <Button variant="outline" onClick={markOnlyThis} className="whitespace-normal">
               Only this one
             </Button>
-            <Button onClick={confirmMarkPrevious}>
+            <Button onClick={confirmMarkPrevious} className="whitespace-normal">
               Yes, mark all previous
             </Button>
           </DialogFooter>
