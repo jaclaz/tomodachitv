@@ -301,10 +301,10 @@ export const bulkInsertWatchlist = createServerFn({ method: "POST" })
   });
 
 // Classify shows/movies and keep watchlist consistent with watch state:
-// - Movie in watched_movies                → remove from watchlist (WATCHED)
-// - TV show with watched == total episodes → remove from watchlist (COMPLETED)
-// - TV show with 1..total-1 watched         → keep in watchlist (IN PROGRESS)
-// - TV show with 0 watched                  → keep in watchlist (TO WATCH)
+// - Movie in watched_movies                       → remove from watchlist (WATCHED)
+// - TV show with watched >= AIRED episodes so far → remove from watchlist
+//   (nothing available to watch right now; future unaired episodes don't count)
+// - TV show with watched < aired episodes         → keep in watchlist (something to watch)
 export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -341,7 +341,6 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
         if (error) throw error;
         const chunk = data ?? [];
         for (const r of chunk) {
-          // exclude specials (season 0) from the "completion" count
           if ((r.season_number ?? 0) <= 0) continue;
           watchedPerShow.set(r.tmdb_id, (watchedPerShow.get(r.tmdb_id) ?? 0) + 1);
         }
@@ -350,8 +349,11 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       }
     }
 
-    // Fetch total episode count from TMDB for each show with watched eps
-    const completedShowIds: number[] = [];
+    // For each show, compute the number of AIRED episodes (past/today).
+    // A show is removed from the watchlist only when the user has watched every
+    // episode that has already aired — pending future episodes don't put it back.
+    const today = new Date().toISOString().slice(0, 10);
+    const caughtUpShowIds: number[] = [];
     let inProgress = 0;
     const showIds = [...watchedPerShow.keys()];
     await mapPool(showIds, 6, async (id) => {
@@ -359,12 +361,26 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       if (watched === 0) return;
       const details = await tmdbFetch(`/tv/${id}`);
       if (!details?.id) return;
-      const seasons: { season_number: number; episode_count: number }[] = details.seasons ?? [];
-      const total =
-        seasons.filter((s) => s.season_number > 0).reduce((a, s) => a + (s.episode_count ?? 0), 0) ||
-        details.number_of_episodes ||
-        0;
-      if (total > 0 && watched >= total) completedShowIds.push(id);
+      const seasons: { season_number: number; episode_count: number; air_date: string | null }[] =
+        details.seasons ?? [];
+      let aired = 0;
+      for (const s of seasons) {
+        if (s.season_number <= 0) continue;
+        // Season hasn't aired at all → skip.
+        if (s.air_date && s.air_date > today) continue;
+        // Fetch season to count only episodes actually aired.
+        try {
+          const season = await tmdbFetch(`/tv/${id}/season/${s.season_number}`);
+          const eps: { air_date: string | null }[] = season.episodes ?? [];
+          for (const e of eps) {
+            if (e.air_date && e.air_date <= today) aired++;
+          }
+        } catch {
+          // Fallback: assume the whole season is aired.
+          aired += s.episode_count ?? 0;
+        }
+      }
+      if (aired > 0 && watched >= aired) caughtUpShowIds.push(id);
       else inProgress++;
     });
 
@@ -383,8 +399,8 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       if (error) throw error;
       removedMovies += count ?? 0;
     }
-    for (let i = 0; i < completedShowIds.length; i += CHUNK) {
-      const slice = completedShowIds.slice(i, i + CHUNK);
+    for (let i = 0; i < caughtUpShowIds.length; i += CHUNK) {
+      const slice = caughtUpShowIds.slice(i, i + CHUNK);
       const { error, count } = await context.supabase
         .from("watchlist")
         .delete({ count: "exact" })
@@ -394,7 +410,7 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       if (error) throw error;
       removedShows += count ?? 0;
     }
-    return { removedMovies, removedShows, completedShows: completedShowIds.length, inProgress };
+    return { removedMovies, removedShows, caughtUpShows: caughtUpShowIds.length, inProgress };
   });
 
 // ---- Pending imports (unresolved) ----
