@@ -481,43 +481,62 @@ export const retryPendingImports = createServerFn({ method: "POST" })
     return { resolved, remaining: count ?? 0 };
   });
 
-// ---- Export (unchanged, paginated to bypass 1000-row cap) ----
-async function fetchAllPaged<T>(
-  fetcher: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>,
-): Promise<T[]> {
-  const page = 1000;
-  let from = 0;
-  const out: T[] = [];
-  while (true) {
-    const { data, error } = await fetcher(from, from + page - 1);
-    if (error) throw error;
-    if (!data?.length) break;
-    out.push(...data);
-    if (data.length < page) break;
-    from += page;
-  }
-  return out;
-}
-
+// ---- Export (paginated to bypass 1000-row cap) ----
 export const exportLibrary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const PAGE = 1000;
+    const fetchAll = async <T>(
+      run: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+    ): Promise<T[]> => {
+      let from = 0;
+      const out: T[] = [];
+      while (true) {
+        const { data, error } = await run(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = data ?? [];
+        out.push(...chunk);
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+      return out;
+    };
+
     const [episodes, movies, watchlist] = await Promise.all([
-      fetchAllPaged((f, t) =>
+      fetchAll<{
+        tmdb_id: number;
+        season_number: number;
+        episode_number: number;
+        watched_at: string;
+      }>((f, t) =>
         context.supabase
           .from("watched_episodes")
           .select("tmdb_id, season_number, episode_number, watched_at")
           .eq("user_id", context.userId)
           .range(f, t),
       ),
-      fetchAllPaged((f, t) =>
+      fetchAll<{
+        tmdb_id: number;
+        title: string | null;
+        runtime_minutes: number | null;
+        watched_at: string;
+      }>((f, t) =>
         context.supabase
           .from("watched_movies")
           .select("tmdb_id, title, runtime_minutes, watched_at")
           .eq("user_id", context.userId)
           .range(f, t),
       ),
-      fetchAllPaged((f, t) =>
+      fetchAll<{
+        tmdb_id: number;
+        media_type: string;
+        series_name: string;
+        poster_path: string | null;
+        backdrop_path: string | null;
+        first_air_date: string | null;
+        vote_average: number | null;
+        added_at: string;
+      }>((f, t) =>
         context.supabase
           .from("watchlist")
           .select(
