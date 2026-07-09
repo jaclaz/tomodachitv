@@ -19,6 +19,7 @@ import { WatchLanguages } from "@/components/watch-languages";
 import { CastList } from "@/components/cast-list";
 import { MovieInfo } from "@/components/movie-info";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
+import { SearchBar } from "@/components/search-bar";
 
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
