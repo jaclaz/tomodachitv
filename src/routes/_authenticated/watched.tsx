@@ -188,6 +188,50 @@ function WatchedPage() {
         </p>
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Tv className="h-4 w-4" />
+            <span className="text-xs font-medium uppercase tracking-wider">
+              Serie TV viste
+            </span>
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold text-foreground">
+            {tvCount}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              · {tvEpisodesCount} ep
+            </span>
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Film className="h-4 w-4" />
+            <span className="text-xs font-medium uppercase tracking-wider">
+              Film visti
+            </span>
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold text-foreground">
+            {movieCount}
+          </p>
+        </div>
+      </div>
+
+      {remaining > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-amber-500" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">
+              Risoluzione elementi in corso: {remaining} rimasti…
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {pausedSecondsLeft > 0
+                ? `Connessione TMDB in pausa per sovraccarico, ripresa tra ${pausedSecondsLeft}s…`
+                : "La libreria si aggiorna automaticamente man mano che i titoli vengono risolti."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         <Tabs value={type} onValueChange={(v) => setType(v as TypeTab)}>
           <TabsList>
