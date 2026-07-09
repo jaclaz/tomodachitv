@@ -39,9 +39,13 @@ function WatchlistPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
+  const q = query.trim().toLowerCase();
   const filtered = data.filter(
-    (item) => filter === "all" || item.media_type === filter
+    (item) =>
+      (filter === "all" || item.media_type === filter) &&
+      (q === "" || item.series_name.toLowerCase().includes(q))
   );
+
 
   return (
     <div className="space-y-8">
