@@ -136,8 +136,6 @@ export function AppSidebar() {
             </Link>
           )}
         </nav>
-
-        <Separator className="my-4 bg-border" />
       </ScrollArea>
 
       {profile && (
