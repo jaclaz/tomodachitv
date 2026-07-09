@@ -15,6 +15,7 @@ import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
 import { WatchLanguages } from "@/components/watch-languages";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
+import { SearchBar } from "@/components/search-bar";
 
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
@@ -87,14 +88,17 @@ function SeriesDetailPage() {
 
   return (
     <div className="space-y-6 pt-12 sm:pt-0">
-      <Button
-        variant="ghost"
-        onClick={() => router.history.back()}
-        className="-ml-2 gap-2 text-muted-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Button>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Button
+          variant="ghost"
+          onClick={() => router.history.back()}
+          className="-ml-2 gap-2 self-start text-muted-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        <SearchBar />
+      </div>
 
       <section className="relative overflow-hidden rounded-2xl border border-border">
         <div className="absolute inset-0">
