@@ -281,6 +281,74 @@ export const bulkInsertWatchlist = createServerFn({ method: "POST" })
 
   });
 
+// Remove from watchlist items the user has already watched:
+// - movies present in watched_movies
+// - TV shows with at least one watched episode (started = no longer "to watch")
+export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const PAGE = 1000;
+    const fetchAllIds = async (
+      run: (from: number, to: number) => PromiseLike<{ data: { tmdb_id: number }[] | null; error: unknown }>,
+    ) => {
+      const ids = new Set<number>();
+      let from = 0;
+      while (true) {
+        const { data, error } = await run(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = data ?? [];
+        for (const r of chunk) ids.add(r.tmdb_id);
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+      return [...ids];
+    };
+
+    const [movieIds, showIds] = await Promise.all([
+      fetchAllIds((f, t) =>
+        context.supabase
+          .from("watched_movies")
+          .select("tmdb_id")
+          .eq("user_id", context.userId)
+          .range(f, t),
+      ),
+      fetchAllIds((f, t) =>
+        context.supabase
+          .from("watched_episodes")
+          .select("tmdb_id")
+          .eq("user_id", context.userId)
+          .range(f, t),
+      ),
+    ]);
+
+    let removedMovies = 0;
+    let removedShows = 0;
+    const CHUNK = 200;
+    for (let i = 0; i < movieIds.length; i += CHUNK) {
+      const slice = movieIds.slice(i, i + CHUNK);
+      const { error, count } = await context.supabase
+        .from("watchlist")
+        .delete({ count: "exact" })
+        .eq("user_id", context.userId)
+        .eq("media_type", "movie")
+        .in("tmdb_id", slice);
+      if (error) throw error;
+      removedMovies += count ?? 0;
+    }
+    for (let i = 0; i < showIds.length; i += CHUNK) {
+      const slice = showIds.slice(i, i + CHUNK);
+      const { error, count } = await context.supabase
+        .from("watchlist")
+        .delete({ count: "exact" })
+        .eq("user_id", context.userId)
+        .eq("media_type", "tv")
+        .in("tmdb_id", slice);
+      if (error) throw error;
+      removedShows += count ?? 0;
+    }
+    return { removedMovies, removedShows };
+  });
+
 // ---- Pending imports (unresolved) ----
 export const savePendingImports = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

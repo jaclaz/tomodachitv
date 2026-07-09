@@ -17,6 +17,7 @@ import {
   getPendingImportsCount,
   retryPendingImports,
   exportLibrary,
+  cleanupWatchedFromWatchlist,
 } from "@/lib/import.functions";
 
 export const Route = createFileRoute("/_authenticated/import")({
@@ -542,6 +543,13 @@ function ImportPage() {
         setLive({ unresolved: allPending.length });
       }
       bump();
+
+      setPhase("Cleaning up watchlist…");
+      try {
+        await cleanupWatchedFromWatchlist();
+      } catch (e) {
+        console.error("cleanup failed", e);
+      }
 
       setPhase("Done");
       setProgress(100);
