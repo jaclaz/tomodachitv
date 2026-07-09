@@ -1,14 +1,34 @@
 import { useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getMyProfile } from "@/lib/social.functions";
 import { isCurrentUserAdmin } from "@/lib/reports.functions";
+import { deleteMyAccount } from "@/lib/account.functions";
+import { toast } from "sonner";
 import logoUrl from "@/assets/logo.png";
 import {
   Compass,
@@ -23,6 +43,9 @@ import {
   CalendarDays,
   Youtube,
   ShieldAlert,
+  MoreVertical,
+  UserCog,
+  Trash2,
 } from "lucide-react";
 
 const navItems = [
@@ -40,7 +63,9 @@ const navItems = [
 
 export function AppSidebar() {
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
+  const qc = useQueryClient();
 
   const { data: profile } = useQuery({
     queryKey: ["me"],
@@ -55,9 +80,23 @@ export function AppSidebar() {
   const isAdmin = adminInfo?.admin ?? false;
 
   const handleLogout = async () => {
+    await qc.cancelQueries();
+    qc.clear();
     await supabase.auth.signOut();
-    await router.navigate({ to: "/auth" });
+    await router.navigate({ to: "/auth", replace: true });
   };
+
+  const deleteMut = useMutation({
+    mutationFn: () => deleteMyAccount(),
+    onSuccess: async () => {
+      toast.success("Account deleted");
+      await qc.cancelQueries();
+      qc.clear();
+      await supabase.auth.signOut();
+      await router.navigate({ to: "/auth", replace: true });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-canvas">
@@ -99,42 +138,71 @@ export function AppSidebar() {
         </nav>
 
         <Separator className="my-4 bg-border" />
-
-        {profile && (
-          <Link
-            to="/u/$username"
-            params={{ username: profile.username }}
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 transition-colors hover:bg-card"
-          >
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={profile.avatar_url ?? undefined} />
-              <AvatarFallback>
-                {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">
-                {profile.display_name ?? profile.username}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                @{profile.username}
-              </p>
-            </div>
-          </Link>
-        )}
       </ScrollArea>
 
-      <div className="border-t border-border p-4">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-5 w-5" />
-          Sign out
-        </Button>
-      </div>
+      {profile && (
+        <div className="border-t border-border p-3">
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-surface p-2 pr-1">
+            <Link
+              to="/u/$username"
+              params={{ username: profile.username }}
+              onClick={() => setOpen(false)}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 transition-colors hover:bg-card"
+            >
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={profile.avatar_url ?? undefined} />
+                <AvatarFallback>
+                  {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  {profile.display_name ?? profile.username}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  @{profile.username}
+                </p>
+              </div>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  aria-label="Account menu"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/u/$username"
+                    params={{ username: profile.username }}
+                    onClick={() => setOpen(false)}
+                    className="cursor-pointer"
+                  >
+                    <UserCog className="mr-2 h-4 w-4" /> Edit profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" /> Sign out
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setConfirmDelete(true)}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete account
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -160,6 +228,28 @@ export function AppSidebar() {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-canvas lg:block">
         {sidebarContent}
       </aside>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes your profile, lists, watch history, follows and
+              everything else tied to your account. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMut.mutate()}
+              disabled={deleteMut.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMut.isPending ? "Deleting..." : "Delete account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
