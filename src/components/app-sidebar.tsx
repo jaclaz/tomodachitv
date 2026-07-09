@@ -175,17 +175,7 @@ export function AppSidebar() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/u/$username"
-                    params={{ username: profile.username }}
-                    onClick={() => setOpen(false)}
-                    className="cursor-pointer"
-                  >
-                    <UserCog className="mr-2 h-4 w-4" /> Edit profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => setConfirmLogout(true)} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
