@@ -43,7 +43,6 @@ import {
   Youtube,
   ShieldAlert,
   MoreVertical,
-  UserCog,
   Trash2,
 } from "lucide-react";
 
@@ -62,6 +61,7 @@ const navItems = [
 
 export function AppSidebar() {
   const [open, setOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
   const qc = useQueryClient();
