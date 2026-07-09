@@ -72,7 +72,7 @@ function ListDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back
       </Link>
       <header className="space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{list.title}</h1>
           <Badge variant="outline" className="gap-1 border-border">
             {list.is_public ? (
@@ -85,14 +85,40 @@ function ListDetailPage() {
               </>
             )}
           </Badge>
+          {canSave && (
+            <Button
+              size="sm"
+              variant={list.is_saved_by_me ? "secondary" : "default"}
+              onClick={() => saveMut.mutate(!list.is_saved_by_me)}
+              disabled={saveMut.isPending}
+              className="ml-auto gap-1.5"
+            >
+              {list.is_saved_by_me ? (
+                <>
+                  <BookmarkCheck className="h-4 w-4" /> Saved
+                </>
+              ) : (
+                <>
+                  <Bookmark className="h-4 w-4" /> Save
+                </>
+              )}
+            </Button>
+          )}
         </div>
         {list.description && (
           <p className="max-w-2xl text-sm text-muted-foreground">{list.description}</p>
         )}
         <p className="text-xs text-muted-foreground">
           {items.length} item{items.length === 1 ? "" : "s"}
+          {list.is_public && (
+            <>
+              {" · "}
+              {list.saves_count ?? 0} save{(list.saves_count ?? 0) === 1 ? "" : "s"}
+            </>
+          )}
         </p>
       </header>
+
 
       {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
