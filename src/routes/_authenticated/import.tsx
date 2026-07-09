@@ -626,6 +626,24 @@ function ImportPage() {
     }
   };
 
+  const [resetting, setResetting] = useState(false);
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      await resetLibrary();
+      setCounts(null);
+      setPendingCount(0);
+      toast.success("Library cleared — you can re-import from scratch");
+      qc.invalidateQueries();
+    } catch (err) {
+      console.error(err);
+      toast.error("Reset failed: " + (err instanceof Error ? err.message : "unknown error"));
+    } finally {
+      setResetting(false);
+    }
+  };
+
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 pt-12 sm:pt-0">
       <div>
