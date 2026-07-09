@@ -8,9 +8,11 @@ import {
 } from "@/lib/watchlist.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
-import { Trash2, Star } from "lucide-react";
+import { Trash2, Star, Search, X } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
   component: WatchlistPage,
@@ -21,6 +23,8 @@ type Filter = "all" | "tv" | "movie";
 function WatchlistPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["watchlist"],
@@ -35,9 +39,13 @@ function WatchlistPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
+  const q = query.trim().toLowerCase();
   const filtered = data.filter(
-    (item) => filter === "all" || item.media_type === filter
+    (item) =>
+      (filter === "all" || item.media_type === filter) &&
+      (q === "" || item.series_name.toLowerCase().includes(q))
   );
+
 
   return (
     <div className="space-y-8">
@@ -50,13 +58,36 @@ function WatchlistPage() {
         </p>
       </div>
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="tv">TV Shows</TabsTrigger>
-          <TabsTrigger value="movie">Movies</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="tv">TV Shows</TabsTrigger>
+            <TabsTrigger value="movie">Movies</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="relative w-full sm:w-72">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search in watchlist..."
+            className="h-9 pl-9 pr-9 bg-surface"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
 
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">

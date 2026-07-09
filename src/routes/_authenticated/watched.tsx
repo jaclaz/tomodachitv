@@ -12,8 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
-import { Star, X, CheckCircle2 } from "lucide-react";
+import { Star, X, CheckCircle2, Search } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/watched")({
   component: WatchedPage,
@@ -57,6 +59,8 @@ const DEFAULTS: Filters = {
 function WatchedPage() {
   const [type, setType] = useState<TypeTab>("all");
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
+  const [query, setQuery] = useState("");
+
 
   const { data: library = [], isLoading } = useQuery({
     queryKey: ["watched-library"],
@@ -75,6 +79,8 @@ function WatchedPage() {
   const filtered = useMemo(() => {
     let list = library.slice();
     if (type !== "all") list = list.filter((i) => i.media_type === type);
+    const q = query.trim().toLowerCase();
+    if (q !== "") list = list.filter((i) => i.title.toLowerCase().includes(q));
     if (filters.genreId != null)
       list = list.filter((i) => i.genre_ids.includes(filters.genreId as number));
     if (filters.yearFrom != null || filters.yearTo != null) {
@@ -105,7 +111,8 @@ function WatchedPage() {
       }
     });
     return list;
-  }, [library, type, filters]);
+  }, [library, type, filters, query]);
+
 
   const currentDecadeIdx = DECADES.findIndex(
     (d) => d.from === filters.yearFrom && d.to === filters.yearTo
@@ -129,13 +136,36 @@ function WatchedPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Tabs value={type} onValueChange={(v) => setType(v as TypeTab)}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="tv">TV Shows</TabsTrigger>
-            <TabsTrigger value="movie">Movies</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Tabs value={type} onValueChange={(v) => setType(v as TypeTab)}>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="tv">TV Shows</TabsTrigger>
+              <TabsTrigger value="movie">Movies</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search in watched..."
+              className="h-9 pl-9 pr-9 bg-surface"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
 
         <div className="flex flex-wrap items-center gap-2">
           <Select
