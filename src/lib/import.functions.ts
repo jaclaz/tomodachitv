@@ -193,19 +193,27 @@ export const bulkInsertEpisodes = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     if (!data.rows.length) return { inserted: 0 };
-    const rows = data.rows.map((r) => ({
-      user_id: context.userId,
-      tmdb_id: r.tmdb_id,
-      season_number: r.season_number,
-      episode_number: r.episode_number,
-      runtime_minutes: r.runtime_minutes,
-      watched_at: r.watched_at ?? new Date().toISOString(),
-    }));
+    const dedup = new Map<string, any>();
+    for (const r of data.rows) {
+      const key = `${r.tmdb_id}:${r.season_number}:${r.episode_number}`;
+      const row = {
+        user_id: context.userId,
+        tmdb_id: r.tmdb_id,
+        season_number: r.season_number,
+        episode_number: r.episode_number,
+        runtime_minutes: r.runtime_minutes,
+        watched_at: r.watched_at ?? new Date().toISOString(),
+      };
+      const prev = dedup.get(key);
+      if (!prev || row.watched_at > prev.watched_at) dedup.set(key, row);
+    }
+    const rows = Array.from(dedup.values());
     const { error } = await context.supabase
       .from("watched_episodes")
       .upsert(rows, { onConflict: "user_id, tmdb_id, season_number, episode_number" });
     if (error) throw error;
     return { inserted: rows.length };
+
   });
 
 export const bulkInsertWatchedMovies = createServerFn({ method: "POST" })
