@@ -43,6 +43,7 @@ export const Route = createFileRoute("/_authenticated/u/$username")({
 function UserProfilePage() {
   const { username } = Route.useParams();
   const queryClient = useQueryClient();
+  const [followDialogMode, setFollowDialogMode] = useState<"followers" | "following" | null>(null);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", username],
