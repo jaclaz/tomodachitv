@@ -8,9 +8,11 @@ import {
 } from "@/lib/watchlist.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
-import { Trash2, Star } from "lucide-react";
+import { Trash2, Star, Search, X } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
   component: WatchlistPage,
