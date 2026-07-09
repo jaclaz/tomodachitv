@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWatchedLibrary } from "@/lib/watched-library.functions";
+import { getPendingImportsCount, retryPendingImports } from "@/lib/import.functions";
 import { getGenres, posterUrl, type MediaType, type SortBy } from "@/lib/tmdb";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { PosterActions } from "@/components/poster-actions";
-import { Star, X, CheckCircle2 } from "lucide-react";
+import { Star, X, CheckCircle2, Tv, Film, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watched")({
   component: WatchedPage,
@@ -55,6 +56,7 @@ const DEFAULTS: Filters = {
 };
 
 function WatchedPage() {
+  const qc = useQueryClient();
   const [type, setType] = useState<TypeTab>("all");
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
 
@@ -63,6 +65,64 @@ function WatchedPage() {
     queryFn: () => getWatchedLibrary(),
     staleTime: 60_000,
   });
+
+  // ---- Background auto-resolver for pending TMDB imports ----
+  const { data: pendingInit } = useQuery({
+    queryKey: ["pending-imports-count"],
+    queryFn: () => getPendingImportsCount(),
+    staleTime: 10_000,
+  });
+  const [remaining, setRemaining] = useState<number>(0);
+  const [pauseUntil, setPauseUntil] = useState<number>(0);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
+  const runningRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingInit?.count != null) setRemaining(pendingInit.count);
+  }, [pendingInit?.count]);
+
+  // tick every second so the "resume in Xs" countdown updates
+  useEffect(() => {
+    if (remaining <= 0) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [remaining]);
+
+  useEffect(() => {
+    if (remaining <= 0) return;
+    if (runningRef.current) return;
+    if (Date.now() < pauseUntil) return;
+    runningRef.current = true;
+    (async () => {
+      try {
+        const r = await retryPendingImports();
+        setRemaining(r.remaining);
+        if (r.pauseSeconds > 0) {
+          setPauseUntil(Date.now() + r.pauseSeconds * 1000);
+        }
+        if (r.resolved > 0) {
+          qc.invalidateQueries({ queryKey: ["watched-library"] });
+          qc.invalidateQueries({ queryKey: ["watchlist"] });
+        }
+      } catch {
+        // brief pause on unexpected error
+        setPauseUntil(Date.now() + 5000);
+      } finally {
+        runningRef.current = false;
+        // trigger the next tick
+        setNowTs(Date.now());
+      }
+    })();
+  }, [remaining, pauseUntil, nowTs, qc]);
+
+  const pausedSecondsLeft = Math.max(0, Math.ceil((pauseUntil - nowTs) / 1000));
+
+  // ---- Split counters ----
+  const tvCount = library.filter((i) => i.media_type === "tv").length;
+  const movieCount = library.filter((i) => i.media_type === "movie").length;
+  const tvEpisodesCount = library
+    .filter((i) => i.media_type === "tv")
+    .reduce((s, i) => s + (i.episodes_watched ?? 0), 0);
 
   const genreType: MediaType = type === "movie" ? "movie" : "tv";
   const { data: genresData } = useQuery({
@@ -127,6 +187,50 @@ function WatchedPage() {
           {library.length} title{library.length === 1 ? "" : "s"} in your library.
         </p>
       </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Tv className="h-4 w-4" />
+            <span className="text-xs font-medium uppercase tracking-wider">
+              Serie TV viste
+            </span>
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold text-foreground">
+            {tvCount}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              · {tvEpisodesCount} ep
+            </span>
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Film className="h-4 w-4" />
+            <span className="text-xs font-medium uppercase tracking-wider">
+              Film visti
+            </span>
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold text-foreground">
+            {movieCount}
+          </p>
+        </div>
+      </div>
+
+      {remaining > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-amber-500" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">
+              Risoluzione elementi in corso: {remaining} rimasti…
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {pausedSecondsLeft > 0
+                ? `Connessione TMDB in pausa per sovraccarico, ripresa tra ${pausedSecondsLeft}s…`
+                : "La libreria si aggiorna automaticamente man mano che i titoli vengono risolti."}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         <Tabs value={type} onValueChange={(v) => setType(v as TypeTab)}>
