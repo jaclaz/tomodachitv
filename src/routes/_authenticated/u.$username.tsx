@@ -340,6 +340,13 @@ function UserProfilePage() {
 
       {/* Personal lists — always for self; only if any exist for others */}
       <ListsSectionGate userId={profile.id} isSelf={profile.is_self} />
+
+      <FollowListDialog
+        userId={profile.id}
+        username={profile.username}
+        mode={followDialogMode}
+        onClose={() => setFollowDialogMode(null)}
+      />
     </div>
   );
 }
