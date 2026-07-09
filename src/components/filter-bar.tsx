@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getGenres, type MediaType, type SortBy } from "@/lib/tmdb";
+import { getGenres, getProviderList, providerLogoUrl, type MediaType, type SortBy } from "@/lib/tmdb";
 import {
   Select,
   SelectContent,
@@ -16,6 +16,8 @@ export interface FilterState {
   yearTo: number | null;
   minRating: number | null;
   sortBy: SortBy;
+  providerId: number | null;
+  watchRegion: string;
 }
 
 export const DEFAULT_FILTERS: FilterState = {
@@ -24,6 +26,8 @@ export const DEFAULT_FILTERS: FilterState = {
   yearTo: null,
   minRating: null,
   sortBy: "popularity.desc",
+  providerId: null,
+  watchRegion: "US",
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -37,6 +41,23 @@ const DECADES = [
 ];
 
 const RATINGS = [9, 8, 7, 6, 5];
+
+const REGIONS: { code: string; label: string }[] = [
+  { code: "US", label: "🇺🇸 US" },
+  { code: "IT", label: "🇮🇹 Italy" },
+  { code: "GB", label: "🇬🇧 UK" },
+  { code: "CA", label: "🇨🇦 Canada" },
+  { code: "AU", label: "🇦🇺 Australia" },
+  { code: "DE", label: "🇩🇪 Germany" },
+  { code: "FR", label: "🇫🇷 France" },
+  { code: "ES", label: "🇪🇸 Spain" },
+  { code: "BR", label: "🇧🇷 Brazil" },
+  { code: "MX", label: "🇲🇽 Mexico" },
+  { code: "JP", label: "🇯🇵 Japan" },
+  { code: "IN", label: "🇮🇳 India" },
+];
+
+
 
 interface Props {
   type: MediaType;
