@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getWatchedLibrary } from "@/lib/watched-library.functions";
+import { getPendingImportsCount, retryPendingImports } from "@/lib/import.functions";
 import { getGenres, posterUrl, type MediaType, type SortBy } from "@/lib/tmdb";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { PosterActions } from "@/components/poster-actions";
-import { Star, X, CheckCircle2 } from "lucide-react";
+import { Star, X, CheckCircle2, Tv, Film, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watched")({
   component: WatchedPage,
