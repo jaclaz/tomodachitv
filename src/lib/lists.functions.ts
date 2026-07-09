@@ -23,7 +23,14 @@ export interface UserList {
   updated_at: string;
   item_count?: number;
   preview_posters?: (string | null)[];
+  saves_count?: number;
+  is_saved_by_me?: boolean;
 }
+
+export interface TrendingList extends UserList {
+  owner: { username: string; display_name: string | null; avatar_url: string | null } | null;
+}
+
 
 export interface ListItem {
   id: string;
