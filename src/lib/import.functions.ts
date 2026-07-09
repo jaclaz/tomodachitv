@@ -399,8 +399,8 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       if (error) throw error;
       removedMovies += count ?? 0;
     }
-    for (let i = 0; i < completedShowIds.length; i += CHUNK) {
-      const slice = completedShowIds.slice(i, i + CHUNK);
+    for (let i = 0; i < caughtUpShowIds.length; i += CHUNK) {
+      const slice = caughtUpShowIds.slice(i, i + CHUNK);
       const { error, count } = await context.supabase
         .from("watchlist")
         .delete({ count: "exact" })
@@ -410,7 +410,7 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       if (error) throw error;
       removedShows += count ?? 0;
     }
-    return { removedMovies, removedShows, completedShows: completedShowIds.length, inProgress };
+    return { removedMovies, removedShows, caughtUpShows: caughtUpShowIds.length, inProgress };
   });
 
 // ---- Pending imports (unresolved) ----
