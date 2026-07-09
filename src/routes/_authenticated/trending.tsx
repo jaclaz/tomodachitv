@@ -17,9 +17,20 @@ export const Route = createFileRoute("/_authenticated/trending")({
 });
 
 
+function detectRegion(): string {
+  if (typeof navigator === "undefined") return "US";
+  const parts = (navigator.language || "en-US").split("-");
+  const code = (parts[1] || parts[0] || "US").toUpperCase();
+  return code.length === 2 ? code : "US";
+}
+
 function TrendingPage() {
   const [type, setType] = useState<MediaType>("tv");
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<FilterState>(() => ({
+    ...DEFAULT_FILTERS,
+    watchRegion: detectRegion(),
+  }));
+
 
   const { data, isFetching } = useQuery({
     queryKey: ["discover", type, filters],
