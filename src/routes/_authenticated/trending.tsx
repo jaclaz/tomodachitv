@@ -1,15 +1,21 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { discoverContent, type MediaType } from "@/lib/tmdb";
+import { getTrendingLists, saveList, unsaveList } from "@/lib/lists.functions";
+import { posterUrl } from "@/lib/tmdb";
 import { MediaCard } from "@/components/media-card";
 import { SearchBar } from "@/components/search-bar";
 import { FilterBar, DEFAULT_FILTERS, type FilterState } from "@/components/filter-bar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Bookmark, BookmarkCheck, Flame } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/trending")({
   component: TrendingPage,
 });
+
 
 function TrendingPage() {
   const [type, setType] = useState<MediaType>("tv");
@@ -73,6 +79,84 @@ function TrendingPage() {
           ))}
         </div>
       )}
+
+      <TrendingListsSection />
     </div>
   );
 }
+
+function TrendingListsSection() {
+  const qc = useQueryClient();
+  const { data: lists = [], isLoading } = useQuery({
+    queryKey: ["trending-lists"],
+    queryFn: () => getTrendingLists(),
+  });
+  const saveMut = useMutation({
+    mutationFn: ({ id, save }: { id: string; save: boolean }) =>
+      save ? saveList({ data: { list_id: id } }) : unsaveList({ data: { list_id: id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trending-lists"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (isLoading || lists.length === 0) return null;
+
+  return (
+    <section className="space-y-4 pt-4">
+      <div className="flex items-center gap-2">
+        <Flame className="h-5 w-5 text-primary" />
+        <h2 className="font-display text-xl font-bold">Trending Lists</h2>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {lists.map((l) => {
+          const posters = l.preview_posters ?? [];
+          return (
+            <div key={l.id} className="group relative overflow-hidden rounded-xl border border-border bg-card">
+              <Link to="/list/$id" params={{ id: l.id }} className="block">
+                <div className="grid aspect-[16/9] grid-cols-4 gap-[2px] bg-muted">
+                  {Array.from({ length: 4 }).map((_, i) => {
+                    const p = posters[i];
+                    return (
+                      <div key={i} className="overflow-hidden bg-muted">
+                        {p ? (
+                          <img src={posterUrl(p)} alt="" loading="lazy" className="h-full w-full object-cover" />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="space-y-1 p-3">
+                  <h3 className="line-clamp-1 font-semibold">{l.title}</h3>
+                  {l.owner && (
+                    <p className="text-[11px] text-muted-foreground">
+                      by @{l.owner.username}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {l.item_count ?? 0} items · {l.saves_count ?? 0} saves
+                  </p>
+                </div>
+              </Link>
+              <Button
+                size="sm"
+                variant={l.is_saved_by_me ? "secondary" : "default"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  saveMut.mutate({ id: l.id, save: !l.is_saved_by_me });
+                }}
+                disabled={saveMut.isPending}
+                className="absolute right-2 top-2 h-8 gap-1"
+              >
+                {l.is_saved_by_me ? (
+                  <BookmarkCheck className="h-3.5 w-3.5" />
+                ) : (
+                  <Bookmark className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+

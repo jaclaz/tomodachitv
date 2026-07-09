@@ -1,10 +1,18 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getListWithItems, removeListItem } from "@/lib/lists.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import {
+  getListWithItems,
+  removeListItem,
+  saveList,
+  unsaveList,
+} from "@/lib/lists.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PosterActions } from "@/components/poster-actions";
-import { ArrowLeft, Globe, Lock, X } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck, Globe, Lock, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/list/$id")({
@@ -14,6 +22,11 @@ export const Route = createFileRoute("/_authenticated/list/$id")({
 function ListDetailPage() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
+  const [myId, setMyId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setMyId(data.user?.id ?? null));
+  }, []);
+
   const { data, isLoading } = useQuery({
     queryKey: ["list", id],
     queryFn: () => getListWithItems({ data: { id } }),
@@ -31,11 +44,24 @@ function ListDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const saveMut = useMutation({
+    mutationFn: (save: boolean) =>
+      save ? saveList({ data: { list_id: id } }) : unsaveList({ data: { list_id: id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["list", id] });
+      qc.invalidateQueries({ queryKey: ["trending-lists"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading) return <p className="pt-12 text-sm text-muted-foreground">Loading...</p>;
   if (!data) throw notFound();
 
   const { list, items } = data;
-  const canEdit = true; // RLS filters; UI presence implies write access via own lists
+  const isOwner = myId === list.user_id;
+  const canEdit = isOwner;
+  const canSave = list.is_public && !isOwner && myId !== null;
+
 
   return (
     <div className="space-y-6">
@@ -46,7 +72,7 @@ function ListDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back
       </Link>
       <header className="space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{list.title}</h1>
           <Badge variant="outline" className="gap-1 border-border">
             {list.is_public ? (
@@ -59,14 +85,40 @@ function ListDetailPage() {
               </>
             )}
           </Badge>
+          {canSave && (
+            <Button
+              size="sm"
+              variant={list.is_saved_by_me ? "secondary" : "default"}
+              onClick={() => saveMut.mutate(!list.is_saved_by_me)}
+              disabled={saveMut.isPending}
+              className="ml-auto gap-1.5"
+            >
+              {list.is_saved_by_me ? (
+                <>
+                  <BookmarkCheck className="h-4 w-4" /> Saved
+                </>
+              ) : (
+                <>
+                  <Bookmark className="h-4 w-4" /> Save
+                </>
+              )}
+            </Button>
+          )}
         </div>
         {list.description && (
           <p className="max-w-2xl text-sm text-muted-foreground">{list.description}</p>
         )}
         <p className="text-xs text-muted-foreground">
           {items.length} item{items.length === 1 ? "" : "s"}
+          {list.is_public && (
+            <>
+              {" · "}
+              {list.saves_count ?? 0} save{(list.saves_count ?? 0) === 1 ? "" : "s"}
+            </>
+          )}
         </p>
       </header>
+
 
       {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">

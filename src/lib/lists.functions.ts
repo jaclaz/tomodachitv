@@ -23,7 +23,14 @@ export interface UserList {
   updated_at: string;
   item_count?: number;
   preview_posters?: (string | null)[];
+  saves_count?: number;
+  is_saved_by_me?: boolean;
 }
+
+export interface TrendingList extends UserList {
+  owner: { username: string; display_name: string | null; avatar_url: string | null } | null;
+}
+
 
 export interface ListItem {
   id: string;
@@ -208,13 +215,123 @@ export const getListWithItems = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!list) return null;
+    const [{ data: items }, { count: saves_count }, { data: mySave }] = await Promise.all([
+      context.supabase
+        .from("user_list_items")
+        .select("*")
+        .eq("list_id", data.id)
+        .order("added_at", { ascending: false }),
+      context.supabase
+        .from("list_saves")
+        .select("*", { count: "exact", head: true })
+        .eq("list_id", data.id),
+      context.supabase
+        .from("list_saves")
+        .select("id")
+        .eq("list_id", data.id)
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+    ]);
+    return {
+      list: {
+        ...(list as UserList),
+        saves_count: saves_count ?? 0,
+        is_saved_by_me: !!mySave,
+      },
+      items: (items ?? []) as ListItem[],
+    };
+  });
+
+export const saveList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { list_id: string }) => input)
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("list_saves")
+      .insert({ user_id: context.userId, list_id: data.list_id });
+    if (error && !error.message.includes("duplicate")) throw error;
+    return { success: true };
+  });
+
+export const unsaveList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { list_id: string }) => input)
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("list_saves")
+      .delete()
+      .eq("user_id", context.userId)
+      .eq("list_id", data.list_id);
+    if (error) throw error;
+    return { success: true };
+  });
+
+export const getTrendingLists = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<TrendingList[]> => {
+    // Fetch save rows for public lists (RLS filters), then aggregate client-side.
+    const { data: saves } = await context.supabase
+      .from("list_saves")
+      .select("list_id")
+      .limit(2000);
+    const counts = new Map<string, number>();
+    for (const s of saves ?? []) counts.set(s.list_id, (counts.get(s.list_id) ?? 0) + 1);
+    const topIds = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([id]) => id);
+    if (topIds.length === 0) return [];
+    const [{ data: lists }, { data: mySaves }] = await Promise.all([
+      context.supabase
+        .from("user_lists")
+        .select("*")
+        .in("id", topIds)
+        .eq("is_public", true),
+      context.supabase
+        .from("list_saves")
+        .select("list_id")
+        .eq("user_id", context.userId)
+        .in("list_id", topIds),
+    ]);
+    const mySaveSet = new Set((mySaves ?? []).map((r) => r.list_id));
+    const ownerIds = [...new Set((lists ?? []).map((l) => l.user_id))];
+    const { data: owners } = ownerIds.length
+      ? await context.supabase
+          .from("profiles")
+          .select("id, username, display_name, avatar_url")
+          .in("id", ownerIds)
+      : { data: [] as { id: string; username: string; display_name: string | null; avatar_url: string | null }[] };
+    const ownerMap = new Map((owners ?? []).map((o) => [o.id, o]));
     const { data: items } = await context.supabase
       .from("user_list_items")
-      .select("*")
-      .eq("list_id", data.id)
+      .select("list_id, poster_path, added_at")
+      .in("list_id", topIds)
       .order("added_at", { ascending: false });
-    return { list: list as UserList, items: (items ?? []) as ListItem[] };
+    const grouped = new Map<string, { count: number; posters: (string | null)[] }>();
+    for (const it of items ?? []) {
+      const g = grouped.get(it.list_id) ?? { count: 0, posters: [] };
+      g.count += 1;
+      if (g.posters.length < 4) g.posters.push(it.poster_path);
+      grouped.set(it.list_id, g);
+    }
+    return (lists ?? [])
+      .map((l): TrendingList => {
+        const g = grouped.get(l.id);
+        const o = ownerMap.get(l.user_id);
+        return {
+          ...(l as UserList),
+          item_count: g?.count ?? 0,
+          preview_posters: g?.posters ?? [],
+          saves_count: counts.get(l.id) ?? 0,
+          is_saved_by_me: mySaveSet.has(l.id),
+          owner: o && o.username
+            ? { username: o.username, display_name: o.display_name, avatar_url: o.avatar_url }
+            : null,
+        };
+      })
+      .sort((a, b) => (b.saves_count ?? 0) - (a.saves_count ?? 0));
   });
+
 
 export const addListItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
