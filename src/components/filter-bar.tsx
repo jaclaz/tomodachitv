@@ -73,6 +73,13 @@ export function FilterBar({ type, value, onChange }: Props) {
   });
   const genres = genresData?.genres ?? [];
 
+  const { data: providersData } = useQuery({
+    queryKey: ["providers", type, value.watchRegion],
+    queryFn: () => getProviderList({ data: { type, watchRegion: value.watchRegion } }),
+    staleTime: 1000 * 60 * 60,
+  });
+  const providers = providersData?.providers ?? [];
+
   const sortOptions: { value: SortBy; label: string }[] = [
     { value: "popularity.desc", label: "Most popular" },
     { value: "vote_average.desc", label: "Highest rated" },
@@ -92,7 +99,9 @@ export function FilterBar({ type, value, onChange }: Props) {
     value.genreId != null ||
     value.yearFrom != null ||
     value.minRating != null ||
+    value.providerId != null ||
     value.sortBy !== "popularity.desc";
+
 
   return (
     <div className="flex flex-wrap items-center gap-2">
