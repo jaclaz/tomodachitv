@@ -350,6 +350,8 @@ export interface DiscoverParams {
   minRating?: number | null;
   sortBy?: SortBy;
   page?: number;
+  providerId?: number | null;
+  watchRegion?: string | null;
 }
 
 export const discoverContent = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
@@ -370,12 +372,36 @@ export const discoverContent = createServerFn({ method: "POST" }).middleware([re
       if (data.yearFrom) params["first_air_date.gte"] = `${data.yearFrom}-01-01`;
       if (data.yearTo) params["first_air_date.lte"] = `${data.yearTo}-12-31`;
     }
+    if (data.providerId) {
+      params.with_watch_providers = String(data.providerId);
+      params.watch_region = (data.watchRegion || "US").toUpperCase();
+      params.with_watch_monetization_types = "flatrate";
+    }
     const res = await tmdbFetch(`/discover/${data.type}`, params);
     const results = (res.results ?? []).map((r: RawTv & RawMovie) =>
       data.type === "tv" ? mapTv(r) : mapMovie(r)
     );
     return { results };
   });
+
+// ============ Provider list (for filters) ============
+export const getProviderList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { type: MediaType; watchRegion?: string | null }) => input)
+  .handler(async ({ data }): Promise<{ providers: WatchProvider[] }> => {
+    const region = (data.watchRegion || "US").toUpperCase();
+    const res = await tmdbFetch(`/watch/providers/${data.type}`, { watch_region: region });
+    const list = ((res.results ?? []) as (WatchProvider & { display_priorities?: Record<string, number>; display_priority?: number })[])
+      .slice()
+      .sort((a, b) => {
+        const ap = a.display_priorities?.[region] ?? a.display_priority ?? 999;
+        const bp = b.display_priorities?.[region] ?? b.display_priority ?? 999;
+        return ap - bp;
+      })
+      .map((p) => ({ provider_id: p.provider_id, provider_name: p.provider_name, logo_path: p.logo_path }));
+    return { providers: list };
+  });
+
 
 // ============ Watch providers ============
 export interface WatchProvider {

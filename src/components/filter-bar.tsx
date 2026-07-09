@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getGenres, type MediaType, type SortBy } from "@/lib/tmdb";
+import { getGenres, getProviderList, providerLogoUrl, type MediaType, type SortBy } from "@/lib/tmdb";
 import {
   Select,
   SelectContent,
@@ -16,6 +16,8 @@ export interface FilterState {
   yearTo: number | null;
   minRating: number | null;
   sortBy: SortBy;
+  providerId: number | null;
+  watchRegion: string;
 }
 
 export const DEFAULT_FILTERS: FilterState = {
@@ -24,6 +26,8 @@ export const DEFAULT_FILTERS: FilterState = {
   yearTo: null,
   minRating: null,
   sortBy: "popularity.desc",
+  providerId: null,
+  watchRegion: "US",
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -38,6 +42,23 @@ const DECADES = [
 
 const RATINGS = [9, 8, 7, 6, 5];
 
+const REGIONS: { code: string; label: string }[] = [
+  { code: "US", label: "🇺🇸 US" },
+  { code: "IT", label: "🇮🇹 Italy" },
+  { code: "GB", label: "🇬🇧 UK" },
+  { code: "CA", label: "🇨🇦 Canada" },
+  { code: "AU", label: "🇦🇺 Australia" },
+  { code: "DE", label: "🇩🇪 Germany" },
+  { code: "FR", label: "🇫🇷 France" },
+  { code: "ES", label: "🇪🇸 Spain" },
+  { code: "BR", label: "🇧🇷 Brazil" },
+  { code: "MX", label: "🇲🇽 Mexico" },
+  { code: "JP", label: "🇯🇵 Japan" },
+  { code: "IN", label: "🇮🇳 India" },
+];
+
+
+
 interface Props {
   type: MediaType;
   value: FilterState;
@@ -51,6 +72,13 @@ export function FilterBar({ type, value, onChange }: Props) {
     staleTime: 1000 * 60 * 60,
   });
   const genres = genresData?.genres ?? [];
+
+  const { data: providersData } = useQuery({
+    queryKey: ["providers", type, value.watchRegion],
+    queryFn: () => getProviderList({ data: { type, watchRegion: value.watchRegion } }),
+    staleTime: 1000 * 60 * 60,
+  });
+  const providers = providersData?.providers ?? [];
 
   const sortOptions: { value: SortBy; label: string }[] = [
     { value: "popularity.desc", label: "Most popular" },
@@ -71,7 +99,9 @@ export function FilterBar({ type, value, onChange }: Props) {
     value.genreId != null ||
     value.yearFrom != null ||
     value.minRating != null ||
+    value.providerId != null ||
     value.sortBy !== "popularity.desc";
+
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -151,6 +181,51 @@ export function FilterBar({ type, value, onChange }: Props) {
           ))}
         </SelectContent>
       </Select>
+
+      <Select
+        value={value.watchRegion}
+        onValueChange={(v) => onChange({ ...value, watchRegion: v, providerId: null })}
+      >
+        <SelectTrigger className="h-9 w-[110px] bg-surface">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {REGIONS.map((r) => (
+            <SelectItem key={r.code} value={r.code}>
+              {r.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={value.providerId ? String(value.providerId) : "all"}
+        onValueChange={(v) =>
+          onChange({ ...value, providerId: v === "all" ? null : Number(v) })
+        }
+      >
+        <SelectTrigger className="h-9 w-[180px] bg-surface">
+          <SelectValue placeholder="Streaming service" />
+        </SelectTrigger>
+        <SelectContent className="max-h-[320px]">
+          <SelectItem value="all">Any service</SelectItem>
+          {providers.map((p) => (
+            <SelectItem key={p.provider_id} value={String(p.provider_id)}>
+              <span className="flex items-center gap-2">
+                {p.logo_path && (
+                  <img
+                    src={providerLogoUrl(p.logo_path)}
+                    alt=""
+                    className="h-4 w-4 rounded"
+                  />
+                )}
+                {p.provider_name}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
 
       {isActive && (
         <Button
