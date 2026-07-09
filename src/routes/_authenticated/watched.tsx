@@ -79,6 +79,8 @@ function WatchedPage() {
   const filtered = useMemo(() => {
     let list = library.slice();
     if (type !== "all") list = list.filter((i) => i.media_type === type);
+    const q = query.trim().toLowerCase();
+    if (q !== "") list = list.filter((i) => i.title.toLowerCase().includes(q));
     if (filters.genreId != null)
       list = list.filter((i) => i.genre_ids.includes(filters.genreId as number));
     if (filters.yearFrom != null || filters.yearTo != null) {
@@ -109,7 +111,8 @@ function WatchedPage() {
       }
     });
     return list;
-  }, [library, type, filters]);
+  }, [library, type, filters, query]);
+
 
   const currentDecadeIdx = DECADES.findIndex(
     (d) => d.from === filters.yearFrom && d.to === filters.yearTo
