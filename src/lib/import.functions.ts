@@ -301,18 +301,25 @@ export const savePendingImports = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     if (!data.rows.length) return { inserted: 0 };
-    const rows = data.rows.map((r) => ({
-      user_id: context.userId,
-      kind: r.kind,
-      source: r.source,
-      source_id: r.source_id,
-      title: r.title ?? null,
-      year: r.year ?? null,
-      season_number: r.season_number ?? null,
-      episode_number: r.episode_number ?? null,
-      runtime_minutes: r.runtime_minutes ?? null,
-      watched_at: r.watched_at ?? null,
-    }));
+    const dedup = new Map<string, any>();
+    for (const r of data.rows) {
+      const season = r.season_number ?? -1;
+      const episode = r.episode_number ?? -1;
+      const key = `${r.kind}:${r.source}:${r.source_id}:${season}:${episode}`;
+      dedup.set(key, {
+        user_id: context.userId,
+        kind: r.kind,
+        source: r.source,
+        source_id: r.source_id,
+        title: r.title ?? null,
+        year: r.year ?? null,
+        season_number: season,
+        episode_number: episode,
+        runtime_minutes: r.runtime_minutes ?? null,
+        watched_at: r.watched_at ?? null,
+      });
+    }
+    const rows = Array.from(dedup.values());
     const { error } = await (context.supabase as any)
       .from("pending_media_imports")
       .upsert(rows, {
