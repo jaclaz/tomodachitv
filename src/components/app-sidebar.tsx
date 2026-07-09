@@ -43,7 +43,6 @@ import {
   Youtube,
   ShieldAlert,
   MoreVertical,
-  UserCog,
   Trash2,
 } from "lucide-react";
 
@@ -62,6 +61,7 @@ const navItems = [
 
 export function AppSidebar() {
   const [open, setOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
   const qc = useQueryClient();
@@ -175,17 +175,7 @@ export function AppSidebar() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/u/$username"
-                    params={{ username: profile.username }}
-                    onClick={() => setOpen(false)}
-                    className="cursor-pointer"
-                  >
-                    <UserCog className="mr-2 h-4 w-4" /> Edit profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => setConfirmLogout(true)} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -225,6 +215,21 @@ export function AppSidebar() {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-canvas lg:block">
         {sidebarContent}
       </aside>
+
+      <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout}>Sign out</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
