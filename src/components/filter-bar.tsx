@@ -182,6 +182,51 @@ export function FilterBar({ type, value, onChange }: Props) {
         </SelectContent>
       </Select>
 
+      <Select
+        value={value.watchRegion}
+        onValueChange={(v) => onChange({ ...value, watchRegion: v, providerId: null })}
+      >
+        <SelectTrigger className="h-9 w-[110px] bg-surface">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {REGIONS.map((r) => (
+            <SelectItem key={r.code} value={r.code}>
+              {r.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={value.providerId ? String(value.providerId) : "all"}
+        onValueChange={(v) =>
+          onChange({ ...value, providerId: v === "all" ? null : Number(v) })
+        }
+      >
+        <SelectTrigger className="h-9 w-[180px] bg-surface">
+          <SelectValue placeholder="Streaming service" />
+        </SelectTrigger>
+        <SelectContent className="max-h-[320px]">
+          <SelectItem value="all">Any service</SelectItem>
+          {providers.map((p) => (
+            <SelectItem key={p.provider_id} value={String(p.provider_id)}>
+              <span className="flex items-center gap-2">
+                {p.logo_path && (
+                  <img
+                    src={providerLogoUrl(p.logo_path)}
+                    alt=""
+                    className="h-4 w-4 rounded"
+                  />
+                )}
+                {p.provider_name}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+
       {isActive && (
         <Button
           variant="ghost"
