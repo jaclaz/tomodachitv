@@ -23,6 +23,14 @@ export const resetLibrary = createServerFn({ method: "POST" })
   });
 
 // ---- Shared TMDB fetch with retry/backoff ----
+// When TMDB rate-limits us, throw a special error so the caller can pause
+// the whole background loop rather than silently dropping items.
+class TmdbRateLimitError extends Error {
+  constructor(public retryAfterSeconds: number) {
+    super(`TMDB rate limited (retry after ${retryAfterSeconds}s)`);
+  }
+}
+
 async function tmdbFetch(
   path: string,
   params: Record<string, string> = {},
@@ -32,18 +40,19 @@ async function tmdbFetch(
   const q = new URLSearchParams({ api_key: key, language: "en-US", ...params });
   const url = `${TMDB_BASE}${path}?${q}`;
   let backoff = 400;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const r = await fetch(url);
       if (r.status === 429) {
-        const ra = parseInt(r.headers.get("retry-after") ?? "1", 10);
-        await new Promise((res) => setTimeout(res, (Number.isFinite(ra) ? ra : 1) * 1000));
-        continue;
+        const ra = parseInt(r.headers.get("retry-after") ?? "5", 10);
+        const secs = Number.isFinite(ra) && ra > 0 ? Math.min(ra, 30) : 5;
+        throw new TmdbRateLimitError(secs);
       }
       if (r.status === 404) return null;
       if (!r.ok) throw new Error(`TMDB ${r.status}`);
       return await r.json();
-    } catch {
+    } catch (e) {
+      if (e instanceof TmdbRateLimitError) throw e;
       await new Promise((res) => setTimeout(res, backoff));
       backoff *= 2;
     }
