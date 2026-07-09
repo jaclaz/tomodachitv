@@ -105,7 +105,10 @@ export function BannerUpload({ userId, currentUrl, onUpdated }: BannerUploadProp
       {/* Bottom darkening where the profile info sits */}
       <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
       {/* Extra vignette on the bottom-left so text is legible over any banner image */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0.4)_50%,transparent_80%)]" />
+      {shownUrl && (
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0.4)_50%,transparent_80%)]" />
+      )}
+
 
 
       {/* Edit controls */}
