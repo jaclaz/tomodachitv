@@ -134,12 +134,12 @@ export type Database = {
         Row: {
           attempts: number
           created_at: string
-          episode_number: number | null
+          episode_number: number
           id: string
           kind: string
           last_error: string | null
           runtime_minutes: number | null
-          season_number: number | null
+          season_number: number
           source: string
           source_id: string
           title: string | null
@@ -151,12 +151,12 @@ export type Database = {
         Insert: {
           attempts?: number
           created_at?: string
-          episode_number?: number | null
+          episode_number?: number
           id?: string
           kind: string
           last_error?: string | null
           runtime_minutes?: number | null
-          season_number?: number | null
+          season_number?: number
           source: string
           source_id: string
           title?: string | null
@@ -168,12 +168,12 @@ export type Database = {
         Update: {
           attempts?: number
           created_at?: string
-          episode_number?: number | null
+          episode_number?: number
           id?: string
           kind?: string
           last_error?: string | null
           runtime_minutes?: number | null
-          season_number?: number | null
+          season_number?: number
           source?: string
           source_id?: string
           title?: string | null
