@@ -15,6 +15,7 @@ import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
 import { WatchLanguages } from "@/components/watch-languages";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
+import { SearchBar } from "@/components/search-bar";
 
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
