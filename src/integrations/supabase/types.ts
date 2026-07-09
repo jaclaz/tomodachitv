@@ -130,6 +130,60 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_media_imports: {
+        Row: {
+          attempts: number
+          created_at: string
+          episode_number: number | null
+          id: string
+          kind: string
+          last_error: string | null
+          runtime_minutes: number | null
+          season_number: number | null
+          source: string
+          source_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          watched_at: string | null
+          year: number | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          episode_number?: number | null
+          id?: string
+          kind: string
+          last_error?: string | null
+          runtime_minutes?: number | null
+          season_number?: number | null
+          source: string
+          source_id: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          watched_at?: string | null
+          year?: number | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          episode_number?: number | null
+          id?: string
+          kind?: string
+          last_error?: string | null
+          runtime_minutes?: number | null
+          season_number?: number | null
+          source?: string
+          source_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          watched_at?: string | null
+          year?: number | null
+        }
+        Relationships: []
+      }
       profile_reports: {
         Row: {
           admin_notes: string | null
@@ -470,6 +524,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_watch_totals: {
+        Args: { _user_id: string }
+        Returns: {
+          episode_minutes: number
+          movie_minutes: number
+          total_episodes: number
+          total_movies: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
