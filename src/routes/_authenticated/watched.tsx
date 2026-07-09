@@ -12,8 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
-import { Star, X, CheckCircle2 } from "lucide-react";
+import { Star, X, CheckCircle2, Search } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/watched")({
   component: WatchedPage,
