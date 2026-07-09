@@ -59,6 +59,8 @@ const DEFAULTS: Filters = {
 function WatchedPage() {
   const [type, setType] = useState<TypeTab>("all");
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
+  const [query, setQuery] = useState("");
+
 
   const { data: library = [], isLoading } = useQuery({
     queryKey: ["watched-library"],
