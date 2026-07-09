@@ -1,10 +1,18 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getListWithItems, removeListItem } from "@/lib/lists.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import {
+  getListWithItems,
+  removeListItem,
+  saveList,
+  unsaveList,
+} from "@/lib/lists.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PosterActions } from "@/components/poster-actions";
-import { ArrowLeft, Globe, Lock, X } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck, Globe, Lock, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/list/$id")({
@@ -14,6 +22,11 @@ export const Route = createFileRoute("/_authenticated/list/$id")({
 function ListDetailPage() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
+  const [myId, setMyId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setMyId(data.user?.id ?? null));
+  }, []);
+
   const { data, isLoading } = useQuery({
     queryKey: ["list", id],
     queryFn: () => getListWithItems({ data: { id } }),
@@ -31,11 +44,24 @@ function ListDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const saveMut = useMutation({
+    mutationFn: (save: boolean) =>
+      save ? saveList({ data: { list_id: id } }) : unsaveList({ data: { list_id: id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["list", id] });
+      qc.invalidateQueries({ queryKey: ["trending-lists"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading) return <p className="pt-12 text-sm text-muted-foreground">Loading...</p>;
   if (!data) throw notFound();
 
   const { list, items } = data;
-  const canEdit = true; // RLS filters; UI presence implies write access via own lists
+  const isOwner = myId === list.user_id;
+  const canEdit = isOwner;
+  const canSave = list.is_public && !isOwner && myId !== null;
+
 
   return (
     <div className="space-y-6">
