@@ -4,9 +4,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   resolveShowsBatch,
   resolveMoviesBatch,
@@ -18,6 +29,7 @@ import {
   retryPendingImports,
   exportLibrary,
   cleanupWatchedFromWatchlist,
+  resetLibrary,
 } from "@/lib/import.functions";
 
 export const Route = createFileRoute("/_authenticated/import")({
@@ -614,6 +626,24 @@ function ImportPage() {
     }
   };
 
+  const [resetting, setResetting] = useState(false);
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      await resetLibrary();
+      setCounts(null);
+      setPendingCount(0);
+      toast.success("Library cleared — you can re-import from scratch");
+      qc.invalidateQueries();
+    } catch (err) {
+      console.error(err);
+      toast.error("Reset failed: " + (err instanceof Error ? err.message : "unknown error"));
+    } finally {
+      setResetting(false);
+    }
+  };
+
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 pt-12 sm:pt-0">
       <div>
@@ -755,6 +785,37 @@ function ImportPage() {
           {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {exporting ? "Preparing…" : "Export ZIP"}
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-display text-base font-semibold">Reset library</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Deletes all your watched episodes, watched movies, watchlist, favorites and pending
+            imports. Your profile and lists are kept. This cannot be undone.
+          </p>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button type="button" variant="destructive" disabled={resetting || busy}>
+              {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {resetting ? "Clearing…" : "Reset library"}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset your library?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete every watched episode, watched movie, watchlist entry,
+                favorite and pending import from your account. You can then re-import from scratch.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleReset}>Yes, wipe everything</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -3,6 +3,25 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
+// ---- Reset the user's entire library (watched + watchlist + pending) ----
+export const resetLibrary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const uid = context.userId;
+    const tables = [
+      "watched_episodes",
+      "watched_movies",
+      "watchlist",
+      "pending_media_imports",
+      "favorites",
+    ] as const;
+    for (const t of tables) {
+      const { error } = await (context.supabase as any).from(t).delete().eq("user_id", uid);
+      if (error && !String(error.message ?? "").includes("does not exist")) throw error;
+    }
+    return { success: true };
+  });
+
 // ---- Shared TMDB fetch with retry/backoff ----
 async function tmdbFetch(
   path: string,
