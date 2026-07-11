@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
-import { Trash2, Star, Search, X, LayoutGrid, Grid2x2 } from "lucide-react";
+import { Trash2, Star, Search, X, Grid2x2, Grid3x3 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
@@ -28,10 +28,9 @@ function WatchlistPage() {
     if (typeof window === "undefined") return "normal";
     return (localStorage.getItem("watchlist-grid-size") as "normal" | "small") || "normal";
   });
-  const toggleGrid = () => {
-    const next = gridSize === "normal" ? "small" : "normal";
-    setGridSize(next);
-    if (typeof window !== "undefined") localStorage.setItem("watchlist-grid-size", next);
+  const setGrid = (size: "normal" | "small") => {
+    setGridSize(size);
+    if (typeof window !== "undefined") localStorage.setItem("watchlist-grid-size", size);
   };
   const gridClass =
     gridSize === "small"
@@ -80,41 +79,52 @@ function WatchlistPage() {
             <TabsTrigger value="movie">Movies</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search in watchlist..."
-            className="h-9 pl-9 pr-9 bg-surface"
-          />
-          {query && (
-            <button
+        <div className="flex items-center gap-2">
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search in watchlist..."
+              className="h-9 pl-9 pr-9 bg-surface"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
               type="button"
-              onClick={() => setQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+              variant={gridSize === "normal" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setGrid("normal")}
+              aria-label="Large grid"
+              title="Large grid"
+              className="h-9 w-9 flex-shrink-0"
             >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+              <Grid2x2 className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={gridSize === "small" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setGrid("small")}
+              aria-label="Small grid"
+              title="Small grid"
+              className="h-9 w-9 flex-shrink-0"
+            >
+              <Grid3x3 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={toggleGrid}
-          aria-label={gridSize === "normal" ? "Show smaller grid" : "Show larger grid"}
-          title={gridSize === "normal" ? "Smaller posters" : "Larger posters"}
-          className="h-9 w-9 flex-shrink-0"
-        >
-          {gridSize === "normal" ? (
-            <Grid2x2 className="h-4 w-4" />
-          ) : (
-            <LayoutGrid className="h-4 w-4" />
-          )}
-        </Button>
       </div>
 
 
