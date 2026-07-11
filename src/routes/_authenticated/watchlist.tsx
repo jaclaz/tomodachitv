@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
-import { Trash2, Star, Search, X, LayoutGrid, Grid2x2 } from "lucide-react";
+import { Trash2, Star, Search, X, Grid2x2, Grid3x3 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
