@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { posterUrl } from "@/lib/tmdb";
+import { ChevronRight } from "lucide-react";
 import { ReactNode } from "react";
+
 
 export type PosterMediaType = "movie" | "tv";
 
