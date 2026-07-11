@@ -151,9 +151,9 @@ function WatchlistPage() {
         </div>
       ) : (
         <div className={gridClass}>
-          {filtered.map((item) => (
+          {filtered.map((item, index) => (
             <div
-              key={item.id}
+              key={`${item.media_type}-${item.tmdb_id}-${index}`}
               className="group relative overflow-hidden rounded-xl border border-t-0 border-border bg-card shadow-sm transition-shadow hover:shadow-md"
             >
               <Link

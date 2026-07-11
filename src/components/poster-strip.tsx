@@ -38,9 +38,9 @@ export function PosterStrip({
   }
   return (
     <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
-      {items.slice(0, max).map((item) => (
+      {items.slice(0, max).map((item, index) => (
         <div
-          key={`${item.media_type}-${item.tmdb_id}`}
+          key={`${item.media_type}-${item.tmdb_id}-${index}`}
           className="group relative aspect-[2/3] w-[92px] flex-shrink-0 snap-start overflow-hidden rounded-lg bg-muted sm:w-[110px]"
           title={item.title}
         >
