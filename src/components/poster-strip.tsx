@@ -71,7 +71,7 @@ export function PosterStrip({
       ))}
       {moreHref && items.length > 0 && (
         <Link
-          to={moreHref}
+          to={moreHref as string}
           className="group flex aspect-[2/3] w-[92px] flex-shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface text-muted-foreground transition-colors hover:border-primary hover:text-primary sm:w-[110px]"
           aria-label={moreLabel}
           title={moreLabel}
@@ -80,6 +80,7 @@ export function PosterStrip({
           <span className="px-2 text-center text-xs font-medium">{moreLabel}</span>
         </Link>
       )}
+
     </div>
   );
 }
