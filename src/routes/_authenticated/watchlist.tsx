@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
-import { Trash2, Star, Search, X } from "lucide-react";
+import { Trash2, Star, Search, X, LayoutGrid, Grid2x2 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
@@ -24,6 +24,20 @@ function WatchlistPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
+    if (typeof window === "undefined") return "normal";
+    return (localStorage.getItem("watchlist-grid-size") as "normal" | "small") || "normal";
+  });
+  const toggleGrid = () => {
+    const next = gridSize === "normal" ? "small" : "normal";
+    setGridSize(next);
+    if (typeof window !== "undefined") localStorage.setItem("watchlist-grid-size", next);
+  };
+  const gridClass =
+    gridSize === "small"
+      ? "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
+      : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
+
 
 
   const { data = [], isLoading } = useQuery({
@@ -86,11 +100,28 @@ function WatchlistPage() {
             </button>
           )}
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={toggleGrid}
+          aria-label={gridSize === "normal" ? "Show smaller grid" : "Show larger grid"}
+          title={gridSize === "normal" ? "Smaller posters" : "Larger posters"}
+          className="h-9 w-9 flex-shrink-0"
+        >
+          {gridSize === "normal" ? (
+            <Grid2x2 className="h-4 w-4" />
+          ) : (
+            <LayoutGrid className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
 
+
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className={gridClass}>
+
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
@@ -109,7 +140,7 @@ function WatchlistPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className={gridClass}>
           {filtered.map((item) => (
             <div
               key={item.id}

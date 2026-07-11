@@ -256,14 +256,25 @@ function UserProfilePage() {
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <Tv className="h-4 w-4" /> Recently watched series
                 </h3>
-                <PosterStrip items={watchedTv} emptyLabel="No series watched yet." />
+                <PosterStrip
+                  items={watchedTv}
+                  emptyLabel="No series watched yet."
+                  moreHref={profile.is_self ? "/watched" : undefined}
+                  moreLabel="All watched"
+                />
               </div>
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <Film className="h-4 w-4" /> Recently watched movies
                 </h3>
-                <PosterStrip items={watchedMovies} emptyLabel="No movies watched yet." />
+                <PosterStrip
+                  items={watchedMovies}
+                  emptyLabel="No movies watched yet."
+                  moreHref={profile.is_self ? "/watched" : undefined}
+                  moreLabel="All watched"
+                />
               </div>
+
             </>
           )}
         </TabsContent>

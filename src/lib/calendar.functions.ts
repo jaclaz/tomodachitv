@@ -44,49 +44,72 @@ export const getUpcomingReleases = createServerFn({ method: "POST" })
     today.setHours(0, 0, 0, 0);
 
     const results = await Promise.allSettled(
-      (watchlist ?? []).map(async (w): Promise<UpcomingItem | null> => {
+      (watchlist ?? []).map(async (w): Promise<UpcomingItem[]> => {
         try {
           const raw = await tmdbFetch(`/${w.media_type}/${w.tmdb_id}`);
           if (w.media_type === "movie") {
             const date: string | undefined = raw.release_date;
-            if (!date) return null;
+            if (!date) return [];
             const d = new Date(date);
-            if (isNaN(d.getTime()) || d < today) return null;
-            return {
-              tmdb_id: w.tmdb_id,
-              media_type: "movie",
-              title: raw.title ?? w.series_name,
-              poster_path: raw.poster_path ?? w.poster_path,
-              backdrop_path: raw.backdrop_path ?? w.backdrop_path,
-              release_date: date,
-            };
+            if (isNaN(d.getTime()) || d < today) return [];
+            return [
+              {
+                tmdb_id: w.tmdb_id,
+                media_type: "movie",
+                title: raw.title ?? w.series_name,
+                poster_path: raw.poster_path ?? w.poster_path,
+                backdrop_path: raw.backdrop_path ?? w.backdrop_path,
+                release_date: date,
+              },
+            ];
           } else {
             const next = raw.next_episode_to_air;
-            if (!next?.air_date) return null;
-            const d = new Date(next.air_date);
-            if (isNaN(d.getTime()) || d < today) return null;
-            return {
-              tmdb_id: w.tmdb_id,
-              media_type: "tv",
-              title: raw.name ?? w.series_name,
-              poster_path: raw.poster_path ?? w.poster_path,
-              backdrop_path: raw.backdrop_path ?? w.backdrop_path,
-              release_date: next.air_date,
-              season_number: next.season_number,
-              episode_number: next.episode_number,
-              episode_name: next.name,
-            };
+            if (!next?.season_number) return [];
+            // Fetch the current upcoming season plus the next one (if any)
+            // to catch all episodes with a known air date.
+            const numSeasons: number = raw.number_of_seasons ?? next.season_number;
+            const seasonNumbers = [next.season_number];
+            if (next.season_number + 1 <= numSeasons) {
+              seasonNumbers.push(next.season_number + 1);
+            }
+            const seasons = await Promise.all(
+              seasonNumbers.map((sn) =>
+                tmdbFetch(`/tv/${w.tmdb_id}/season/${sn}`).catch(() => null)
+              )
+            );
+            const items: UpcomingItem[] = [];
+            for (const season of seasons) {
+              if (!season?.episodes) continue;
+              for (const ep of season.episodes) {
+                if (!ep.air_date) continue;
+                const d = new Date(ep.air_date);
+                if (isNaN(d.getTime()) || d < today) continue;
+                items.push({
+                  tmdb_id: w.tmdb_id,
+                  media_type: "tv",
+                  title: raw.name ?? w.series_name,
+                  poster_path: raw.poster_path ?? w.poster_path,
+                  backdrop_path: raw.backdrop_path ?? w.backdrop_path,
+                  release_date: ep.air_date,
+                  season_number: ep.season_number,
+                  episode_number: ep.episode_number,
+                  episode_name: ep.name,
+                });
+              }
+            }
+            return items;
           }
         } catch {
-          return null;
+          return [];
         }
       })
     );
 
     const items: UpcomingItem[] = [];
     for (const r of results) {
-      if (r.status === "fulfilled" && r.value) items.push(r.value);
+      if (r.status === "fulfilled") items.push(...r.value);
     }
     items.sort((a, b) => a.release_date.localeCompare(b.release_date));
     return items;
   });
+

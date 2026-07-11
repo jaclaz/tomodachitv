@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { posterUrl } from "@/lib/tmdb";
+import { ChevronRight } from "lucide-react";
 import { ReactNode } from "react";
+
 
 export type PosterMediaType = "movie" | "tv";
 
@@ -16,12 +18,17 @@ export function PosterStrip({
   emptyLabel,
   max = 12,
   actions,
+  moreHref,
+  moreLabel = "See all",
 }: {
   items: PosterItem[];
   emptyLabel: string;
   max?: number;
   actions?: (item: PosterItem) => ReactNode;
+  moreHref?: string;
+  moreLabel?: string;
 }) {
+
   if (items.length === 0) {
     return (
       <p className="px-1 py-6 text-center text-xs text-muted-foreground">
@@ -62,6 +69,19 @@ export function PosterStrip({
           )}
         </div>
       ))}
+      {moreHref && items.length > 0 && (
+        <Link
+          to={moreHref as string}
+          className="group flex aspect-[2/3] w-[92px] flex-shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface text-muted-foreground transition-colors hover:border-primary hover:text-primary sm:w-[110px]"
+          aria-label={moreLabel}
+          title={moreLabel}
+        >
+          <ChevronRight className="h-6 w-6 transition-transform group-hover:translate-x-0.5" />
+          <span className="px-2 text-center text-xs font-medium">{moreLabel}</span>
+        </Link>
+      )}
+
     </div>
   );
 }
+

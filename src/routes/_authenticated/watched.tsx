@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
-import { Star, X, CheckCircle2, Search } from "lucide-react";
+import { Star, X, CheckCircle2, Search, LayoutGrid, Grid2x2 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/watched")({
@@ -60,6 +60,20 @@ function WatchedPage() {
   const [type, setType] = useState<TypeTab>("all");
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
   const [query, setQuery] = useState("");
+  const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
+    if (typeof window === "undefined") return "normal";
+    return (localStorage.getItem("watched-grid-size") as "normal" | "small") || "normal";
+  });
+  const toggleGrid = () => {
+    const next = gridSize === "normal" ? "small" : "normal";
+    setGridSize(next);
+    if (typeof window !== "undefined") localStorage.setItem("watched-grid-size", next);
+  };
+  const gridClass =
+    gridSize === "small"
+      ? "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
+      : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
+
 
 
   const { data: library = [], isLoading } = useQuery({
@@ -164,7 +178,23 @@ function WatchedPage() {
               </button>
             )}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={toggleGrid}
+            aria-label={gridSize === "normal" ? "Show smaller grid" : "Show larger grid"}
+            title={gridSize === "normal" ? "Smaller posters" : "Larger posters"}
+            className="h-9 w-9 flex-shrink-0"
+          >
+            {gridSize === "normal" ? (
+              <Grid2x2 className="h-4 w-4" />
+            ) : (
+              <LayoutGrid className="h-4 w-4" />
+            )}
+          </Button>
         </div>
+
 
 
         <div className="flex flex-wrap items-center gap-2">
@@ -268,7 +298,8 @@ function WatchedPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className={gridClass}>
+
           {Array.from({ length: 15 }).map((_, i) => (
             <div
               key={i}
@@ -289,7 +320,7 @@ function WatchedPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className={gridClass}>
           {filtered.map((item) => (
             <div
               key={`${item.media_type}-${item.tmdb_id}`}
