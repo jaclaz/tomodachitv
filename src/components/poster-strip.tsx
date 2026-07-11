@@ -18,12 +18,17 @@ export function PosterStrip({
   emptyLabel,
   max = 12,
   actions,
+  moreHref,
+  moreLabel = "See all",
 }: {
   items: PosterItem[];
   emptyLabel: string;
   max?: number;
   actions?: (item: PosterItem) => ReactNode;
+  moreHref?: string;
+  moreLabel?: string;
 }) {
+
   if (items.length === 0) {
     return (
       <p className="px-1 py-6 text-center text-xs text-muted-foreground">
