@@ -100,7 +100,23 @@ function WatchlistPage() {
             </button>
           )}
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={toggleGrid}
+          aria-label={gridSize === "normal" ? "Show smaller grid" : "Show larger grid"}
+          title={gridSize === "normal" ? "Smaller posters" : "Larger posters"}
+          className="h-9 w-9 flex-shrink-0"
+        >
+          {gridSize === "normal" ? (
+            <Grid2x2 className="h-4 w-4" />
+          ) : (
+            <LayoutGrid className="h-4 w-4" />
+          )}
+        </Button>
       </div>
+
 
 
       {isLoading ? (
