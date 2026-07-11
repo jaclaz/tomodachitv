@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2 } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -267,10 +268,14 @@ function ImportPage() {
   const [counts, setCounts] = useState<Counts | null>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [retrying, setRetrying] = useState(false);
+  const [autoStatus, setAutoStatus] = useState<"idle" | "syncing" | "waiting" | "backoff">("idle");
+  const loopTokenRef = useRef(0);
+  const loopRunningRef = useRef(false);
 
   useEffect(() => {
     getPendingImportsCount().then((r) => setPendingCount(r.count)).catch(() => {});
   }, []);
+
 
   const bump = (n = 1) => {
     setDoneSteps((d) => {
