@@ -28,10 +28,9 @@ function WatchlistPage() {
     if (typeof window === "undefined") return "normal";
     return (localStorage.getItem("watchlist-grid-size") as "normal" | "small") || "normal";
   });
-  const toggleGrid = () => {
-    const next = gridSize === "normal" ? "small" : "normal";
-    setGridSize(next);
-    if (typeof window !== "undefined") localStorage.setItem("watchlist-grid-size", next);
+  const setGrid = (size: "normal" | "small") => {
+    setGridSize(size);
+    if (typeof window !== "undefined") localStorage.setItem("watchlist-grid-size", size);
   };
   const gridClass =
     gridSize === "small"
