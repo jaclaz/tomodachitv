@@ -60,6 +60,20 @@ function WatchedPage() {
   const [type, setType] = useState<TypeTab>("all");
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
   const [query, setQuery] = useState("");
+  const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
+    if (typeof window === "undefined") return "normal";
+    return (localStorage.getItem("watched-grid-size") as "normal" | "small") || "normal";
+  });
+  const toggleGrid = () => {
+    const next = gridSize === "normal" ? "small" : "normal";
+    setGridSize(next);
+    if (typeof window !== "undefined") localStorage.setItem("watched-grid-size", next);
+  };
+  const gridClass =
+    gridSize === "small"
+      ? "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
+      : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
+
 
 
   const { data: library = [], isLoading } = useQuery({
