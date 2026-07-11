@@ -276,6 +276,61 @@ function ImportPage() {
     getPendingImportsCount().then((r) => setPendingCount(r.count)).catch(() => {});
   }, []);
 
+  // Continuous background resolver: whenever there are pending items, poll the
+  // server every ~4s in small batches. On failure, back off for 10s. The loop
+  // is cancellable via loopTokenRef so we can force-restart it ("wake").
+  const runBackgroundLoop = async (token: number) => {
+    if (loopRunningRef.current) return;
+    loopRunningRef.current = true;
+    const wait = (ms: number) =>
+      new Promise<void>((res) => setTimeout(res, ms));
+    try {
+      while (loopTokenRef.current === token) {
+        setAutoStatus("syncing");
+        try {
+          const r = await retryPendingImports();
+          if (loopTokenRef.current !== token) break;
+          setPendingCount(r.remaining);
+          if (r.remaining <= 0) {
+            setAutoStatus("idle");
+            qc.invalidateQueries();
+            break;
+          }
+          if (r.resolved > 0) qc.invalidateQueries();
+          setAutoStatus("waiting");
+          await wait(r.resolved > 0 ? 3000 : 5000);
+        } catch {
+          if (loopTokenRef.current !== token) break;
+          setAutoStatus("backoff");
+          await wait(10000);
+        }
+      }
+    } finally {
+      loopRunningRef.current = false;
+      if (loopTokenRef.current === token) setAutoStatus("idle");
+    }
+  };
+
+  // Kick the loop whenever we have pending items and no loop is currently running.
+  useEffect(() => {
+    if (pendingCount > 0 && !loopRunningRef.current) {
+      const token = ++loopTokenRef.current;
+      void runBackgroundLoop(token);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCount]);
+
+  // Manual "wake" — cancels the current iteration and starts a fresh one.
+  const wakeLoop = () => {
+    const token = ++loopTokenRef.current;
+    // Give the previous iteration a moment to observe the token change.
+    setTimeout(() => {
+      if (!loopRunningRef.current) void runBackgroundLoop(token);
+    }, 50);
+    toast.success("Background sync woken up");
+  };
+
+
 
   const bump = (n = 1) => {
     setDoneSteps((d) => {
