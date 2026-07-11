@@ -64,7 +64,11 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (x: T) => Promise<R>
     while (true) {
       const idx = i++;
       if (idx >= items.length) return;
-      results[idx] = await fn(items[idx]);
+      try {
+        results[idx] = await fn(items[idx]);
+      } catch {
+        results[idx] = null as R;
+      }
     }
   });
   await Promise.all(workers);
@@ -442,6 +446,7 @@ export const savePendingImports = createServerFn({ method: "POST" })
     if (!data.rows.length) return { inserted: 0 };
     const dedup = new Map<string, any>();
     for (const r of data.rows) {
+      if (!r || !r.kind || !r.source || !r.source_id) continue;
       const season = r.season_number ?? -1;
       const episode = r.episode_number ?? -1;
       const key = `${r.kind}:${r.source}:${r.source_id}:${season}:${episode}`;
@@ -459,6 +464,7 @@ export const savePendingImports = createServerFn({ method: "POST" })
       });
     }
     const rows = Array.from(dedup.values());
+    if (!rows.length) return { inserted: 0 };
     const { error } = await (context.supabase as any)
       .from("pending_media_imports")
       .upsert(rows, {
@@ -485,13 +491,37 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       .from("pending_media_imports")
       .select("*")
       .eq("user_id", context.userId)
+      .order("created_at", { ascending: true })
       .limit(50);
     if (error) throw error;
     if (!pending?.length) return { resolved: 0, remaining: 0 };
 
-    let resolved = 0;
+    const dedupedPending = new Map<string, any>();
+    const duplicateIds: string[] = [];
     for (const p of pending) {
+      if (!p?.id || !p.kind || !p.source || !p.source_id) {
+        if (p?.id) duplicateIds.push(p.id);
+        continue;
+      }
+      const key = `${p.kind}:${p.source}:${p.source_id}:${p.season_number ?? -1}:${p.episode_number ?? -1}`;
+      if (dedupedPending.has(key)) duplicateIds.push(p.id);
+      else dedupedPending.set(key, p);
+    }
+
+    for (let i = 0; i < duplicateIds.length; i += 100) {
+      const ids = duplicateIds.slice(i, i + 100);
+      try {
+        await (context.supabase as any).from("pending_media_imports").delete().in("id", ids);
+      } catch {
+        // A duplicate purge failure must not stop the active resolution batch.
+      }
+    }
+
+    let resolved = 0;
+    let skipped = duplicateIds.length;
+    for (const p of dedupedPending.values()) {
       let ok = false;
+      let lastError: string | null = null;
       try {
         if (p.kind === "follow_show" || p.kind === "watched_episode") {
           let show: ResolvedShow | null = null;
@@ -524,7 +554,7 @@ export const retryPendingImports = createServerFn({ method: "POST" })
               };
           }
           if (show) {
-            await context.supabase.from("watchlist").upsert(
+            const { error: watchlistError } = await context.supabase.from("watchlist").upsert(
               {
                 user_id: context.userId,
                 tmdb_id: show.tmdb_id,
@@ -537,8 +567,9 @@ export const retryPendingImports = createServerFn({ method: "POST" })
               },
               { onConflict: "user_id, media_type, tmdb_id" },
             );
+            if (watchlistError) throw watchlistError;
             if (p.kind === "watched_episode" && p.season_number != null && p.episode_number != null) {
-              await context.supabase.from("watched_episodes").upsert(
+              const { error: watchedEpisodeError } = await context.supabase.from("watched_episodes").upsert(
                 {
                   user_id: context.userId,
                   tmdb_id: show.tmdb_id,
@@ -549,6 +580,7 @@ export const retryPendingImports = createServerFn({ method: "POST" })
                 },
                 { onConflict: "user_id, tmdb_id, season_number, episode_number" },
               );
+              if (watchedEpisodeError) throw watchedEpisodeError;
             }
             ok = true;
           }
@@ -597,7 +629,7 @@ export const retryPendingImports = createServerFn({ method: "POST" })
           }
           if (movie) {
             if (p.kind === "watched_movie") {
-              await context.supabase.from("watched_movies").upsert(
+              const { error: watchedMovieError } = await context.supabase.from("watched_movies").upsert(
                 {
                   user_id: context.userId,
                   tmdb_id: movie.tmdb_id,
@@ -607,8 +639,9 @@ export const retryPendingImports = createServerFn({ method: "POST" })
                 },
                 { onConflict: "user_id, tmdb_id" },
               );
+              if (watchedMovieError) throw watchedMovieError;
             } else {
-              await context.supabase.from("watchlist").upsert(
+              const { error: movieWatchlistError } = await context.supabase.from("watchlist").upsert(
                 {
                   user_id: context.userId,
                   tmdb_id: movie.tmdb_id,
@@ -621,21 +654,31 @@ export const retryPendingImports = createServerFn({ method: "POST" })
                 },
                 { onConflict: "user_id, media_type, tmdb_id" },
               );
+              if (movieWatchlistError) throw movieWatchlistError;
             }
             ok = true;
           }
         }
-      } catch {
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : "Unexpected pending import error";
         ok = false;
       }
-      if (ok) {
-        await (context.supabase as any).from("pending_media_imports").delete().eq("id", p.id);
-        resolved++;
-      } else {
-        await (context.supabase as any)
-          .from("pending_media_imports")
-          .update({ attempts: (p.attempts ?? 0) + 1 })
-          .eq("id", p.id);
+      try {
+        if (ok) {
+          await (context.supabase as any).from("pending_media_imports").delete().eq("id", p.id);
+          resolved++;
+        } else {
+          await (context.supabase as any)
+            .from("pending_media_imports")
+            .update({
+              attempts: (p.attempts ?? 0) + 1,
+              last_error: lastError,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", p.id);
+        }
+      } catch {
+        skipped++;
       }
     }
 
@@ -644,7 +687,7 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       .select("id", { count: "exact", head: true })
       .eq("user_id", context.userId);
 
-    return { resolved, remaining: count ?? 0 };
+    return { resolved, skipped, remaining: count ?? 0 };
   });
 
 // ---- Export (paginated to bypass 1000-row cap) ----
