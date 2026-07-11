@@ -810,16 +810,43 @@ function ImportPage() {
       )}
 
       {pendingCount > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 text-amber-500" />
             <div>
               <p className="font-display text-base font-semibold">
                 {pendingCount} items awaiting resolution
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                TMDB was rate-limited for some titles. Retry to fetch them again.
+              <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                {autoStatus === "syncing" && (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
+                    Background auto-sync running…
+                  </>
+                )}
+                {autoStatus === "waiting" && (
+                  <>
+                    <RefreshCw className="h-3 w-3 text-amber-500" />
+                    Background auto-sync active — next batch in a few seconds
+                  </>
+                )}
+                {autoStatus === "backoff" && (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-amber-500" />
+                    TMDB rate-limited — retrying in ~10s
+                  </>
+                )}
+                {autoStatus === "idle" && (
+                  <>Background auto-sync paused. Click “Wake sync” to resume.</>
+                )}
               </p>
+              <button
+                type="button"
+                onClick={wakeLoop}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-600 underline-offset-2 hover:underline dark:text-amber-400"
+              >
+                <Zap className="h-3 w-3" /> Wake sync
+              </button>
             </div>
           </div>
           <Button type="button" variant="secondary" onClick={handleRetry} disabled={retrying}>
@@ -832,6 +859,7 @@ function ImportPage() {
           </Button>
         </div>
       )}
+
 
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
