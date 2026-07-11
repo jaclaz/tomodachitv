@@ -258,6 +258,18 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+type PendingImportRow = Parameters<typeof savePendingImports>[0]["data"]["rows"][number];
+
+function dedupePendingRows(rows: PendingImportRow[]): PendingImportRow[] {
+  const dedup = new Map<string, PendingImportRow>();
+  for (const row of rows) {
+    if (!row?.kind || !row.source || !row.source_id) continue;
+    const key = `${row.kind}:${row.source}:${row.source_id}:${row.season_number ?? -1}:${row.episode_number ?? -1}`;
+    dedup.set(key, row);
+  }
+  return Array.from(dedup.values());
+}
+
 function ImportPage() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -523,24 +535,29 @@ function ImportPage() {
         }));
         const { results } = await resolveMoviesBatch({ data: { items } });
         results.forEach((r, i) => {
-          const src = c[i];
-          if (r) {
-            watchedMovieRows.push({
-              tmdb_id: r.tmdb_id,
-              title: r.title,
-              runtime_minutes: r.runtime ?? src.runtime_minutes ?? null,
-              watched_at: src.watched_at ?? null,
-            });
-          } else {
-            pendingWatchedMovies.push({
-              kind: "watched_movie",
-              source: src.source,
-              source_id: src.source_id,
-              title: src.title ?? null,
-              year: src.year ?? null,
-              runtime_minutes: src.runtime_minutes ?? null,
-              watched_at: src.watched_at ?? null,
-            });
+          try {
+            const src = c[i];
+            if (!src) return;
+            if (r) {
+              watchedMovieRows.push({
+                tmdb_id: r.tmdb_id,
+                title: r.title,
+                runtime_minutes: r.runtime ?? src.runtime_minutes ?? null,
+                watched_at: src.watched_at ?? null,
+              });
+            } else {
+              pendingWatchedMovies.push({
+                kind: "watched_movie",
+                source: src.source,
+                source_id: src.source_id,
+                title: src.title ?? null,
+                year: src.year ?? null,
+                runtime_minutes: src.runtime_minutes ?? null,
+                watched_at: src.watched_at ?? null,
+              });
+            }
+          } catch (e) {
+            console.warn("Skipped malformed watched movie import row", e);
           }
         });
         bump();
@@ -568,25 +585,30 @@ function ImportPage() {
         }));
         const { results } = await resolveMoviesBatch({ data: { items } });
         results.forEach((r, i) => {
-          const src = c[i];
-          if (r) {
-            followMovieRows.push({
-              tmdb_id: r.tmdb_id,
-              media_type: "movie",
-              series_name: r.title,
-              poster_path: r.poster_path,
-              backdrop_path: r.backdrop_path,
-              first_air_date: r.release_date,
-              vote_average: r.vote_average,
-            });
-          } else {
-            pendingFollowMovies.push({
-              kind: "follow_movie",
-              source: src.source,
-              source_id: src.source_id,
-              title: src.title ?? null,
-              year: src.year ?? null,
-            });
+          try {
+            const src = c[i];
+            if (!src) return;
+            if (r) {
+              followMovieRows.push({
+                tmdb_id: r.tmdb_id,
+                media_type: "movie",
+                series_name: r.title,
+                poster_path: r.poster_path,
+                backdrop_path: r.backdrop_path,
+                first_air_date: r.release_date,
+                vote_average: r.vote_average,
+              });
+            } else {
+              pendingFollowMovies.push({
+                kind: "follow_movie",
+                source: src.source,
+                source_id: src.source_id,
+                title: src.title ?? null,
+                year: src.year ?? null,
+              });
+            }
+          } catch (e) {
+            console.warn("Skipped malformed follow movie import row", e);
           }
         });
         bump();
@@ -601,12 +623,12 @@ function ImportPage() {
       }
 
       // -------- Save pending (unresolved) --------
-      const allPending = [
+      const allPending = dedupePendingRows([
         ...pendingShowFollows,
         ...pendingEpisodes,
         ...pendingWatchedMovies,
         ...pendingFollowMovies,
-      ];
+      ]);
       if (allPending.length) {
         setPhase("Queuing unresolved items for background resolution…");
         for (const c of chunk(allPending, 500)) {

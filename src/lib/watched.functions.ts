@@ -161,16 +161,29 @@ export const unmarkMovieWatched = createServerFn({ method: "POST" })
 export const getAllWatchedStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await (context.supabase as any).rpc(
-      "get_user_watch_totals",
-      { _user_id: context.userId },
+    const [episodesRes, moviesRes] = await Promise.all([
+      context.supabase
+        .from("watched_episodes")
+        .select("runtime_minutes", { count: "exact" })
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("watched_movies")
+        .select("runtime_minutes", { count: "exact" })
+        .eq("user_id", context.userId),
+    ]);
+    if (episodesRes.error) throw episodesRes.error;
+    if (moviesRes.error) throw moviesRes.error;
+
+    const totalEpisodes = episodesRes.count ?? 0;
+    const totalMovies = moviesRes.count ?? 0;
+    const epMinutes = (episodesRes.data ?? []).reduce(
+      (total, row) => total + (row.runtime_minutes ?? 0),
+      0,
     );
-    if (error) throw error;
-    const row = Array.isArray(data) ? data[0] : data;
-    const totalEpisodes = Number(row?.total_episodes ?? 0);
-    const totalMovies = Number(row?.total_movies ?? 0);
-    const epMinutes = Number(row?.episode_minutes ?? 0);
-    const movieMinutes = Number(row?.movie_minutes ?? 0);
+    const movieMinutes = (moviesRes.data ?? []).reduce(
+      (total, row) => total + (row.runtime_minutes ?? 0),
+      0,
+    );
     return {
       totalEpisodes,
       totalMovies,

@@ -52,12 +52,12 @@ export function UpcomingPreview() {
         </div>
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {preview.map((item) => {
+          {preview.map((item, index) => {
             const to = item.media_type === "tv" ? "/serie/$id" : "/movie/$id";
             const poster = posterUrl(item.poster_path, "w185");
             return (
               <Link
-                key={`${item.media_type}-${item.tmdb_id}`}
+                key={`${item.media_type}-${item.tmdb_id}-${item.season_number ?? "movie"}-${item.episode_number ?? index}`}
                 to={to}
                 params={{ id: String(item.tmdb_id) }}
                 className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-surface"

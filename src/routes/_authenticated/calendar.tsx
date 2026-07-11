@@ -110,8 +110,11 @@ function CalendarPage() {
                 </span>
               </div>
               <div className="space-y-2">
-                {entries.map((item) => (
-                  <UpcomingRow key={`${item.media_type}-${item.tmdb_id}`} item={item} />
+                {entries.map((item, index) => (
+                  <UpcomingRow
+                    key={`${item.media_type}-${item.tmdb_id}-${item.season_number ?? "movie"}-${item.episode_number ?? index}`}
+                    item={item}
+                  />
                 ))}
               </div>
             </section>

@@ -76,12 +76,14 @@ export const listProfileReports = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<AdminReport[]> => {
     const { supabase, userId } = context;
 
-    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
+    const { data: isAdminRole, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
     if (roleErr) throw new Error(roleErr.message);
-    if (!isAdmin) throw new Error("Forbidden");
+    if (!isAdminRole) throw new Error("Forbidden");
 
     let query = supabase
       .from("profile_reports")
@@ -141,11 +143,14 @@ export const resolveProfileReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Forbidden");
+    const { data: isAdminRole, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!isAdminRole) throw new Error("Forbidden");
 
     const { error } = await supabase
       .from("profile_reports")
@@ -167,11 +172,14 @@ export const clearReportedProfileImages = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Forbidden");
+    const { data: isAdminRole, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!isAdminRole) throw new Error("Forbidden");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
@@ -186,9 +194,11 @@ export const isCurrentUserAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
+    const { data } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
     return { admin: Boolean(data) };
   });
