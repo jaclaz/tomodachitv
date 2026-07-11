@@ -23,6 +23,8 @@ export const resetLibrary = createServerFn({ method: "POST" })
   });
 
 // ---- Shared TMDB fetch with retry/backoff ----
+// On HTTP 429 we wait 5s (or Retry-After) and try again, up to 6 attempts,
+// instead of giving up after the first rate-limit hit.
 async function tmdbFetch(
   path: string,
   params: Record<string, string> = {},
@@ -31,13 +33,15 @@ async function tmdbFetch(
   if (!key) return null;
   const q = new URLSearchParams({ api_key: key, language: "en-US", ...params });
   const url = `${TMDB_BASE}${path}?${q}`;
-  let backoff = 400;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  let backoff = 800;
+  const MAX_ATTEMPTS = 6;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       const r = await fetch(url);
       if (r.status === 429) {
-        const ra = parseInt(r.headers.get("retry-after") ?? "1", 10);
-        await new Promise((res) => setTimeout(res, (Number.isFinite(ra) ? ra : 1) * 1000));
+        const ra = parseInt(r.headers.get("retry-after") ?? "5", 10);
+        const waitMs = (Number.isFinite(ra) && ra > 0 ? ra : 5) * 1000;
+        await new Promise((res) => setTimeout(res, waitMs));
         continue;
       }
       if (r.status === 404) return null;
@@ -45,12 +49,14 @@ async function tmdbFetch(
       return await r.json();
     } catch {
       await new Promise((res) => setTimeout(res, backoff));
-      backoff *= 2;
+      backoff = Math.min(backoff * 2, 8000);
     }
   }
   return null;
 }
 
+// Concurrency-limited async map. Kept intentionally low (default 2) to avoid
+// saturating TMDB's per-IP rate limit from a single server worker.
 async function mapPool<T, R>(items: T[], limit: number, fn: (x: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let i = 0;
@@ -64,6 +70,7 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (x: T) => Promise<R>
   await Promise.all(workers);
   return results;
 }
+
 
 interface ResolvedShow {
   tmdb_id: number;
@@ -95,7 +102,7 @@ export const resolveShowsBatch = createServerFn({ method: "POST" })
     const byTvdb: Record<string, ResolvedShow | null> = {};
     const byTmdb: Record<string, ResolvedShow | null> = {};
 
-    await mapPool(tvdb, 6, async (id) => {
+    await mapPool(tvdb, 2, async (id) => {
       const d = await tmdbFetch(`/find/${id}`, { external_source: "tvdb_id" });
       const tv = d?.tv_results?.[0];
       if (!tv) {
@@ -114,7 +121,7 @@ export const resolveShowsBatch = createServerFn({ method: "POST" })
       };
     });
 
-    await mapPool(tmdb, 6, async (id) => {
+    await mapPool(tmdb, 2, async (id) => {
       const d = await tmdbFetch(`/tv/${id}`);
       byTmdb[id] = d?.id
         ? {
@@ -144,7 +151,7 @@ export const resolveMoviesBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((i: { items: MovieQuery[] }) => i)
   .handler(async ({ data }) => {
-    const results = await mapPool(data.items, 6, async (m): Promise<ResolvedMovie | null> => {
+    const results = await mapPool(data.items, 2, async (m): Promise<ResolvedMovie | null> => {
       if (m.tmdb_id) {
         const d = await tmdbFetch(`/movie/${m.tmdb_id}`);
         if (d?.id) {
@@ -356,7 +363,7 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
     const caughtUpShowIds: number[] = [];
     let inProgress = 0;
     const showIds = [...watchedPerShow.keys()];
-    await mapPool(showIds, 6, async (id) => {
+    await mapPool(showIds, 2, async (id) => {
       const watched = watchedPerShow.get(id) ?? 0;
       if (watched === 0) return;
       const details = await tmdbFetch(`/tv/${id}`);
@@ -478,7 +485,7 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       .from("pending_media_imports")
       .select("*")
       .eq("user_id", context.userId)
-      .limit(500);
+      .limit(50);
     if (error) throw error;
     if (!pending?.length) return { resolved: 0, remaining: 0 };
 

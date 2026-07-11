@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2 } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -267,10 +268,69 @@ function ImportPage() {
   const [counts, setCounts] = useState<Counts | null>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [retrying, setRetrying] = useState(false);
+  const [autoStatus, setAutoStatus] = useState<"idle" | "syncing" | "waiting" | "backoff">("idle");
+  const loopTokenRef = useRef(0);
+  const loopRunningRef = useRef(false);
 
   useEffect(() => {
     getPendingImportsCount().then((r) => setPendingCount(r.count)).catch(() => {});
   }, []);
+
+  // Continuous background resolver: whenever there are pending items, poll the
+  // server every ~4s in small batches. On failure, back off for 10s. The loop
+  // is cancellable via loopTokenRef so we can force-restart it ("wake").
+  const runBackgroundLoop = async (token: number) => {
+    if (loopRunningRef.current) return;
+    loopRunningRef.current = true;
+    const wait = (ms: number) =>
+      new Promise<void>((res) => setTimeout(res, ms));
+    try {
+      while (loopTokenRef.current === token) {
+        setAutoStatus("syncing");
+        try {
+          const r = await retryPendingImports();
+          if (loopTokenRef.current !== token) break;
+          setPendingCount(r.remaining);
+          if (r.remaining <= 0) {
+            setAutoStatus("idle");
+            qc.invalidateQueries();
+            break;
+          }
+          if (r.resolved > 0) qc.invalidateQueries();
+          setAutoStatus("waiting");
+          await wait(r.resolved > 0 ? 3000 : 5000);
+        } catch {
+          if (loopTokenRef.current !== token) break;
+          setAutoStatus("backoff");
+          await wait(10000);
+        }
+      }
+    } finally {
+      loopRunningRef.current = false;
+      if (loopTokenRef.current === token) setAutoStatus("idle");
+    }
+  };
+
+  // Kick the loop whenever we have pending items and no loop is currently running.
+  useEffect(() => {
+    if (pendingCount > 0 && !loopRunningRef.current) {
+      const token = ++loopTokenRef.current;
+      void runBackgroundLoop(token);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCount]);
+
+  // Manual "wake" — cancels the current iteration and starts a fresh one.
+  const wakeLoop = () => {
+    const token = ++loopTokenRef.current;
+    // Give the previous iteration a moment to observe the token change.
+    setTimeout(() => {
+      if (!loopRunningRef.current) void runBackgroundLoop(token);
+    }, 50);
+    toast.success("Background sync woken up");
+  };
+
+
 
   const bump = (n = 1) => {
     setDoneSteps((d) => {
@@ -750,16 +810,43 @@ function ImportPage() {
       )}
 
       {pendingCount > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 text-amber-500" />
             <div>
               <p className="font-display text-base font-semibold">
                 {pendingCount} items awaiting resolution
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                TMDB was rate-limited for some titles. Retry to fetch them again.
+              <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                {autoStatus === "syncing" && (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
+                    Background auto-sync running…
+                  </>
+                )}
+                {autoStatus === "waiting" && (
+                  <>
+                    <RefreshCw className="h-3 w-3 text-amber-500" />
+                    Background auto-sync active — next batch in a few seconds
+                  </>
+                )}
+                {autoStatus === "backoff" && (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-amber-500" />
+                    TMDB rate-limited — retrying in ~10s
+                  </>
+                )}
+                {autoStatus === "idle" && (
+                  <>Background auto-sync paused. Click “Wake sync” to resume.</>
+                )}
               </p>
+              <button
+                type="button"
+                onClick={wakeLoop}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-600 underline-offset-2 hover:underline dark:text-amber-400"
+              >
+                <Zap className="h-3 w-3" /> Wake sync
+              </button>
             </div>
           </div>
           <Button type="button" variant="secondary" onClick={handleRetry} disabled={retrying}>
@@ -772,6 +859,7 @@ function ImportPage() {
           </Button>
         </div>
       )}
+
 
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
