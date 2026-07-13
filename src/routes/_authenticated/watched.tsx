@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
+import { ShowActionsMenu } from "@/components/show-actions-menu";
 import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
 
 
