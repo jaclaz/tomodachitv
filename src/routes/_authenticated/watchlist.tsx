@@ -45,6 +45,18 @@ function WatchlistPage() {
     queryFn: () => getWatchlist(),
   });
 
+  const { data: currentlyWatching = [] } = useQuery({
+    queryKey: ["currently-watching"],
+    queryFn: () => getCurrentlyWatching(),
+    staleTime: 60_000,
+  });
+
+  const inProgressMap = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const s of currentlyWatching) m.set(s.tmdb_id, s.last_watched_at);
+    return m;
+  }, [currentlyWatching]);
+
   const removeMutation = useMutation({
     mutationFn: (item: WatchlistItem) =>
       removeFromWatchlist({
@@ -54,11 +66,24 @@ function WatchlistPage() {
   });
 
   const q = query.trim().toLowerCase();
-  const filtered = data.filter(
-    (item) =>
-      (filter === "all" || item.media_type === filter) &&
-      (q === "" || item.series_name.toLowerCase().includes(q))
-  );
+  const filtered = useMemo(() => {
+    const list = data.filter(
+      (item) =>
+        item.media_type === filter &&
+        (q === "" || item.series_name.toLowerCase().includes(q))
+    );
+    if (filter !== "tv") return list;
+    // Sort: currently-watching TV shows first (most recent activity first),
+    // then never-started shows in their original order.
+    return list.slice().sort((a, b) => {
+      const aLast = inProgressMap.get(a.tmdb_id);
+      const bLast = inProgressMap.get(b.tmdb_id);
+      if (aLast && bLast) return bLast.localeCompare(aLast);
+      if (aLast) return -1;
+      if (bLast) return 1;
+      return 0;
+    });
+  }, [data, filter, q, inProgressMap]);
 
 
   return (
@@ -75,7 +100,6 @@ function WatchlistPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="tv">TV Shows</TabsTrigger>
             <TabsTrigger value="movie">Movies</TabsTrigger>
           </TabsList>
