@@ -193,14 +193,22 @@ function AddToListIconButton({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost"
+            variant={justAdded ? "secondary" : "ghost"}
             size="icon"
             className={size === "sm" ? "h-7 w-7" : "h-8 w-8"}
           >
-            <ListPlus
-              className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
-            />
-            <span className="sr-only">Add to list</span>
+            {justAdded ? (
+              <Check
+                className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
+              />
+            ) : (
+              <ListPlus
+                className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
+              />
+            )}
+            <span className="sr-only">
+              {justAdded ? "Added to list" : "Add to list"}
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
