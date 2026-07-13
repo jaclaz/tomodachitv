@@ -19,29 +19,17 @@ export interface CurrentlyWatchingItem {
 export const getCurrentlyWatching = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CurrentlyWatchingItem[]> => {
-    const [epsRes, droppedRes] = await Promise.all([
-      context.supabase
-        .from("watched_episodes")
-        .select("tmdb_id, season_number, episode_number, watched_at")
-        .eq("user_id", context.userId),
-      context.supabase
-        .from("dropped_shows")
-        .select("tmdb_id")
-        .eq("user_id", context.userId),
-    ]);
-    const { data: eps, error } = epsRes;
+    const { data: eps, error } = await context.supabase
+      .from("watched_episodes")
+      .select("tmdb_id, season_number, episode_number, watched_at")
+      .eq("user_id", context.userId);
     if (error) throw error;
-    const droppedSet = new Set<number>(
-      (droppedRes.data ?? []).map((r) => r.tmdb_id)
-    );
-
 
     const byShow = new Map<
       number,
       { watched: Set<string>; last: string; count: number }
     >();
     for (const e of eps ?? []) {
-      if (droppedSet.has(e.tmdb_id)) continue;
       let cur = byShow.get(e.tmdb_id);
       if (!cur) {
         cur = { watched: new Set(), last: e.watched_at, count: 0 };

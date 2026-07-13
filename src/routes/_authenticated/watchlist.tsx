@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
-import { ShowActionsMenu } from "@/components/show-actions-menu";
 import { Trash2, Star, Search, X, Grid2x2, Grid3x3, Plus, Loader2 } from "lucide-react";
 import { markEpisodeWatched } from "@/lib/watched.functions";
 import { toast } from "sonner";
@@ -254,17 +253,10 @@ function WatchlistPage() {
                   )}
                 </div>
               </Link>
-              <div className="absolute right-2 top-2 flex items-center gap-1">
+              <div className="absolute right-2 top-2">
                 <span className="rounded-md bg-background/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
                   {item.media_type === "tv" ? "TV" : "Movie"}
                 </span>
-                {item.media_type === "tv" && (
-                  <ShowActionsMenu
-                    tmdb_id={item.tmdb_id}
-                    title={item.series_name}
-                    mode="watchlist"
-                  />
-                )}
               </div>
               <Button
                 size="icon"

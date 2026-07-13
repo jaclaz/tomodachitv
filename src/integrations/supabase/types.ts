@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      dropped_shows: {
-        Row: {
-          dropped_at: string
-          id: string
-          tmdb_id: number
-          user_id: string
-        }
-        Insert: {
-          dropped_at?: string
-          id?: string
-          tmdb_id: number
-          user_id: string
-        }
-        Update: {
-          dropped_at?: string
-          id?: string
-          tmdb_id?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
       favorites: {
         Row: {
           added_at: string
