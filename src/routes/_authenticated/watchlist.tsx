@@ -175,8 +175,8 @@ function WatchlistPage() {
           </Button>
         </div>
       ) : (
-        <div className={gridClass}>
-          {filtered.map((item, index) => (
+        (() => {
+          const renderCard = (item: WatchlistItem, index: number) => (
             <div
               key={`${item.media_type}-${item.tmdb_id}-${index}`}
               className="group relative overflow-hidden rounded-xl border border-t-0 border-border bg-card shadow-sm transition-shadow hover:shadow-md"
@@ -233,8 +233,45 @@ function WatchlistPage() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          );
+
+          if (filter === "tv") {
+            const inProgress = filtered.filter((i) => inProgressMap.has(i.tmdb_id));
+            const notStarted = filtered.filter((i) => !inProgressMap.has(i.tmdb_id));
+            return (
+              <div className="space-y-8">
+                {inProgress.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-foreground">
+                      Currently watching
+                    </h2>
+                    <div className={gridClass}>
+                      {inProgress.map((item, index) => renderCard(item, index))}
+                    </div>
+                  </section>
+                )}
+                {notStarted.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-foreground">
+                      Not started yet
+                    </h2>
+                    <div className={gridClass}>
+                      {notStarted.map((item, index) =>
+                        renderCard(item, inProgress.length + index)
+                      )}
+                    </div>
+                  </section>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className={gridClass}>
+              {filtered.map((item, index) => renderCard(item, index))}
+            </div>
+          );
+        })()
       )}
     </div>
   );
