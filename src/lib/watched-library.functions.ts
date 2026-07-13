@@ -201,6 +201,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         genre_ids: c?.genre_ids ?? [],
         watched_at: m.watched_at,
         episodes_watched: null,
+        series_status: null,
       });
     }
     return items;
