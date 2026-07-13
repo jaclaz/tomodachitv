@@ -126,6 +126,8 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
+      qc.invalidateQueries({ queryKey: ["list"] });
+      setJustAdded(true);
       toast.success("List created");
       setCreating(false);
       setNewTitle("");
