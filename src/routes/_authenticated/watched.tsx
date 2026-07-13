@@ -413,6 +413,76 @@ function WatchedPage() {
           ))}
         </div>
       )}
+
+      {dropped.length > 0 && (
+        <section className="space-y-4 pt-6">
+          <div className="flex items-end justify-between gap-3 border-t border-border pt-6">
+            <div>
+              <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+                <XCircle className="h-5 w-5 text-accent" />
+                Dropped
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {dropped.length} show{dropped.length === 1 ? "" : "s"} you stopped watching.
+              </p>
+            </div>
+          </div>
+          <div className={gridClass}>
+            {dropped.map((show, index) => (
+              <div
+                key={`dropped-${show.tmdb_id}-${index}`}
+                className="group relative overflow-hidden rounded-xl border border-t-0 border-border bg-card shadow-sm transition-shadow hover:shadow-md"
+              >
+                <Link
+                  to="/serie/$id"
+                  params={{ id: String(show.tmdb_id) }}
+                  className="block"
+                >
+                  <div className="aspect-[2/3] overflow-hidden rounded-t-xl bg-muted opacity-75 transition-opacity group-hover:opacity-100">
+                    {show.poster_path ? (
+                      <img
+                        src={posterUrl(show.poster_path)}
+                        alt={show.title}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-muted">
+                        <span className="font-display text-2xl font-bold text-muted-foreground">
+                          {show.title.slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+                <div className="absolute right-2 top-2">
+                  <span className="rounded-md bg-destructive/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-destructive-foreground backdrop-blur">
+                    Dropped
+                  </span>
+                </div>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="absolute left-2 top-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                  onClick={() => undropMutation.mutate(show)}
+                  title="Move back to watchlist"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+                <div className="p-3">
+                  <h3 className="font-display text-sm font-semibold text-foreground line-clamp-1">
+                    {show.title}
+                  </h3>
+                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Star className="h-3 w-3 fill-rating text-rating" />
+                    {show.vote_average?.toFixed(1) ?? "—"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
