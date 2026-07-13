@@ -185,6 +185,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         genre_ids: c?.genre_ids ?? [],
         watched_at: agg.last,
         episodes_watched: agg.count,
+        series_status: c?.series_status ?? null,
       });
     }
     for (const m of movies ?? []) {
