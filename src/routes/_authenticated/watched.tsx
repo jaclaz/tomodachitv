@@ -91,7 +91,7 @@ function WatchedPage() {
 
   const filtered = useMemo(() => {
     let list = library.slice();
-    if (type !== "all") list = list.filter((i) => i.media_type === type);
+    list = list.filter((i) => i.media_type === type);
     const q = query.trim().toLowerCase();
     if (q !== "") list = list.filter((i) => i.title.toLowerCase().includes(q));
     if (filters.genreId != null)
