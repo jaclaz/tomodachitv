@@ -130,6 +130,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
             genre_ids: (d.genres ?? []).map((g: any) => g.id),
             episode_count_aired:
               k.media_type === "tv" ? (d.number_of_episodes ?? null) : null,
+            series_status: k.media_type === "tv" ? (d.status ?? null) : null,
           };
         } catch {
           return null;
