@@ -97,6 +97,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
       const cached = cacheMap.get(`${k.media_type}:${k.tmdb_id}`);
       if (!cached) return true;
       if (k.media_type === "tv" && cached.episode_count_aired == null) return true;
+      if (k.media_type === "tv" && cached.series_status == null) return true;
       return false;
     };
     const missing = wantedKeys.filter(needsRefetch);
