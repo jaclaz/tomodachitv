@@ -136,6 +136,33 @@ export const markEpisodesBulk = createServerFn({ method: "POST" })
         onConflict: "user_id, tmdb_id, season_number, episode_number",
       });
     if (error) throw error;
+
+    try {
+      const { data: cache } = await context.supabase
+        .from("media_cache")
+        .select("episode_count_aired")
+        .eq("media_type", "tv")
+        .eq("tmdb_id", data.tmdb_id)
+        .maybeSingle();
+      const totalAired = cache?.episode_count_aired ?? null;
+      if (totalAired && totalAired > 0) {
+        const { count } = await context.supabase
+          .from("watched_episodes")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", context.userId)
+          .eq("tmdb_id", data.tmdb_id);
+        if ((count ?? 0) >= totalAired) {
+          await context.supabase
+            .from("watchlist")
+            .delete()
+            .eq("user_id", context.userId)
+            .eq("media_type", "tv")
+            .eq("tmdb_id", data.tmdb_id);
+        }
+      }
+    } catch {
+      // best-effort cleanup
+    }
     return { success: true, count: rows.length };
   });
 
