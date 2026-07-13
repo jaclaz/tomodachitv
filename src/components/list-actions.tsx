@@ -138,8 +138,16 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="gap-2">
-            <ListPlus className="h-4 w-4" /> Add to list
+          <Button variant={justAdded ? "secondary" : "outline"} className="gap-2">
+            {justAdded ? (
+              <>
+                <Check className="h-4 w-4" /> Added
+              </>
+            ) : (
+              <>
+                <ListPlus className="h-4 w-4" /> Add to list
+              </>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
