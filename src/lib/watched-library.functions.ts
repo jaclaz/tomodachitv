@@ -60,8 +60,13 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
     if (e2) throw e2;
 
+    // Union of shows we have watched episodes for + shows explicitly dropped
+    const tvIdSet = new Set<number>([
+      ...Array.from(showAgg.keys()),
+      ...Array.from(droppedMap.keys()),
+    ]);
     const wantedKeys: Array<{ media_type: "tv" | "movie"; tmdb_id: number }> = [
-      ...Array.from(showAgg.keys()).map(
+      ...Array.from(tvIdSet).map(
         (id) => ({ media_type: "tv" as const, tmdb_id: id })
       ),
       ...(movies ?? []).map((m) => ({
@@ -69,6 +74,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         tmdb_id: m.tmdb_id,
       })),
     ];
+
 
     if (wantedKeys.length === 0) return [];
 
