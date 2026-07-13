@@ -14,6 +14,7 @@ export interface WatchedLibraryItem {
   genre_ids: number[];
   watched_at: string; // most recent watched_at
   episodes_watched: number | null; // only for tv
+  series_status: string | null; // only for tv
 }
 
 export const getWatchedLibrary = createServerFn({ method: "POST" })
@@ -96,6 +97,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
       const cached = cacheMap.get(`${k.media_type}:${k.tmdb_id}`);
       if (!cached) return true;
       if (k.media_type === "tv" && cached.episode_count_aired == null) return true;
+      if (k.media_type === "tv" && cached.series_status == null) return true;
       return false;
     };
     const missing = wantedKeys.filter(needsRefetch);
@@ -129,6 +131,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
             genre_ids: (d.genres ?? []).map((g: any) => g.id),
             episode_count_aired:
               k.media_type === "tv" ? (d.number_of_episodes ?? null) : null,
+            series_status: k.media_type === "tv" ? (d.status ?? null) : null,
           };
         } catch {
           return null;
@@ -183,6 +186,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         genre_ids: c?.genre_ids ?? [],
         watched_at: agg.last,
         episodes_watched: agg.count,
+        series_status: c?.series_status ?? null,
       });
     }
     for (const m of movies ?? []) {
@@ -198,6 +202,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         genre_ids: c?.genre_ids ?? [],
         watched_at: m.watched_at,
         episodes_watched: null,
+        series_status: null,
       });
     }
     return items;

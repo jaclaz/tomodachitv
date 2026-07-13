@@ -65,6 +65,7 @@ export function CurrentlyWatching() {
       queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       queryClient.invalidateQueries({ queryKey: ["watched-library"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
   });
 
