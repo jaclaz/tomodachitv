@@ -247,6 +247,38 @@ function WatchlistPage() {
                   <Star className="h-3 w-3 fill-rating text-rating" />
                   {item.vote_average?.toFixed(1) ?? "—"}
                 </div>
+                {(() => {
+                  const prog = item.media_type === "tv" ? inProgressMap.get(item.tmdb_id) : undefined;
+                  if (!prog) return null;
+                  const pct = prog.total_episodes > 0
+                    ? Math.min(100, (prog.episodes_watched / prog.total_episodes) * 100)
+                    : 0;
+                  const pending = markNext.isPending && markNext.variables?.tmdb_id === prog.tmdb_id;
+                  return (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="text-[11px] text-muted-foreground">
+                        Next: S{prog.next_season} · E{prog.next_episode}
+                        {prog.total_episodes > 0 ? ` · ${prog.episodes_watched}/${prog.total_episodes}` : ""}
+                      </p>
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          markNext.mutate(prog);
+                        }}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+                      >
+                        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                        Mark next watched
+                      </button>
+                    </div>
+                  );
+                })()}
                 <div className="mt-2 flex justify-end">
                   <PosterActions
                     media_type={item.media_type}
