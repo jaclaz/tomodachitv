@@ -1,8 +1,13 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWatchedLibrary } from "@/lib/watched-library.functions";
-import { getGenres, posterUrl, type MediaType, type SortBy } from "@/lib/tmdb";
+import {
+  getDroppedShows,
+  setWatchlistStatus,
+  type DroppedShow,
+} from "@/lib/watchlist.functions";
+import { getGenres, posterUrl, type MediaType } from "@/lib/tmdb";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -14,12 +19,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
-import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
+import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3, XCircle, RotateCcw } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/watched")({
   component: WatchedPage,
 });
+
 
 type TypeTab = "all" | "tv" | "movie";
 type WatchedSort =
