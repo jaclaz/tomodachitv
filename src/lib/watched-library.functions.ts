@@ -23,11 +23,21 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<WatchedLibraryItem[]> => {
     // Aggregate watched TV shows
-    const { data: eps, error: e1 } = await context.supabase
-      .from("watched_episodes")
-      .select("tmdb_id, watched_at")
-      .eq("user_id", context.userId);
+    const [epsRes, droppedRes] = await Promise.all([
+      context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, watched_at")
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("dropped_shows")
+        .select("tmdb_id, dropped_at")
+        .eq("user_id", context.userId),
+    ]);
+    const { data: eps, error: e1 } = epsRes;
     if (e1) throw e1;
+    const droppedMap = new Map<number, string>();
+    for (const r of droppedRes.data ?? []) droppedMap.set(r.tmdb_id, r.dropped_at);
+
 
     const showAgg = new Map<
       number,
