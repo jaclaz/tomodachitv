@@ -152,7 +152,7 @@ function WatchedPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={type} onValueChange={(v) => setType(v as TypeTab)}>
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
+              
               <TabsTrigger value="tv">TV Shows</TabsTrigger>
               <TabsTrigger value="movie">Movies</TabsTrigger>
             </TabsList>
