@@ -90,10 +90,15 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
     for (const r of (cachedMoviesRes.data ?? []) as any[])
       cacheMap.set(`movie:${r.tmdb_id}`, r);
 
-    // Fetch missing from TMDB and upsert
-    const missing = wantedKeys.filter(
-      (k) => !cacheMap.has(`${k.media_type}:${k.tmdb_id}`)
-    );
+    // Fetch missing from TMDB and upsert. Also refetch TV rows whose
+    // episode_count_aired is unknown so we can decide "fully watched".
+    const needsRefetch = (k: { media_type: "tv" | "movie"; tmdb_id: number }) => {
+      const cached = cacheMap.get(`${k.media_type}:${k.tmdb_id}`);
+      if (!cached) return true;
+      if (k.media_type === "tv" && cached.episode_count_aired == null) return true;
+      return false;
+    };
+    const missing = wantedKeys.filter(needsRefetch);
 
     if (missing.length) {
       const key = process.env.TMDB_API_KEY;
@@ -122,6 +127,8 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
               (k.media_type === "tv" ? d.first_air_date : d.release_date) ||
               null,
             genre_ids: (d.genres ?? []).map((g: any) => g.id),
+            episode_count_aired:
+              k.media_type === "tv" ? (d.number_of_episodes ?? null) : null,
           };
         } catch {
           return null;
