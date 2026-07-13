@@ -330,8 +330,8 @@ function WatchedPage() {
           </p>
         </div>
       ) : (
-        <div className={gridClass}>
-          {filtered.map((item, index) => (
+        (() => {
+          const renderCard = (item: typeof filtered[number], index: number) => (
             <div
               key={`${item.media_type}-${item.tmdb_id}-${index}`}
               className="group relative overflow-hidden rounded-xl border border-t-0 border-border bg-card shadow-sm transition-shadow hover:shadow-md"
@@ -386,8 +386,53 @@ function WatchedPage() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          );
+
+          if (type === "tv") {
+            const isFinished = (s: string | null) =>
+              s === "Ended" || s === "Canceled" || s === "Cancelled";
+            const finished = filtered.filter((i) => isFinished(i.series_status));
+            const upToDate = filtered.filter((i) => !isFinished(i.series_status));
+            return (
+              <div className="space-y-8">
+                {upToDate.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-foreground">
+                      Up to date
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        ({upToDate.length})
+                      </span>
+                    </h2>
+                    <div className={gridClass}>
+                      {upToDate.map((item, index) => renderCard(item, index))}
+                    </div>
+                  </section>
+                )}
+                {finished.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-foreground">
+                      Finished
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        ({finished.length})
+                      </span>
+                    </h2>
+                    <div className={gridClass}>
+                      {finished.map((item, index) =>
+                        renderCard(item, upToDate.length + index)
+                      )}
+                    </div>
+                  </section>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className={gridClass}>
+              {filtered.map((item, index) => renderCard(item, index))}
+            </div>
+          );
+        })()
       )}
     </div>
   );
