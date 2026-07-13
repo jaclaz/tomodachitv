@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,6 +6,7 @@ import {
   removeFromWatchlist,
   type WatchlistItem,
 } from "@/lib/watchlist.functions";
+import { getCurrentlyWatching } from "@/lib/currently-watching.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
