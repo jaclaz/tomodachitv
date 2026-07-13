@@ -12,7 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
-import { Trash2, Star, Search, X, Grid2x2, Grid3x3 } from "lucide-react";
+import { Trash2, Star, Search, X, Grid2x2, Grid3x3, Plus, Loader2 } from "lucide-react";
+import { markEpisodeWatched } from "@/lib/watched.functions";
+import { toast } from "sonner";
+import type { CurrentlyWatchingItem } from "@/lib/currently-watching.functions";
 
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
@@ -52,10 +55,31 @@ function WatchlistPage() {
   });
 
   const inProgressMap = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const s of currentlyWatching) m.set(s.tmdb_id, s.last_watched_at);
+    const m = new Map<number, CurrentlyWatchingItem>();
+    for (const s of currentlyWatching) m.set(s.tmdb_id, s);
     return m;
   }, [currentlyWatching]);
+
+  const markNext = useMutation({
+    mutationFn: (item: CurrentlyWatchingItem) =>
+      markEpisodeWatched({
+        data: {
+          tmdb_id: item.tmdb_id,
+          season_number: item.next_season,
+          episode_number: item.next_episode,
+          runtime_minutes: item.runtime_minutes,
+        },
+      }),
+    onSuccess: (_r, vars) => {
+      toast.success(
+        `Marked ${vars.title} S${vars.next_season}·E${vars.next_episode} as watched`
+      );
+      queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ["watched-library"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Could not mark episode"),
+  });
 
   const removeMutation = useMutation({
     mutationFn: (item: WatchlistItem) =>
@@ -76,8 +100,8 @@ function WatchlistPage() {
     // Sort: currently-watching TV shows first (most recent activity first),
     // then never-started shows in their original order.
     return list.slice().sort((a, b) => {
-      const aLast = inProgressMap.get(a.tmdb_id);
-      const bLast = inProgressMap.get(b.tmdb_id);
+      const aLast = inProgressMap.get(a.tmdb_id)?.last_watched_at;
+      const bLast = inProgressMap.get(b.tmdb_id)?.last_watched_at;
       if (aLast && bLast) return bLast.localeCompare(aLast);
       if (aLast) return -1;
       if (bLast) return 1;
@@ -223,6 +247,38 @@ function WatchlistPage() {
                   <Star className="h-3 w-3 fill-rating text-rating" />
                   {item.vote_average?.toFixed(1) ?? "—"}
                 </div>
+                {(() => {
+                  const prog = item.media_type === "tv" ? inProgressMap.get(item.tmdb_id) : undefined;
+                  if (!prog) return null;
+                  const pct = prog.total_episodes > 0
+                    ? Math.min(100, (prog.episodes_watched / prog.total_episodes) * 100)
+                    : 0;
+                  const pending = markNext.isPending && markNext.variables?.tmdb_id === prog.tmdb_id;
+                  return (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="text-[11px] text-muted-foreground">
+                        Next: S{prog.next_season} · E{prog.next_episode}
+                        {prog.total_episodes > 0 ? ` · ${prog.episodes_watched}/${prog.total_episodes}` : ""}
+                      </p>
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          markNext.mutate(prog);
+                        }}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+                      >
+                        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                        Mark next watched
+                      </button>
+                    </div>
+                  );
+                })()}
                 <div className="mt-2 flex justify-end">
                   <PosterActions
                     media_type={item.media_type}
