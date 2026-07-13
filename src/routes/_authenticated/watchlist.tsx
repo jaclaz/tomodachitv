@@ -55,10 +55,31 @@ function WatchlistPage() {
   });
 
   const inProgressMap = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const s of currentlyWatching) m.set(s.tmdb_id, s.last_watched_at);
+    const m = new Map<number, CurrentlyWatchingItem>();
+    for (const s of currentlyWatching) m.set(s.tmdb_id, s);
     return m;
   }, [currentlyWatching]);
+
+  const markNext = useMutation({
+    mutationFn: (item: CurrentlyWatchingItem) =>
+      markEpisodeWatched({
+        data: {
+          tmdb_id: item.tmdb_id,
+          season_number: item.next_season,
+          episode_number: item.next_episode,
+          runtime_minutes: item.runtime_minutes,
+        },
+      }),
+    onSuccess: (_r, vars) => {
+      toast.success(
+        `Marked ${vars.title} S${vars.next_season}·E${vars.next_episode} as watched`
+      );
+      queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ["watched-library"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Could not mark episode"),
+  });
 
   const removeMutation = useMutation({
     mutationFn: (item: WatchlistItem) =>
