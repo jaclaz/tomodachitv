@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
+import { ShowActionsMenu } from "@/components/show-actions-menu";
 import { Trash2, Star, Search, X, Grid2x2, Grid3x3, Plus, Loader2 } from "lucide-react";
 import { markEpisodeWatched } from "@/lib/watched.functions";
 import { toast } from "sonner";
