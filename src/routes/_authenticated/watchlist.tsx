@@ -19,11 +19,11 @@ export const Route = createFileRoute("/_authenticated/watchlist")({
   component: WatchlistPage,
 });
 
-type Filter = "all" | "tv" | "movie";
+type Filter = "tv" | "movie";
 
 function WatchlistPage() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("tv");
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
     if (typeof window === "undefined") return "normal";
