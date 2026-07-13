@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,6 +6,7 @@ import {
   removeFromWatchlist,
   type WatchlistItem,
 } from "@/lib/watchlist.functions";
+import { getCurrentlyWatching } from "@/lib/currently-watching.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +19,11 @@ export const Route = createFileRoute("/_authenticated/watchlist")({
   component: WatchlistPage,
 });
 
-type Filter = "all" | "tv" | "movie";
+type Filter = "tv" | "movie";
 
 function WatchlistPage() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("tv");
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
     if (typeof window === "undefined") return "normal";
@@ -44,6 +45,18 @@ function WatchlistPage() {
     queryFn: () => getWatchlist(),
   });
 
+  const { data: currentlyWatching = [] } = useQuery({
+    queryKey: ["currently-watching"],
+    queryFn: () => getCurrentlyWatching(),
+    staleTime: 60_000,
+  });
+
+  const inProgressMap = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const s of currentlyWatching) m.set(s.tmdb_id, s.last_watched_at);
+    return m;
+  }, [currentlyWatching]);
+
   const removeMutation = useMutation({
     mutationFn: (item: WatchlistItem) =>
       removeFromWatchlist({
@@ -53,11 +66,24 @@ function WatchlistPage() {
   });
 
   const q = query.trim().toLowerCase();
-  const filtered = data.filter(
-    (item) =>
-      (filter === "all" || item.media_type === filter) &&
-      (q === "" || item.series_name.toLowerCase().includes(q))
-  );
+  const filtered = useMemo(() => {
+    const list = data.filter(
+      (item) =>
+        item.media_type === filter &&
+        (q === "" || item.series_name.toLowerCase().includes(q))
+    );
+    if (filter !== "tv") return list;
+    // Sort: currently-watching TV shows first (most recent activity first),
+    // then never-started shows in their original order.
+    return list.slice().sort((a, b) => {
+      const aLast = inProgressMap.get(a.tmdb_id);
+      const bLast = inProgressMap.get(b.tmdb_id);
+      if (aLast && bLast) return bLast.localeCompare(aLast);
+      if (aLast) return -1;
+      if (bLast) return 1;
+      return 0;
+    });
+  }, [data, filter, q, inProgressMap]);
 
 
   return (
@@ -74,7 +100,6 @@ function WatchlistPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="tv">TV Shows</TabsTrigger>
             <TabsTrigger value="movie">Movies</TabsTrigger>
           </TabsList>
@@ -150,8 +175,8 @@ function WatchlistPage() {
           </Button>
         </div>
       ) : (
-        <div className={gridClass}>
-          {filtered.map((item, index) => (
+        (() => {
+          const renderCard = (item: WatchlistItem, index: number) => (
             <div
               key={`${item.media_type}-${item.tmdb_id}-${index}`}
               className="group relative overflow-hidden rounded-xl border border-t-0 border-border bg-card shadow-sm transition-shadow hover:shadow-md"
@@ -208,8 +233,45 @@ function WatchlistPage() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          );
+
+          if (filter === "tv") {
+            const inProgress = filtered.filter((i) => inProgressMap.has(i.tmdb_id));
+            const notStarted = filtered.filter((i) => !inProgressMap.has(i.tmdb_id));
+            return (
+              <div className="space-y-8">
+                {inProgress.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-foreground">
+                      Currently watching
+                    </h2>
+                    <div className={gridClass}>
+                      {inProgress.map((item, index) => renderCard(item, index))}
+                    </div>
+                  </section>
+                )}
+                {notStarted.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-foreground">
+                      Not started yet
+                    </h2>
+                    <div className={gridClass}>
+                      {notStarted.map((item, index) =>
+                        renderCard(item, inProgress.length + index)
+                      )}
+                    </div>
+                  </section>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className={gridClass}>
+              {filtered.map((item, index) => renderCard(item, index))}
+            </div>
+          );
+        })()
       )}
     </div>
   );
