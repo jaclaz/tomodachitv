@@ -100,8 +100,8 @@ function WatchlistPage() {
     // Sort: currently-watching TV shows first (most recent activity first),
     // then never-started shows in their original order.
     return list.slice().sort((a, b) => {
-      const aLast = inProgressMap.get(a.tmdb_id);
-      const bLast = inProgressMap.get(b.tmdb_id);
+      const aLast = inProgressMap.get(a.tmdb_id)?.last_watched_at;
+      const bLast = inProgressMap.get(b.tmdb_id)?.last_watched_at;
       if (aLast && bLast) return bLast.localeCompare(aLast);
       if (aLast) return -1;
       if (bLast) return 1;
