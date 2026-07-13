@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/watched")({
   component: WatchedPage,
 });
 
-type TypeTab = "all" | "tv" | "movie";
+type TypeTab = "tv" | "movie";
 type WatchedSort =
   | "recent.desc"
   | "recent.asc"
