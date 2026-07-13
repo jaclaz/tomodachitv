@@ -180,6 +180,7 @@ function AddToListIconButton({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
       qc.invalidateQueries({ queryKey: ["list"] });
+      setJustAdded(true);
       toast.success("List created");
       setCreating(false);
       setNewTitle("");
