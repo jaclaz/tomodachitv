@@ -14,6 +14,7 @@ export interface WatchedLibraryItem {
   genre_ids: number[];
   watched_at: string; // most recent watched_at
   episodes_watched: number | null; // only for tv
+  series_status: string | null; // only for tv
 }
 
 export const getWatchedLibrary = createServerFn({ method: "POST" })
