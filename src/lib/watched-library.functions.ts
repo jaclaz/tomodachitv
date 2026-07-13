@@ -15,17 +15,29 @@ export interface WatchedLibraryItem {
   watched_at: string; // most recent watched_at
   episodes_watched: number | null; // only for tv
   series_status: string | null; // only for tv
+  is_dropped: boolean; // only meaningful for tv
 }
+
 
 export const getWatchedLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<WatchedLibraryItem[]> => {
     // Aggregate watched TV shows
-    const { data: eps, error: e1 } = await context.supabase
-      .from("watched_episodes")
-      .select("tmdb_id, watched_at")
-      .eq("user_id", context.userId);
+    const [epsRes, droppedRes] = await Promise.all([
+      context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, watched_at")
+        .eq("user_id", context.userId),
+      context.supabase
+        .from("dropped_shows")
+        .select("tmdb_id, dropped_at")
+        .eq("user_id", context.userId),
+    ]);
+    const { data: eps, error: e1 } = epsRes;
     if (e1) throw e1;
+    const droppedMap = new Map<number, string>();
+    for (const r of droppedRes.data ?? []) droppedMap.set(r.tmdb_id, r.dropped_at);
+
 
     const showAgg = new Map<
       number,
@@ -48,8 +60,13 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
     if (e2) throw e2;
 
+    // Union of shows we have watched episodes for + shows explicitly dropped
+    const tvIdSet = new Set<number>([
+      ...Array.from(showAgg.keys()),
+      ...Array.from(droppedMap.keys()),
+    ]);
     const wantedKeys: Array<{ media_type: "tv" | "movie"; tmdb_id: number }> = [
-      ...Array.from(showAgg.keys()).map(
+      ...Array.from(tvIdSet).map(
         (id) => ({ media_type: "tv" as const, tmdb_id: id })
       ),
       ...(movies ?? []).map((m) => ({
@@ -57,6 +74,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         tmdb_id: m.tmdb_id,
       })),
     ];
+
 
     if (wantedKeys.length === 0) return [];
 
@@ -167,14 +185,18 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
     }
 
     const items: WatchedLibraryItem[] = [];
+    const includedTv = new Set<number>();
     for (const [tmdb_id, agg] of showAgg) {
       const c = cacheMap.get(`tv:${tmdb_id}`);
       const totalAired: number | null = c?.episode_count_aired ?? null;
-      // Only include a TV show in the watched library once every aired
-      // episode has been marked as watched. Shows still in progress live
-      // in the watchlist under "currently watching".
-      if (totalAired == null || totalAired <= 0) continue;
-      if (agg.count < totalAired) continue;
+      const isDropped = droppedMap.has(tmdb_id);
+      // Include a TV show once every aired episode has been watched, OR
+      // if the user has explicitly dropped it (keeps their episode history).
+      if (!isDropped) {
+        if (totalAired == null || totalAired <= 0) continue;
+        if (agg.count < totalAired) continue;
+      }
+      includedTv.add(tmdb_id);
       items.push({
         media_type: "tv",
         tmdb_id,
@@ -184,11 +206,34 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         vote_average: c?.vote_average ?? null,
         release_date: c?.release_date ?? null,
         genre_ids: c?.genre_ids ?? [],
-        watched_at: agg.last,
+        watched_at: isDropped
+          ? droppedMap.get(tmdb_id) ?? agg.last
+          : agg.last,
         episodes_watched: agg.count,
         series_status: c?.series_status ?? null,
+        is_dropped: isDropped,
       });
     }
+    // Dropped shows the user never watched an episode of
+    for (const [tmdb_id, dropped_at] of droppedMap) {
+      if (includedTv.has(tmdb_id)) continue;
+      const c = cacheMap.get(`tv:${tmdb_id}`);
+      items.push({
+        media_type: "tv",
+        tmdb_id,
+        title: c?.title ?? "Unknown series",
+        poster_path: c?.poster_path ?? null,
+        backdrop_path: c?.backdrop_path ?? null,
+        vote_average: c?.vote_average ?? null,
+        release_date: c?.release_date ?? null,
+        genre_ids: c?.genre_ids ?? [],
+        watched_at: dropped_at,
+        episodes_watched: 0,
+        series_status: c?.series_status ?? null,
+        is_dropped: true,
+      });
+    }
+
     for (const m of movies ?? []) {
       const c = cacheMap.get(`movie:${m.tmdb_id}`);
       items.push({
@@ -203,6 +248,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         watched_at: m.watched_at,
         episodes_watched: null,
         series_status: null,
+        is_dropped: false,
       });
     }
     return items;

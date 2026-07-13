@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
+import { ShowActionsMenu } from "@/components/show-actions-menu";
 import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
 
 
@@ -358,11 +359,25 @@ function WatchedPage() {
                   )}
                 </div>
               </Link>
-              <div className="absolute right-2 top-2">
+              <div className="absolute right-2 top-2 flex items-center gap-1">
                 <span className="rounded-md bg-background/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
                   {item.media_type === "tv" ? "TV" : "Movie"}
                 </span>
+                {item.media_type === "tv" && (
+                  <ShowActionsMenu
+                    tmdb_id={item.tmdb_id}
+                    title={item.title}
+                    mode={item.is_dropped ? "dropped" : "watchlist"}
+                  />
+                )}
               </div>
+              {item.is_dropped && (
+                <div className="absolute left-2 top-2">
+                  <span className="rounded-md bg-destructive/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-destructive-foreground backdrop-blur">
+                    Dropped
+                  </span>
+                </div>
+              )}
               <div className="p-3">
                 <h3 className="font-display text-sm font-semibold text-foreground line-clamp-1">
                   {item.title}
@@ -391,8 +406,10 @@ function WatchedPage() {
           if (type === "tv") {
             const isFinished = (s: string | null) =>
               s === "Ended" || s === "Canceled" || s === "Cancelled";
-            const finished = filtered.filter((i) => isFinished(i.series_status));
-            const upToDate = filtered.filter((i) => !isFinished(i.series_status));
+            const active = filtered.filter((i) => !i.is_dropped);
+            const dropped = filtered.filter((i) => i.is_dropped);
+            const finished = active.filter((i) => isFinished(i.series_status));
+            const upToDate = active.filter((i) => !isFinished(i.series_status));
             return (
               <div className="space-y-8">
                 {upToDate.length > 0 && (
@@ -423,9 +440,25 @@ function WatchedPage() {
                     </div>
                   </section>
                 )}
+                {dropped.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-foreground">
+                      Dropped
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        ({dropped.length})
+                      </span>
+                    </h2>
+                    <div className={gridClass}>
+                      {dropped.map((item, index) =>
+                        renderCard(item, upToDate.length + finished.length + index)
+                      )}
+                    </div>
+                  </section>
+                )}
               </div>
             );
           }
+
 
           return (
             <div className={gridClass}>
