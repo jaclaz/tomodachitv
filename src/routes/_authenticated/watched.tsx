@@ -81,10 +81,28 @@ function WatchedPage() {
 
 
 
+  const queryClient = useQueryClient();
   const { data: library = [], isLoading } = useQuery({
     queryKey: ["watched-library"],
     queryFn: () => getWatchedLibrary(),
     staleTime: 60_000,
+  });
+
+  const { data: dropped = [] } = useQuery({
+    queryKey: ["dropped-shows"],
+    queryFn: () => getDroppedShows(),
+    staleTime: 60_000,
+  });
+
+  const undropMutation = useMutation({
+    mutationFn: (show: DroppedShow) =>
+      setWatchlistStatus({
+        data: { tmdb_id: show.tmdb_id, media_type: "tv", status: null },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dropped-shows"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
   });
 
   const genreType: MediaType = type === "movie" ? "movie" : "tv";
