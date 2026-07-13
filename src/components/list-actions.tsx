@@ -89,6 +89,11 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
+
+  useEffect(() => {
+    setJustAdded(false);
+  }, [media_type, tmdb_id]);
 
   const addMut = useMutation({
     mutationFn: (list_id: string) =>
@@ -98,6 +103,7 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
       qc.invalidateQueries({ queryKey: ["list"] });
+      setJustAdded(true);
       toast.success("Added to list");
     },
     onError: (e: Error) => toast.error(e.message),
