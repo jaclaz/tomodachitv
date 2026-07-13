@@ -14,14 +14,15 @@ export function CurrentlyWatching() {
     queryFn: () => getCurrentlyWatching(),
   });
 
+  type MarkVars = {
+    tmdb_id: number;
+    next_season: number;
+    next_episode: number;
+    runtime_minutes: number | null;
+    title: string;
+  };
   const markNext = useMutation({
-    mutationFn: (item: {
-      tmdb_id: number;
-      next_season: number;
-      next_episode: number;
-      runtime_minutes: number | null;
-      title: string;
-    }) =>
+    mutationFn: (item: MarkVars) =>
       markEpisodeWatched({
         data: {
           tmdb_id: item.tmdb_id,
@@ -30,15 +31,41 @@ export function CurrentlyWatching() {
           runtime_minutes: item.runtime_minutes,
         },
       }),
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["currently-watching"] });
+      const prev = queryClient.getQueryData<import("@/lib/currently-watching.functions").CurrentlyWatchingItem[]>(["currently-watching"]);
+      if (prev) {
+        const next = prev
+          .map((s) => {
+            if (s.tmdb_id !== vars.tmdb_id) return s;
+            const watched = s.episodes_watched + 1;
+            if (s.total_episodes > 0 && watched >= s.total_episodes) return null;
+            return {
+              ...s,
+              episodes_watched: watched,
+              next_episode: s.next_episode + 1,
+              last_watched_at: new Date().toISOString(),
+            };
+          })
+          .filter((s): s is NonNullable<typeof s> => s !== null);
+        queryClient.setQueryData(["currently-watching"], next);
+      }
+      return { prev };
+    },
+    onError: (e: Error, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["currently-watching"], ctx.prev);
+      toast.error(e.message ?? "Could not mark episode");
+    },
     onSuccess: (_res, vars) => {
       toast.success(
         `Marked ${vars.title} S${vars.next_season}·E${vars.next_episode} as watched`
       );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       queryClient.invalidateQueries({ queryKey: ["watched-library"] });
     },
-    onError: (e: Error) => toast.error(e.message ?? "Could not mark episode"),
   });
 
   if (isLoading) {
