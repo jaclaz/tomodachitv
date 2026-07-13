@@ -166,6 +166,12 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
     const items: WatchedLibraryItem[] = [];
     for (const [tmdb_id, agg] of showAgg) {
       const c = cacheMap.get(`tv:${tmdb_id}`);
+      const totalAired: number | null = c?.episode_count_aired ?? null;
+      // Only include a TV show in the watched library once every aired
+      // episode has been marked as watched. Shows still in progress live
+      // in the watchlist under "currently watching".
+      if (totalAired == null || totalAired <= 0) continue;
+      if (agg.count < totalAired) continue;
       items.push({
         media_type: "tv",
         tmdb_id,
