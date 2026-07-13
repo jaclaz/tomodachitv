@@ -153,7 +153,10 @@ export const getWatchlist = createServerFn({ method: "POST" })
             );
             await supabaseAdmin
               .from("media_cache")
-              .upsert(fetched, { onConflict: "media_type, tmdb_id" });
+              .upsert(
+                fetched.map((f) => ({ ...f, genre_ids: f.genre_ids ?? [] })),
+                { onConflict: "media_type, tmdb_id" },
+              );
             for (const r of fetched) cacheMap.set(r.tmdb_id, r);
           }
         }
