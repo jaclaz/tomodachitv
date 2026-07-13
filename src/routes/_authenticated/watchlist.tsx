@@ -70,15 +70,41 @@ function WatchlistPage() {
           runtime_minutes: item.runtime_minutes,
         },
       }),
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["currently-watching"] });
+      const prev = queryClient.getQueryData<CurrentlyWatchingItem[]>(["currently-watching"]);
+      if (prev) {
+        const next = prev
+          .map((s) => {
+            if (s.tmdb_id !== vars.tmdb_id) return s;
+            const watched = s.episodes_watched + 1;
+            if (s.total_episodes > 0 && watched >= s.total_episodes) return null;
+            return {
+              ...s,
+              episodes_watched: watched,
+              next_episode: s.next_episode + 1,
+              last_watched_at: new Date().toISOString(),
+            };
+          })
+          .filter((s): s is NonNullable<typeof s> => s !== null);
+        queryClient.setQueryData(["currently-watching"], next);
+      }
+      return { prev };
+    },
+    onError: (e: Error, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["currently-watching"], ctx.prev);
+      toast.error(e.message ?? "Could not mark episode");
+    },
     onSuccess: (_r, vars) => {
       toast.success(
         `Marked ${vars.title} S${vars.next_season}·E${vars.next_episode} as watched`
       );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       queryClient.invalidateQueries({ queryKey: ["watched-library"] });
     },
-    onError: (e: Error) => toast.error(e.message ?? "Could not mark episode"),
   });
 
   const removeMutation = useMutation({
