@@ -97,13 +97,10 @@ export type Database = {
       media_cache: {
         Row: {
           backdrop_path: string | null
-          episode_count_aired: number | null
           genre_ids: number[]
           media_type: string
-          next_air_date: string | null
           poster_path: string | null
           release_date: string | null
-          series_status: string | null
           title: string | null
           tmdb_id: number
           updated_at: string
@@ -111,13 +108,10 @@ export type Database = {
         }
         Insert: {
           backdrop_path?: string | null
-          episode_count_aired?: number | null
           genre_ids?: number[]
           media_type: string
-          next_air_date?: string | null
           poster_path?: string | null
           release_date?: string | null
-          series_status?: string | null
           title?: string | null
           tmdb_id: number
           updated_at?: string
@@ -125,13 +119,10 @@ export type Database = {
         }
         Update: {
           backdrop_path?: string | null
-          episode_count_aired?: number | null
           genre_ids?: number[]
           media_type?: string
-          next_air_date?: string | null
           poster_path?: string | null
           release_date?: string | null
-          series_status?: string | null
           title?: string | null
           tmdb_id?: number
           updated_at?: string
@@ -426,7 +417,6 @@ export type Database = {
           media_type: string
           poster_path: string | null
           series_name: string
-          status: string | null
           tmdb_id: number
           user_id: string
           vote_average: number | null
@@ -439,7 +429,6 @@ export type Database = {
           media_type?: string
           poster_path?: string | null
           series_name: string
-          status?: string | null
           tmdb_id: number
           user_id: string
           vote_average?: number | null
@@ -452,7 +441,6 @@ export type Database = {
           media_type?: string
           poster_path?: string | null
           series_name?: string
-          status?: string | null
           tmdb_id?: number
           user_id?: string
           vote_average?: number | null
