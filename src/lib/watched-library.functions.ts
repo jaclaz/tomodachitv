@@ -248,6 +248,7 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
         watched_at: m.watched_at,
         episodes_watched: null,
         series_status: null,
+        is_dropped: false,
       });
     }
     return items;
