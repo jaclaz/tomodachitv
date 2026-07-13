@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, ListPlus, Plus } from "lucide-react";
+import { Check, Heart, ListPlus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -142,6 +142,11 @@ function AddToListIconButton({
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
+
+  useEffect(() => {
+    setJustAdded(false);
+  }, [media_type, tmdb_id]);
 
   const addMut = useMutation({
     mutationFn: (list_id: string) =>
@@ -151,6 +156,7 @@ function AddToListIconButton({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
       qc.invalidateQueries({ queryKey: ["list"] });
+      setJustAdded(true);
       toast.success("Added to list");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -174,6 +180,7 @@ function AddToListIconButton({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
       qc.invalidateQueries({ queryKey: ["list"] });
+      setJustAdded(true);
       toast.success("List created");
       setCreating(false);
       setNewTitle("");
@@ -187,14 +194,22 @@ function AddToListIconButton({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost"
+            variant={justAdded ? "secondary" : "ghost"}
             size="icon"
             className={size === "sm" ? "h-7 w-7" : "h-8 w-8"}
           >
-            <ListPlus
-              className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
-            />
-            <span className="sr-only">Add to list</span>
+            {justAdded ? (
+              <Check
+                className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
+              />
+            ) : (
+              <ListPlus
+                className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
+              />
+            )}
+            <span className="sr-only">
+              {justAdded ? "Added to list" : "Add to list"}
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">

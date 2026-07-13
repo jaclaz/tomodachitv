@@ -17,9 +17,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Heart, ListPlus, Plus } from "lucide-react";
+import { Check, Heart, ListPlus, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -89,6 +89,11 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
+
+  useEffect(() => {
+    setJustAdded(false);
+  }, [media_type, tmdb_id]);
 
   const addMut = useMutation({
     mutationFn: (list_id: string) =>
@@ -98,6 +103,7 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
       qc.invalidateQueries({ queryKey: ["list"] });
+      setJustAdded(true);
       toast.success("Added to list");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -120,6 +126,8 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
+      qc.invalidateQueries({ queryKey: ["list"] });
+      setJustAdded(true);
       toast.success("List created");
       setCreating(false);
       setNewTitle("");
@@ -132,8 +140,16 @@ export function AddToListButton({ media_type, tmdb_id, title, poster_path }: Pro
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="gap-2">
-            <ListPlus className="h-4 w-4" /> Add to list
+          <Button variant={justAdded ? "secondary" : "outline"} className="gap-2">
+            {justAdded ? (
+              <>
+                <Check className="h-4 w-4" /> Added
+              </>
+            ) : (
+              <>
+                <ListPlus className="h-4 w-4" /> Add to list
+              </>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
