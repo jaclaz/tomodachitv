@@ -57,7 +57,7 @@ const DEFAULTS: Filters = {
 };
 
 function WatchedPage() {
-  const [type, setType] = useState<TypeTab>("all");
+  const [type, setType] = useState<TypeTab>("tv");
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
