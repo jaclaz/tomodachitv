@@ -40,9 +40,17 @@ function SeriesDetailPage() {
     queryFn: () => getWatchlist(),
   });
 
-  const inWatchlist = watchlist.some(
+  const libItem = watchlist.find(
     (w) => w.media_type === "tv" && w.tmdb_id === tmdbId
   );
+  const inWatchlist = !!libItem;
+  const isDropped = libItem?.status === "dropped";
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    queryClient.invalidateQueries({ queryKey: ["watched-library"] });
+    queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
+  };
 
   const addMutation = useMutation({
     mutationFn: () =>
@@ -55,15 +63,22 @@ function SeriesDetailPage() {
           backdrop_path: series!.backdrop_path,
           first_air_date: series!.release_date,
           vote_average: series!.vote_average,
+          status: "planned",
         },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+    onSuccess: invalidate,
   });
 
   const removeMutation = useMutation({
     mutationFn: () =>
       removeFromWatchlist({ data: { tmdb_id: tmdbId, media_type: "tv" } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+    onSuccess: invalidate,
+  });
+
+  const dropMutation = useMutation({
+    mutationFn: (status: "dropped" | "watching") =>
+      setLibraryStatus({ data: { tmdb_id: tmdbId, media_type: "tv", status } }),
+    onSuccess: invalidate,
   });
 
   const toggleWatchlist = () => {
