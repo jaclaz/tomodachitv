@@ -121,11 +121,11 @@ function WatchlistPage() {
     const list = data.filter(
       (item) =>
         item.media_type === filter &&
+        item.status !== "completed" &&
+        item.status !== "dropped" &&
         (q === "" || item.series_name.toLowerCase().includes(q))
     );
     if (filter !== "tv") return list;
-    // Sort: currently-watching TV shows first (most recent activity first),
-    // then never-started shows in their original order.
     return list.slice().sort((a, b) => {
       const aLast = inProgressMap.get(a.tmdb_id)?.last_watched_at;
       const bLast = inProgressMap.get(b.tmdb_id)?.last_watched_at;
