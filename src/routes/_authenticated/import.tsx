@@ -708,20 +708,24 @@ function ImportPage() {
     }
   };
 
-  const [resetting, setResetting] = useState(false);
-  const handleReset = async () => {
-    setResetting(true);
+  const [resetting, setResetting] = useState<null | "all" | "tv" | "movies">(null);
+  const handleReset = async (scope: "all" | "tv" | "movies") => {
+    setResetting(scope);
     try {
-      await resetLibrary();
-      setCounts(null);
-      setPendingCount(0);
-      toast.success("Library cleared — you can re-import from scratch");
+      await resetLibrary({ data: { scope } });
+      if (scope === "all") {
+        setCounts(null);
+        setPendingCount(0);
+      }
+      const label =
+        scope === "all" ? "Library cleared" : scope === "tv" ? "TV shows cleared" : "Movies cleared";
+      toast.success(`${label} — you can re-import from scratch`);
       qc.invalidateQueries();
     } catch (err) {
       console.error(err);
       toast.error("Reset failed: " + (err instanceof Error ? err.message : "unknown error"));
     } finally {
-      setResetting(false);
+      setResetting(null);
     }
   };
 
