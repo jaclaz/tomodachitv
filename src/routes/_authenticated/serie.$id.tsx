@@ -191,8 +191,28 @@ function SeriesDetailPage() {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                {inWatchlist ? "In your list" : "Add to watchlist"}
+                {inWatchlist ? "In your library" : "Add to library"}
               </Button>
+              {inWatchlist && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() =>
+                    dropMutation.mutate(isDropped ? "watching" : "dropped")
+                  }
+                  disabled={dropMutation.isPending}
+                >
+                  {isDropped ? (
+                    <>
+                      <Play className="h-4 w-4" /> Resume
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4" /> Drop show
+                    </>
+                  )}
+                </Button>
+              )}
               <FavoriteButton
                 media_type="tv"
                 tmdb_id={series.id}
