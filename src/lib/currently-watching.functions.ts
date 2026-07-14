@@ -42,6 +42,7 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
       { watched: Set<string>; last: string; count: number }
     >();
     for (const e of eps ?? []) {
+      if (droppedIds.has(e.tmdb_id)) continue;
       let cur = byShow.get(e.tmdb_id);
       if (!cur) {
         cur = { watched: new Set(), last: e.watched_at, count: 0 };
