@@ -391,8 +391,10 @@ function WatchedPage() {
           if (type === "tv") {
             const isFinished = (s: string | null) =>
               s === "Ended" || s === "Canceled" || s === "Cancelled";
-            const finished = filtered.filter((i) => isFinished(i.series_status));
-            const upToDate = filtered.filter((i) => !isFinished(i.series_status));
+            const active = filtered.filter((i) => !i.dropped);
+            const dropped = filtered.filter((i) => i.dropped);
+            const finished = active.filter((i) => isFinished(i.series_status));
+            const upToDate = active.filter((i) => !isFinished(i.series_status));
             return (
               <div className="space-y-8">
                 {upToDate.length > 0 && (
@@ -419,6 +421,21 @@ function WatchedPage() {
                     <div className={gridClass}>
                       {finished.map((item, index) =>
                         renderCard(item, upToDate.length + index)
+                      )}
+                    </div>
+                  </section>
+                )}
+                {dropped.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="font-display text-lg font-semibold text-muted-foreground">
+                      Dropped
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        ({dropped.length})
+                      </span>
+                    </h2>
+                    <div className={gridClass}>
+                      {dropped.map((item, index) =>
+                        renderCard(item, upToDate.length + finished.length + index)
                       )}
                     </div>
                   </section>

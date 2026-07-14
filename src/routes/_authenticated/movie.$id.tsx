@@ -223,7 +223,7 @@ function MovieDetailPage() {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                {inWatchlist ? "In your list" : "Add to watchlist"}
+                {inWatchlist ? "In your library" : "Add to library"}
               </Button>
               <FavoriteButton
                 media_type="movie"

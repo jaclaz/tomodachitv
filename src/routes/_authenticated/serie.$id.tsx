@@ -1,17 +1,18 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSeriesDetails, posterUrl, backdropUrl } from "@/lib/tmdb";
 import {
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
+  setLibraryStatus,
 } from "@/lib/watchlist.functions";
 import { EpisodeList } from "@/components/episode-list";
 import { CastList } from "@/components/cast-list";
 import { SeriesInfo } from "@/components/series-info";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
+import { Plus, Check, Star, ArrowLeft, Clock, X, Play } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
 import { WatchLanguages } from "@/components/watch-languages";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
@@ -39,9 +40,17 @@ function SeriesDetailPage() {
     queryFn: () => getWatchlist(),
   });
 
-  const inWatchlist = watchlist.some(
+  const libItem = watchlist.find(
     (w) => w.media_type === "tv" && w.tmdb_id === tmdbId
   );
+  const inWatchlist = !!libItem;
+  const isDropped = libItem?.status === "dropped";
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    queryClient.invalidateQueries({ queryKey: ["watched-library"] });
+    queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
+  };
 
   const addMutation = useMutation({
     mutationFn: () =>
@@ -54,15 +63,22 @@ function SeriesDetailPage() {
           backdrop_path: series!.backdrop_path,
           first_air_date: series!.release_date,
           vote_average: series!.vote_average,
+          status: "planned",
         },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+    onSuccess: invalidate,
   });
 
   const removeMutation = useMutation({
     mutationFn: () =>
       removeFromWatchlist({ data: { tmdb_id: tmdbId, media_type: "tv" } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+    onSuccess: invalidate,
+  });
+
+  const dropMutation = useMutation({
+    mutationFn: (status: "dropped" | "watching") =>
+      setLibraryStatus({ data: { tmdb_id: tmdbId, media_type: "tv", status } }),
+    onSuccess: invalidate,
   });
 
   const toggleWatchlist = () => {
@@ -175,8 +191,28 @@ function SeriesDetailPage() {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                {inWatchlist ? "In your list" : "Add to watchlist"}
+                {inWatchlist ? "In your library" : "Add to library"}
               </Button>
+              {inWatchlist && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() =>
+                    dropMutation.mutate(isDropped ? "watching" : "dropped")
+                  }
+                  disabled={dropMutation.isPending}
+                >
+                  {isDropped ? (
+                    <>
+                      <Play className="h-4 w-4" /> Resume
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4" /> Drop show
+                    </>
+                  )}
+                </Button>
+              )}
               <FavoriteButton
                 media_type="tv"
                 tmdb_id={series.id}
