@@ -1,17 +1,18 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSeriesDetails, posterUrl, backdropUrl } from "@/lib/tmdb";
 import {
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
+  setLibraryStatus,
 } from "@/lib/watchlist.functions";
 import { EpisodeList } from "@/components/episode-list";
 import { CastList } from "@/components/cast-list";
 import { SeriesInfo } from "@/components/series-info";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, Star, ArrowLeft, Clock } from "lucide-react";
+import { Plus, Check, Star, ArrowLeft, Clock, X, Play } from "lucide-react";
 import { WatchProviders } from "@/components/watch-providers";
 import { WatchLanguages } from "@/components/watch-languages";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
