@@ -708,20 +708,24 @@ function ImportPage() {
     }
   };
 
-  const [resetting, setResetting] = useState(false);
-  const handleReset = async () => {
-    setResetting(true);
+  const [resetting, setResetting] = useState<null | "all" | "tv" | "movies">(null);
+  const handleReset = async (scope: "all" | "tv" | "movies") => {
+    setResetting(scope);
     try {
-      await resetLibrary();
-      setCounts(null);
-      setPendingCount(0);
-      toast.success("Library cleared — you can re-import from scratch");
+      await resetLibrary({ data: { scope } });
+      if (scope === "all") {
+        setCounts(null);
+        setPendingCount(0);
+      }
+      const label =
+        scope === "all" ? "Library cleared" : scope === "tv" ? "TV shows cleared" : "Movies cleared";
+      toast.success(`${label} — you can re-import from scratch`);
       qc.invalidateQueries();
     } catch (err) {
       console.error(err);
       toast.error("Reset failed: " + (err instanceof Error ? err.message : "unknown error"));
     } finally {
-      setResetting(false);
+      setResetting(null);
     }
   };
 
@@ -897,35 +901,70 @@ function ImportPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
         <div>
           <p className="font-display text-base font-semibold">Reset library</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Deletes all your watched episodes, watched movies, watchlist, favorites and pending
-            imports. Your profile and lists are kept. This cannot be undone.
+            Wipe your TV shows, your movies, or everything. Your profile, follows and lists are
+            kept. This cannot be undone.
           </p>
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button type="button" variant="destructive" disabled={resetting || busy}>
-              {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              {resetting ? "Clearing…" : "Reset library"}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset your library?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete every watched episode, watched movie, watchlist entry,
-                favorite and pending import from your account. You can then re-import from scratch.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleReset}>Yes, wipe everything</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          {(
+            [
+              {
+                scope: "tv" as const,
+                label: "Reset TV shows",
+                pending: "Clearing TV…",
+                title: "Reset your TV shows?",
+                desc: "This will permanently delete every watched episode, TV watchlist entry, TV favorite and pending TV import from your account. Movies are kept.",
+              },
+              {
+                scope: "movies" as const,
+                label: "Reset movies",
+                pending: "Clearing movies…",
+                title: "Reset your movies?",
+                desc: "This will permanently delete every watched movie, movie watchlist entry, movie favorite and pending movie import from your account. TV shows are kept.",
+              },
+              {
+                scope: "all" as const,
+                label: "Reset everything",
+                pending: "Clearing…",
+                title: "Reset your library?",
+                desc: "This will permanently delete every watched episode, watched movie, watchlist entry, favorite and pending import from your account.",
+              },
+            ]
+          ).map((opt) => (
+            <AlertDialog key={opt.scope}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant={opt.scope === "all" ? "destructive" : "outline"}
+                  disabled={resetting !== null || busy}
+                >
+                  {resetting === opt.scope ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  {resetting === opt.scope ? opt.pending : opt.label}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{opt.title}</AlertDialogTitle>
+                  <AlertDialogDescription>{opt.desc}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleReset(opt.scope)}>
+                    Yes, wipe {opt.scope === "all" ? "everything" : opt.scope === "tv" ? "TV shows" : "movies"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ))}
+        </div>
       </div>
     </div>
   );
