@@ -3,23 +3,49 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
-// ---- Reset the user's entire library (watched + watchlist + pending) ----
+// ---- Reset the user's library (all, or only TV, or only movies) ----
 export const resetLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const uid = context.userId;
-    const tables = [
-      "watched_episodes",
-      "watched_movies",
-      "watchlist",
-      "pending_media_imports",
-      "favorites",
-    ] as const;
-    for (const t of tables) {
-      const { error } = await (context.supabase as any).from(t).delete().eq("user_id", uid);
-      if (error && !String(error.message ?? "").includes("does not exist")) throw error;
+  .inputValidator((data: unknown) => {
+    const scope = (data as { scope?: string } | undefined)?.scope ?? "all";
+    if (scope !== "all" && scope !== "tv" && scope !== "movies") {
+      throw new Error("Invalid scope");
     }
-    return { success: true };
+    return { scope: scope as "all" | "tv" | "movies" };
+  })
+  .handler(async ({ context, data }) => {
+    const uid = context.userId;
+    const sb = context.supabase as any;
+    const safeRun = async (p: Promise<{ error: any }>) => {
+      const { error } = await p;
+      if (error && !String(error.message ?? "").includes("does not exist")) throw error;
+    };
+
+    if (data.scope === "all" || data.scope === "tv") {
+      await safeRun(sb.from("watched_episodes").delete().eq("user_id", uid));
+      await safeRun(sb.from("watchlist").delete().eq("user_id", uid).eq("media_type", "tv"));
+      await safeRun(sb.from("favorites").delete().eq("user_id", uid).eq("media_type", "tv"));
+      await safeRun(
+        sb
+          .from("pending_media_imports")
+          .delete()
+          .eq("user_id", uid)
+          .in("kind", ["follow_show", "watched_episode"]),
+      );
+    }
+    if (data.scope === "all" || data.scope === "movies") {
+      await safeRun(sb.from("watched_movies").delete().eq("user_id", uid));
+      await safeRun(sb.from("watchlist").delete().eq("user_id", uid).eq("media_type", "movie"));
+      await safeRun(sb.from("favorites").delete().eq("user_id", uid).eq("media_type", "movie"));
+      await safeRun(
+        sb
+          .from("pending_media_imports")
+          .delete()
+          .eq("user_id", uid)
+          .in("kind", ["follow_movie", "watched_movie"]),
+      );
+    }
+    return { success: true, scope: data.scope };
   });
 
 // ---- Shared TMDB fetch with retry/backoff ----
