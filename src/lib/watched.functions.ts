@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface WatchedEpisode {
   id: string;
@@ -19,6 +20,108 @@ export interface WatchedMovie {
   title: string | null;
   runtime_minutes: number | null;
   watched_at: string;
+}
+
+// ---- library sync helpers ----
+async function syncTvLibrary(
+  supabase: SupabaseClient,
+  userId: string,
+  tmdb_id: number
+) {
+  // Fetch cached metadata
+  const { data: cache } = await supabase
+    .from("media_cache")
+    .select("*")
+    .eq("media_type", "tv")
+    .eq("tmdb_id", tmdb_id)
+    .maybeSingle();
+
+  const { count } = await supabase
+    .from("watched_episodes")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("tmdb_id", tmdb_id);
+  const watchedCount = count ?? 0;
+
+  const { data: existing } = await supabase
+    .from("watchlist")
+    .select("id, status, series_name, poster_path, backdrop_path, first_air_date, vote_average")
+    .eq("user_id", userId)
+    .eq("media_type", "tv")
+    .eq("tmdb_id", tmdb_id)
+    .maybeSingle();
+
+  const totalAired = cache?.episode_count_aired ?? null;
+  let desired: string;
+  if (watchedCount === 0) desired = "planned";
+  else if (totalAired && totalAired > 0 && watchedCount >= totalAired) desired = "completed";
+  else desired = "watching";
+
+  // Never overwrite 'dropped' unless the user explicitly resumes
+  if (existing?.status === "dropped") return;
+
+  if (!existing) {
+    await supabase.from("watchlist").insert({
+      user_id: userId,
+      tmdb_id,
+      media_type: "tv",
+      series_name: cache?.title ?? "Unknown series",
+      poster_path: cache?.poster_path ?? null,
+      backdrop_path: cache?.backdrop_path ?? null,
+      first_air_date: cache?.release_date ?? null,
+      vote_average: cache?.vote_average ?? null,
+      status: desired,
+    });
+  } else if (existing.status !== desired) {
+    await supabase
+      .from("watchlist")
+      .update({ status: desired })
+      .eq("id", existing.id);
+  }
+}
+
+async function syncMovieLibrary(
+  supabase: SupabaseClient,
+  userId: string,
+  tmdb_id: number,
+  fallbackTitle?: string | null,
+  present: boolean = true
+) {
+  const { data: cache } = await supabase
+    .from("media_cache")
+    .select("*")
+    .eq("media_type", "movie")
+    .eq("tmdb_id", tmdb_id)
+    .maybeSingle();
+
+  const status = present ? "completed" : "planned";
+
+  const { data: existing } = await supabase
+    .from("watchlist")
+    .select("id, status")
+    .eq("user_id", userId)
+    .eq("media_type", "movie")
+    .eq("tmdb_id", tmdb_id)
+    .maybeSingle();
+
+  if (!existing) {
+    await supabase.from("watchlist").insert({
+      user_id: userId,
+      tmdb_id,
+      media_type: "movie",
+      series_name: cache?.title ?? fallbackTitle ?? "Movie",
+      poster_path: cache?.poster_path ?? null,
+      backdrop_path: cache?.backdrop_path ?? null,
+      first_air_date: cache?.release_date ?? null,
+      vote_average: cache?.vote_average ?? null,
+      status,
+    });
+  } else if (existing.status !== status) {
+    await supabase
+      .from("watchlist")
+      .update({ status })
+      .eq("id", existing.id);
+  }
 }
 
 // ============ Episodes (TV) ============
@@ -58,33 +161,10 @@ export const markEpisodeWatched = createServerFn({ method: "POST" })
     );
     if (error) throw error;
 
-    // If the user has now watched every aired episode, drop the show
-    // from their watchlist so it stops showing up as "still to watch".
     try {
-      const { data: cache } = await context.supabase
-        .from("media_cache")
-        .select("episode_count_aired")
-        .eq("media_type", "tv")
-        .eq("tmdb_id", data.tmdb_id)
-        .maybeSingle();
-      const totalAired = cache?.episode_count_aired ?? null;
-      if (totalAired && totalAired > 0) {
-        const { count } = await context.supabase
-          .from("watched_episodes")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", context.userId)
-          .eq("tmdb_id", data.tmdb_id);
-        if ((count ?? 0) >= totalAired) {
-          await context.supabase
-            .from("watchlist")
-            .delete()
-            .eq("user_id", context.userId)
-            .eq("media_type", "tv")
-            .eq("tmdb_id", data.tmdb_id);
-        }
-      }
+      await syncTvLibrary(context.supabase, context.userId, data.tmdb_id);
     } catch {
-      // best-effort cleanup only
+      // best-effort
     }
     return { success: true };
   });
@@ -107,6 +187,11 @@ export const unmarkEpisodeWatched = createServerFn({ method: "POST" })
       .eq("season_number", data.season_number)
       .eq("episode_number", data.episode_number);
     if (error) throw error;
+    try {
+      await syncTvLibrary(context.supabase, context.userId, data.tmdb_id);
+    } catch {
+      // best-effort
+    }
     return { success: true };
   });
 
@@ -138,30 +223,9 @@ export const markEpisodesBulk = createServerFn({ method: "POST" })
     if (error) throw error;
 
     try {
-      const { data: cache } = await context.supabase
-        .from("media_cache")
-        .select("episode_count_aired")
-        .eq("media_type", "tv")
-        .eq("tmdb_id", data.tmdb_id)
-        .maybeSingle();
-      const totalAired = cache?.episode_count_aired ?? null;
-      if (totalAired && totalAired > 0) {
-        const { count } = await context.supabase
-          .from("watched_episodes")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", context.userId)
-          .eq("tmdb_id", data.tmdb_id);
-        if ((count ?? 0) >= totalAired) {
-          await context.supabase
-            .from("watchlist")
-            .delete()
-            .eq("user_id", context.userId)
-            .eq("media_type", "tv")
-            .eq("tmdb_id", data.tmdb_id);
-        }
-      }
+      await syncTvLibrary(context.supabase, context.userId, data.tmdb_id);
     } catch {
-      // best-effort cleanup
+      // best-effort
     }
     return { success: true, count: rows.length };
   });
@@ -197,6 +261,17 @@ export const markMovieWatched = createServerFn({ method: "POST" })
       { onConflict: "user_id, tmdb_id" }
     );
     if (error) throw error;
+    try {
+      await syncMovieLibrary(
+        context.supabase,
+        context.userId,
+        data.tmdb_id,
+        data.title,
+        true
+      );
+    } catch {
+      // best-effort
+    }
     return { success: true };
   });
 
@@ -210,6 +285,17 @@ export const unmarkMovieWatched = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("tmdb_id", data.tmdb_id);
     if (error) throw error;
+    try {
+      await syncMovieLibrary(
+        context.supabase,
+        context.userId,
+        data.tmdb_id,
+        null,
+        false
+      );
+    } catch {
+      // best-effort
+    }
     return { success: true };
   });
 
