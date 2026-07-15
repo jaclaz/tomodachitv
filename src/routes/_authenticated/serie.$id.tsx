@@ -63,7 +63,7 @@ function SeriesDetailPage() {
           backdrop_path: series!.backdrop_path,
           first_air_date: series!.release_date,
           vote_average: series!.vote_average,
-          status: "planned",
+          status: "watching",
         },
       }),
     onSuccess: invalidate,

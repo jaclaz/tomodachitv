@@ -106,7 +106,7 @@ async function syncTvLibrary(
   const totalAired =
     cache?.episode_count_aired ?? tmdb?.episode_count_aired ?? null;
   let desired: string;
-  if (watchedCount === 0) desired = "planned";
+  if (watchedCount === 0) desired = "watching";
   else if (totalAired && totalAired > 0 && watchedCount >= totalAired)
     desired = "completed";
   else desired = "watching";
@@ -145,7 +145,7 @@ async function syncMovieLibrary(
     .eq("tmdb_id", tmdb_id)
     .maybeSingle();
 
-  const status = present ? "completed" : "planned";
+  const status = present ? "completed" : "watching";
 
   const { data: existing } = await supabase
     .from("watchlist")

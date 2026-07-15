@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { MediaType } from "@/lib/tmdb";
 
-export type LibraryStatus = "planned" | "watching" | "completed" | "dropped";
+export type LibraryStatus = "watching" | "caught_up" | "completed" | "dropped";
 
 export interface WatchlistItem {
   id: string;
@@ -29,7 +29,7 @@ export const getWatchlist = createServerFn({ method: "POST" })
     if (error) throw error;
     return (data ?? []).map((r) => ({
       ...r,
-      status: (r.status ?? "planned") as LibraryStatus,
+      status: (r.status ?? "watching") as LibraryStatus,
     })) as WatchlistItem[];
   });
 
@@ -48,7 +48,7 @@ export const addToWatchlist = createServerFn({ method: "POST" })
     }) => input
   )
   .handler(async ({ context, data }): Promise<WatchlistItem> => {
-    // Do not downgrade an existing status: only set status if none/planned.
+    // Do not downgrade an existing status: manual library adds start as watching.
     const { data: existing } = await context.supabase
       .from("watchlist")
       .select("id, status")
@@ -57,15 +57,15 @@ export const addToWatchlist = createServerFn({ method: "POST" })
       .eq("tmdb_id", data.tmdb_id)
       .maybeSingle();
 
-    const desired = data.status ?? "planned";
+    const desired = data.status ?? "watching";
     const priority: Record<string, number> = {
-      planned: 0,
       watching: 1,
+      caught_up: 2,
       completed: 2,
-      dropped: 2,
+      dropped: 3,
     };
     const finalStatus =
-      existing && priority[existing.status ?? "planned"] > priority[desired]
+      existing && priority[existing.status ?? "watching"] > priority[desired]
         ? (existing.status as LibraryStatus)
         : desired;
 
@@ -83,7 +83,7 @@ export const addToWatchlist = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
-    return { ...result, status: (result.status ?? "planned") as LibraryStatus } as WatchlistItem;
+    return { ...result, status: (result.status ?? "watching") as LibraryStatus } as WatchlistItem;
   });
 
 export const removeFromWatchlist = createServerFn({ method: "POST" })
