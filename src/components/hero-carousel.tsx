@@ -45,6 +45,52 @@ export function HeroCarousel({ watchlistKeys }: HeroCarouselProps) {
     };
   }, [api]);
 
+  type WatchlistRow = {
+    tmdb_id: number;
+    media_type: string;
+    series_name: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    first_air_date: string | null;
+    vote_average: number | null;
+    status?: string;
+    added_at?: string;
+  };
+
+  const optimisticAdd = async (item: MediaItem) => {
+    await queryClient.cancelQueries({ queryKey: ["watchlist"] });
+    const prev = queryClient.getQueryData<WatchlistRow[]>(["watchlist"]);
+    const next: WatchlistRow[] = [
+      {
+        tmdb_id: item.id,
+        media_type: item.media_type,
+        series_name: item.title,
+        poster_path: item.poster_path,
+        backdrop_path: item.backdrop_path,
+        first_air_date: item.release_date,
+        vote_average: item.vote_average,
+        status: "planned",
+        added_at: new Date().toISOString(),
+      },
+      ...(prev ?? []).filter(
+        (w) => !(w.media_type === item.media_type && w.tmdb_id === item.id),
+      ),
+    ];
+    queryClient.setQueryData(["watchlist"], next);
+    return { prev };
+  };
+  const optimisticRemove = async (item: MediaItem) => {
+    await queryClient.cancelQueries({ queryKey: ["watchlist"] });
+    const prev = queryClient.getQueryData<WatchlistRow[]>(["watchlist"]);
+    queryClient.setQueryData(
+      ["watchlist"],
+      (prev ?? []).filter(
+        (w) => !(w.media_type === item.media_type && w.tmdb_id === item.id),
+      ),
+    );
+    return { prev };
+  };
+
   const addMutation = useMutation({
     mutationFn: (item: MediaItem) =>
       addToWatchlist({
@@ -58,7 +104,11 @@ export function HeroCarousel({ watchlistKeys }: HeroCarouselProps) {
           vote_average: item.vote_average,
         },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+    onMutate: optimisticAdd,
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["watchlist"], ctx.prev);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
   const removeMutation = useMutation({
@@ -66,7 +116,11 @@ export function HeroCarousel({ watchlistKeys }: HeroCarouselProps) {
       removeFromWatchlist({
         data: { tmdb_id: item.id, media_type: item.media_type },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
+    onMutate: optimisticRemove,
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["watchlist"], ctx.prev);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
   if (isLoading && slides.length === 0) {

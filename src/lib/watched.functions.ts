@@ -23,6 +23,45 @@ export interface WatchedMovie {
 }
 
 // ---- library sync helpers ----
+const TMDB_BASE = "https://api.themoviedb.org/3";
+
+async function fetchTmdbSummary(
+  media_type: "tv" | "movie",
+  tmdb_id: number
+): Promise<{
+  title: string | null;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  release_date: string | null;
+  vote_average: number | null;
+  episode_count_aired: number | null;
+  series_status: string | null;
+} | null> {
+  const key = process.env.TMDB_API_KEY;
+  if (!key) return null;
+  try {
+    const url = new URL(`${TMDB_BASE}/${media_type}/${tmdb_id}`);
+    url.searchParams.set("api_key", key);
+    url.searchParams.set("language", "en-US");
+    const r = await fetch(url.toString());
+    if (!r.ok) return null;
+    const d = await r.json();
+    return {
+      title: media_type === "tv" ? d.name ?? null : d.title ?? null,
+      poster_path: d.poster_path ?? null,
+      backdrop_path: d.backdrop_path ?? null,
+      release_date:
+        (media_type === "tv" ? d.first_air_date : d.release_date) || null,
+      vote_average: d.vote_average ?? null,
+      episode_count_aired:
+        media_type === "tv" ? d.number_of_episodes ?? null : null,
+      series_status: media_type === "tv" ? d.status ?? null : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function syncTvLibrary(
   supabase: SupabaseClient,
   userId: string,
@@ -51,25 +90,37 @@ async function syncTvLibrary(
     .eq("tmdb_id", tmdb_id)
     .maybeSingle();
 
-  const totalAired = cache?.episode_count_aired ?? null;
-  let desired: string;
-  if (watchedCount === 0) desired = "planned";
-  else if (totalAired && totalAired > 0 && watchedCount >= totalAired) desired = "completed";
-  else desired = "watching";
-
   // Never overwrite 'dropped' unless the user explicitly resumes
   if (existing?.status === "dropped") return;
+
+  // If we're about to insert a new row and don't have decent metadata,
+  // or we can't tell if the show is finished, fetch live from TMDB so we
+  // don't store "Unknown series" and can compute completion correctly.
+  let tmdb: Awaited<ReturnType<typeof fetchTmdbSummary>> = null;
+  const needTmdb =
+    (!existing && (!cache || !cache.title)) ||
+    !cache ||
+    cache.episode_count_aired == null;
+  if (needTmdb) tmdb = await fetchTmdbSummary("tv", tmdb_id);
+
+  const totalAired =
+    cache?.episode_count_aired ?? tmdb?.episode_count_aired ?? null;
+  let desired: string;
+  if (watchedCount === 0) desired = "planned";
+  else if (totalAired && totalAired > 0 && watchedCount >= totalAired)
+    desired = "completed";
+  else desired = "watching";
 
   if (!existing) {
     await supabase.from("watchlist").insert({
       user_id: userId,
       tmdb_id,
       media_type: "tv",
-      series_name: cache?.title ?? "Unknown series",
-      poster_path: cache?.poster_path ?? null,
-      backdrop_path: cache?.backdrop_path ?? null,
-      first_air_date: cache?.release_date ?? null,
-      vote_average: cache?.vote_average ?? null,
+      series_name: cache?.title ?? tmdb?.title ?? "Unknown series",
+      poster_path: cache?.poster_path ?? tmdb?.poster_path ?? null,
+      backdrop_path: cache?.backdrop_path ?? tmdb?.backdrop_path ?? null,
+      first_air_date: cache?.release_date ?? tmdb?.release_date ?? null,
+      vote_average: cache?.vote_average ?? tmdb?.vote_average ?? null,
       status: desired,
     });
   } else if (existing.status !== desired) {
@@ -104,16 +155,21 @@ async function syncMovieLibrary(
     .eq("tmdb_id", tmdb_id)
     .maybeSingle();
 
+  let tmdb: Awaited<ReturnType<typeof fetchTmdbSummary>> = null;
+  if (!existing && (!cache || !cache.title))
+    tmdb = await fetchTmdbSummary("movie", tmdb_id);
+
   if (!existing) {
     await supabase.from("watchlist").insert({
       user_id: userId,
       tmdb_id,
       media_type: "movie",
-      series_name: cache?.title ?? fallbackTitle ?? "Movie",
-      poster_path: cache?.poster_path ?? null,
-      backdrop_path: cache?.backdrop_path ?? null,
-      first_air_date: cache?.release_date ?? null,
-      vote_average: cache?.vote_average ?? null,
+      series_name:
+        cache?.title ?? tmdb?.title ?? fallbackTitle ?? "Movie",
+      poster_path: cache?.poster_path ?? tmdb?.poster_path ?? null,
+      backdrop_path: cache?.backdrop_path ?? tmdb?.backdrop_path ?? null,
+      first_air_date: cache?.release_date ?? tmdb?.release_date ?? null,
+      vote_average: cache?.vote_average ?? tmdb?.vote_average ?? null,
       status,
     });
   } else if (existing.status !== status) {
