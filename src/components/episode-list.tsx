@@ -92,6 +92,9 @@ export function EpisodeList({ series }: EpisodeListProps) {
   const invalidateWatched = () => {
     queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
     queryClient.invalidateQueries({ queryKey: ["stats"] });
+    queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    queryClient.invalidateQueries({ queryKey: ["watched-library"] });
+    queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
   };
 
   const markMutation = useMutation({
