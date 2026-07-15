@@ -129,7 +129,7 @@ export function HeroSection({
               onClick={onToggleWatchlist}
             >
               {inWatchlist ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {inWatchlist ? "In your list" : "Add to watchlist"}
+              {inWatchlist ? "In library" : "Add to library"}
             </Button>
           </div>
         </div>
