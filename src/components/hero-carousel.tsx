@@ -69,7 +69,7 @@ export function HeroCarousel({ watchlistKeys }: HeroCarouselProps) {
         backdrop_path: item.backdrop_path,
         first_air_date: item.release_date,
         vote_average: item.vote_average,
-        status: "planned",
+        status: "watching",
         added_at: new Date().toISOString(),
       },
       ...(prev ?? []).filter(
