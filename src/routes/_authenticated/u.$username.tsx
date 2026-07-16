@@ -54,6 +54,7 @@ function UserProfilePage() {
   const { username } = Route.useParams();
   const queryClient = useQueryClient();
   const [followDialogMode, setFollowDialogMode] = useState<"followers" | "following" | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", username],
