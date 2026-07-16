@@ -60,7 +60,10 @@ const DEFAULTS: Filters = {
 };
 
 function WatchedPage() {
-  const [type, setType] = useState<TypeTab>("tv");
+  const { type } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setType = (v: TypeTab) =>
+    navigate({ search: (prev: { type: TypeTab }) => ({ ...prev, type: v }), replace: true });
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
