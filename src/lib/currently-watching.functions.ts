@@ -33,14 +33,9 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
     ]);
     if (epsRes.error) throw epsRes.error;
     const eps = epsRes.data;
-    const droppedIds = new Set<number>(
-      (droppedRes.data ?? []).map((r) => r.tmdb_id)
-    );
+    const droppedIds = new Set<number>((droppedRes.data ?? []).map((r) => r.tmdb_id));
 
-    const byShow = new Map<
-      number,
-      { watched: Set<string>; last: string; count: number }
-    >();
+    const byShow = new Map<number, { watched: Set<string>; last: string; count: number }>();
     for (const e of eps ?? []) {
       if (droppedIds.has(e.tmdb_id)) continue;
       let cur = byShow.get(e.tmdb_id);
@@ -64,9 +59,7 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
 
     const fetchShow = async (tmdb_id: number) => {
       try {
-        const r = await fetch(
-          `${TMDB_BASE}/tv/${tmdb_id}?api_key=${key}&language=en-US`
-        );
+        const r = await fetch(`${TMDB_BASE}/tv/${tmdb_id}?api_key=${key}&language=en-US`);
         if (!r.ok) return null;
         return await r.json();
       } catch {
@@ -79,7 +72,7 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
         const details = await fetchShow(tmdb_id);
         if (!details) return null;
         const seasons = (details.seasons ?? []).filter(
-          (s: { season_number: number }) => s.season_number > 0
+          (s: { season_number: number }) => s.season_number > 0,
         );
 
         // Only count episodes that have already aired based on last_episode_to_air.
@@ -138,7 +131,7 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
           runtime_minutes: details.episode_run_time?.[0] ?? null,
           last_watched_at: agg.last,
         } satisfies CurrentlyWatchingItem;
-      })
+      }),
     );
 
     return results.filter((r): r is CurrentlyWatchingItem => r !== null);

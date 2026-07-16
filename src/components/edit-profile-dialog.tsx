@@ -46,8 +46,7 @@ export function EditProfileDialog({
       return updateMyProfile({ data: payload });
     },
     onSuccess: (res: { unchanged?: boolean } | { success: true }) => {
-      const changedUsername =
-        username.toLowerCase().replace(/[^a-z0-9_]/g, "") !== currentUsername;
+      const changedUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, "") !== currentUsername;
       toast.success("Profile updated");
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -66,9 +65,7 @@ export function EditProfileDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Edit profile</DialogTitle>
-          <DialogDescription>
-            Update your display name and user tag.
-          </DialogDescription>
+          <DialogDescription>Update your display name and user tag.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
@@ -90,7 +87,10 @@ export function EditProfileDialog({
                 value={username}
                 onChange={(e) =>
                   setUsername(
-                    e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 24),
+                    e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_]/g, "")
+                      .slice(0, 24),
                   )
                 }
                 placeholder="username"
@@ -103,11 +103,7 @@ export function EditProfileDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            disabled={mutation.isPending}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
             Cancel
           </Button>
           <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>

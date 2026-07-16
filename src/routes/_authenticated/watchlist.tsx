@@ -1,11 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getWatchlist,
-  removeFromWatchlist,
-  type WatchlistItem,
-} from "@/lib/watchlist.functions";
+import { getWatchlist, removeFromWatchlist, type WatchlistItem } from "@/lib/watchlist.functions";
 import { getCurrentlyWatching } from "@/lib/currently-watching.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
@@ -16,7 +12,6 @@ import { Trash2, Star, Search, X, Grid2x2, Grid3x3, Plus, Loader2 } from "lucide
 import { markEpisodeWatched } from "@/lib/watched.functions";
 import { toast } from "sonner";
 import type { CurrentlyWatchingItem } from "@/lib/currently-watching.functions";
-
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -46,8 +41,6 @@ function WatchlistPage() {
     gridSize === "small"
       ? "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
       : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
-
-
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["watchlist"],
@@ -102,9 +95,7 @@ function WatchlistPage() {
       toast.error(e.message ?? "Could not mark episode");
     },
     onSuccess: (_r, vars) => {
-      toast.success(
-        `Marked ${vars.title} S${vars.next_season}·E${vars.next_episode} as watched`
-      );
+      toast.success(`Marked ${vars.title} S${vars.next_season}·E${vars.next_episode} as watched`);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
@@ -129,7 +120,7 @@ function WatchlistPage() {
         item.media_type === filter &&
         item.status !== "completed" &&
         item.status !== "dropped" &&
-        (q === "" || item.series_name.toLowerCase().includes(q))
+        (q === "" || item.series_name.toLowerCase().includes(q)),
     );
     if (filter !== "tv") return list;
     return list.slice().sort((a, b) => {
@@ -142,13 +133,10 @@ function WatchlistPage() {
     });
   }, [data, filter, q, inProgressMap]);
 
-
   return (
     <div className="space-y-8">
       <div className="pt-12 sm:pt-0">
-        <h1 className="font-display text-2xl font-bold text-foreground">
-          My watchlist
-        </h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">My watchlist</h1>
         <p className="text-sm text-muted-foreground">
           Movies and shows you want to watch or are currently watching.
         </p>
@@ -209,16 +197,10 @@ function WatchlistPage() {
         </div>
       </div>
 
-
-
       {isLoading ? (
         <div className={gridClass}>
-
           {Array.from({ length: 10 }).map((_, i) => (
-            <div
-              key={i}
-              className="aspect-[2/3] animate-pulse rounded-xl bg-muted"
-            />
+            <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-muted" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -281,20 +263,28 @@ function WatchlistPage() {
                   {item.vote_average?.toFixed(1) ?? "—"}
                 </div>
                 {(() => {
-                  const prog = item.media_type === "tv" ? inProgressMap.get(item.tmdb_id) : undefined;
+                  const prog =
+                    item.media_type === "tv" ? inProgressMap.get(item.tmdb_id) : undefined;
                   if (!prog) return null;
-                  const pct = prog.total_episodes > 0
-                    ? Math.min(100, (prog.episodes_watched / prog.total_episodes) * 100)
-                    : 0;
-                  const pending = markNext.isPending && markNext.variables?.tmdb_id === prog.tmdb_id;
+                  const pct =
+                    prog.total_episodes > 0
+                      ? Math.min(100, (prog.episodes_watched / prog.total_episodes) * 100)
+                      : 0;
+                  const pending =
+                    markNext.isPending && markNext.variables?.tmdb_id === prog.tmdb_id;
                   return (
                     <div className="mt-2 space-y-1.5">
                       <p className="text-[11px] text-muted-foreground">
                         Next: S{prog.next_season} · E{prog.next_episode}
-                        {prog.total_episodes > 0 ? ` · ${prog.episodes_watched}/${prog.total_episodes}` : ""}
+                        {prog.total_episodes > 0
+                          ? ` · ${prog.episodes_watched}/${prog.total_episodes}`
+                          : ""}
                       </p>
                       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                       <button
                         type="button"
@@ -306,7 +296,11 @@ function WatchlistPage() {
                         }}
                         className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
                       >
-                        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                        {pending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Plus className="h-3.5 w-3.5" />
+                        )}
                         Mark next watched
                       </button>
                     </div>
@@ -351,9 +345,7 @@ function WatchlistPage() {
                       </span>
                     </h2>
                     <div className={gridClass}>
-                      {notStarted.map((item, index) =>
-                        renderCard(item, inProgress.length + index)
-                      )}
+                      {notStarted.map((item, index) => renderCard(item, inProgress.length + index))}
                     </div>
                   </section>
                 )}

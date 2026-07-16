@@ -8,10 +8,7 @@ import {
   updateMyProfile,
 } from "@/lib/social.functions";
 import { getUserWatchedLibrary, type WatchedLibraryItem } from "@/lib/watched-library.functions";
-import {
-  getUserFavorites,
-  getUserLists,
-} from "@/lib/lists.functions";
+import { getUserFavorites, getUserLists } from "@/lib/lists.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { BannerUpload } from "@/components/banner-upload";
@@ -115,8 +112,7 @@ function UserProfilePage() {
       media_type: "movie" as const,
     }));
 
-  const isFinished = (s: string | null) =>
-    s === "Ended" || s === "Canceled" || s === "Cancelled";
+  const isFinished = (s: string | null) => s === "Ended" || s === "Canceled" || s === "Cancelled";
   const toItem = (w: WatchedLibraryItem): PosterItem => ({
     tmdb_id: w.tmdb_id,
     title: w.title,
@@ -124,8 +120,12 @@ function UserProfilePage() {
     media_type: w.media_type,
   });
   const tvLib = watchedLibrary.filter((w) => w.media_type === "tv");
-  const watchedUpToDate = tvLib.filter((w) => !w.dropped && !isFinished(w.series_status)).map(toItem);
-  const watchedFinished = tvLib.filter((w) => !w.dropped && isFinished(w.series_status)).map(toItem);
+  const watchedUpToDate = tvLib
+    .filter((w) => !w.dropped && !isFinished(w.series_status))
+    .map(toItem);
+  const watchedFinished = tvLib
+    .filter((w) => !w.dropped && isFinished(w.series_status))
+    .map(toItem);
   const watchedDropped = tvLib.filter((w) => w.dropped).map(toItem);
   const watchedMovies: PosterItem[] = watchedLibrary
     .filter((w) => w.media_type === "movie" && !w.dropped)
@@ -165,7 +165,6 @@ function UserProfilePage() {
                   />
                   <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0.4)_50%,transparent_80%)]" />
-
                 </>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
@@ -262,10 +261,7 @@ function UserProfilePage() {
                     <UserPlus className="mr-2 h-4 w-4" /> Follow
                   </Button>
                 )}
-                <ReportProfileButton
-                  reportedUserId={profile.id}
-                  username={profile.username}
-                />
+                <ReportProfileButton reportedUserId={profile.id} username={profile.username} />
               </div>
             )}
           </div>
@@ -274,12 +270,8 @@ function UserProfilePage() {
 
       <Tabs defaultValue="watched">
         <TabsList>
-          <TabsTrigger value="watched">
-            Watched ({tvLib.length + watchedMovies.length})
-          </TabsTrigger>
-          <TabsTrigger value="watchlist">
-            Watchlist ({activeWatchlist.length})
-          </TabsTrigger>
+          <TabsTrigger value="watched">Watched ({tvLib.length + watchedMovies.length})</TabsTrigger>
+          <TabsTrigger value="watchlist">Watchlist ({activeWatchlist.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="watched" className="mt-4 space-y-6">
@@ -426,7 +418,11 @@ function ListsSectionGate({ userId, isSelf }: { userId: string; isSelf: boolean 
   return <UserListsSection userId={userId} isSelf={isSelf} />;
 }
 
-function BioSection({ profile }: { profile: { id: string; bio: string | null; is_self: boolean } }) {
+function BioSection({
+  profile,
+}: {
+  profile: { id: string; bio: string | null; is_self: boolean };
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState(profile.bio ?? "");
   const queryClient = useQueryClient();
@@ -502,9 +498,7 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
 
   return (
     <div className="mt-1 flex max-w-xl items-start gap-2">
-      <p className="line-clamp-2 text-sm text-foreground/80 min-h-[1.25em]">
-        {profile.bio || ""}
-      </p>
+      <p className="line-clamp-2 text-sm text-foreground/80 min-h-[1.25em]">{profile.bio || ""}</p>
       {profile.is_self && (
         <button
           type="button"
