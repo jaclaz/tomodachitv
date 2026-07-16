@@ -32,7 +32,7 @@ function WatchlistPage() {
   const { type: filter } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const setFilter = (v: Filter) =>
-    navigate({ search: (prev) => ({ ...prev, type: v }), replace: true });
+    navigate({ search: (prev: { type: Filter }) => ({ ...prev, type: v }), replace: true });
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
     if (typeof window === "undefined") return "normal";
