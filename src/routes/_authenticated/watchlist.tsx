@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getWatchlist,
@@ -19,6 +19,9 @@ import type { CurrentlyWatchingItem } from "@/lib/currently-watching.functions";
 
 
 export const Route = createFileRoute("/_authenticated/watchlist")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    type: (search.type === "movie" ? "movie" : "tv") as "tv" | "movie",
+  }),
   component: WatchlistPage,
 });
 
@@ -26,7 +29,10 @@ type Filter = "tv" | "movie";
 
 function WatchlistPage() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<Filter>("tv");
+  const { type: filter } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setFilter = (v: Filter) =>
+    navigate({ search: (prev) => ({ ...prev, type: v }), replace: true });
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
     if (typeof window === "undefined") return "normal";
