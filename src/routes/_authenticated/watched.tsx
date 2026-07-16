@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getWatchedLibrary } from "@/lib/watched-library.functions";
 import { getGenres, posterUrl, type MediaType, type SortBy } from "@/lib/tmdb";
@@ -18,6 +18,9 @@ import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/watched")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    type: (search.type === "movie" ? "movie" : "tv") as "tv" | "movie",
+  }),
   component: WatchedPage,
 });
 
