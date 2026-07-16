@@ -18,23 +18,23 @@ export interface WatchedLibraryItem {
   dropped: boolean;
 }
 
-export const getWatchedLibrary = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<WatchedLibraryItem[]> => {
-    // Pull library rows in scope: completed or dropped
+async function buildWatchedLibrary(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+): Promise<WatchedLibraryItem[]> {
+  const context = { supabase, userId };
+  {
     const { data: libRows, error: libErr } = await context.supabase
       .from("watchlist")
-      .select("tmdb_id, media_type, series_name, poster_path, backdrop_path, first_air_date, vote_average, status, added_at")
+      .select(
+        "tmdb_id, media_type, series_name, poster_path, backdrop_path, first_air_date, vote_average, status, added_at",
+      )
       .eq("user_id", context.userId)
       .in("status", ["completed", "dropped"]);
     if (libErr) throw libErr;
 
-    const tvIds = (libRows ?? [])
-      .filter((r) => r.media_type === "tv")
-      .map((r) => r.tmdb_id);
-    const movieIds = (libRows ?? [])
-      .filter((r) => r.media_type === "movie")
-      .map((r) => r.tmdb_id);
+    const tvIds = (libRows ?? []).filter((r) => r.media_type === "tv").map((r) => r.tmdb_id);
+    const movieIds = (libRows ?? []).filter((r) => r.media_type === "movie").map((r) => r.tmdb_id);
 
     // Episodes for tv rows (for counts + last watched)
     const { data: eps, error: e1 } = await context.supabase
@@ -58,15 +58,24 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
     if (e2) throw e2;
     const movieMap = new Map<number, { title: string | null; watched_at: string }>();
-    for (const m of movies ?? []) movieMap.set(m.tmdb_id, { title: m.title, watched_at: m.watched_at });
+    for (const m of movies ?? [])
+      movieMap.set(m.tmdb_id, { title: m.title, watched_at: m.watched_at });
 
     // Load media_cache
     const [cachedShowsRes, cachedMoviesRes] = await Promise.all([
       tvIds.length
-        ? context.supabase.from("media_cache").select("*").eq("media_type", "tv").in("tmdb_id", tvIds)
+        ? context.supabase
+            .from("media_cache")
+            .select("*")
+            .eq("media_type", "tv")
+            .in("tmdb_id", tvIds)
         : Promise.resolve({ data: [], error: null } as any),
       movieIds.length
-        ? context.supabase.from("media_cache").select("*").eq("media_type", "movie").in("tmdb_id", movieIds)
+        ? context.supabase
+            .from("media_cache")
+            .select("*")
+            .eq("media_type", "movie")
+            .in("tmdb_id", movieIds)
         : Promise.resolve({ data: [], error: null } as any),
     ]);
     const cacheMap = new Map<string, any>();
@@ -76,7 +85,11 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
     const needsRefetch = (r: { media_type: string; tmdb_id: number }) => {
       const cached = cacheMap.get(`${r.media_type}:${r.tmdb_id}`);
       if (!cached) return true;
-      if (r.media_type === "tv" && (cached.episode_count_aired == null || cached.series_status == null)) return true;
+      if (
+        r.media_type === "tv" &&
+        (cached.episode_count_aired == null || cached.series_status == null)
+      )
+        return true;
       return false;
     };
     const missing = (libRows ?? []).filter(needsRefetch).map((r) => ({
@@ -125,7 +138,9 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
 
         if (results.length) {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          await supabaseAdmin.from("media_cache").upsert(results, { onConflict: "media_type, tmdb_id" });
+          await supabaseAdmin
+            .from("media_cache")
+            .upsert(results, { onConflict: "media_type, tmdb_id" });
           for (const r of results) cacheMap.set(`${r.media_type}:${r.tmdb_id}`, r);
         }
       }
@@ -169,4 +184,20 @@ export const getWatchedLibrary = createServerFn({ method: "POST" })
       }
     }
     return items;
-  });
+  }
+}
+
+export const getWatchedLibrary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    ({ context }): Promise<WatchedLibraryItem[]> =>
+      buildWatchedLibrary(context.supabase, context.userId),
+  );
+
+export const getUserWatchedLibrary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { user_id: string }) => input)
+  .handler(
+    ({ context, data }): Promise<WatchedLibraryItem[]> =>
+      buildWatchedLibrary(context.supabase, data.user_id),
+  );

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getWatchedLibrary } from "@/lib/watched-library.functions";
 import { getGenres, posterUrl, type MediaType, type SortBy } from "@/lib/tmdb";
@@ -16,18 +16,15 @@ import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
 import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
 
-
 export const Route = createFileRoute("/_authenticated/watched")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    type: (search.type === "movie" ? "movie" : "tv") as "tv" | "movie",
+  }),
   component: WatchedPage,
 });
 
 type TypeTab = "tv" | "movie";
-type WatchedSort =
-  | "recent.desc"
-  | "recent.asc"
-  | "rating.desc"
-  | "release.desc"
-  | "title.asc";
+type WatchedSort = "recent.desc" | "recent.asc" | "rating.desc" | "release.desc" | "title.asc";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const DECADES = [
@@ -57,7 +54,10 @@ const DEFAULTS: Filters = {
 };
 
 function WatchedPage() {
-  const [type, setType] = useState<TypeTab>("tv");
+  const { type } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setType = (v: TypeTab) =>
+    navigate({ search: (prev: { type: TypeTab }) => ({ ...prev, type: v }), replace: true });
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
@@ -72,8 +72,6 @@ function WatchedPage() {
     gridSize === "small"
       ? "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
       : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
-
-
 
   const { data: library = [], isLoading } = useQuery({
     queryKey: ["watched-library"],
@@ -126,9 +124,8 @@ function WatchedPage() {
     return list;
   }, [library, type, filters, query]);
 
-
   const currentDecadeIdx = DECADES.findIndex(
-    (d) => d.from === filters.yearFrom && d.to === filters.yearTo
+    (d) => d.from === filters.yearFrom && d.to === filters.yearTo,
   );
   const decadeVal = currentDecadeIdx >= 0 ? String(currentDecadeIdx) : "all";
   const filtersActive =
@@ -140,9 +137,7 @@ function WatchedPage() {
   return (
     <div className="space-y-6">
       <div className="pt-12 sm:pt-0">
-        <h1 className="font-display text-2xl font-bold text-foreground">
-          Watched
-        </h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Watched</h1>
         <p className="text-sm text-muted-foreground">
           {library.length} title{library.length === 1 ? "" : "s"} in your library.
         </p>
@@ -152,7 +147,6 @@ function WatchedPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={type} onValueChange={(v) => setType(v as TypeTab)}>
             <TabsList>
-              
               <TabsTrigger value="tv">TV Shows</TabsTrigger>
               <TabsTrigger value="movie">Movies</TabsTrigger>
             </TabsList>
@@ -205,8 +199,6 @@ function WatchedPage() {
           </div>
         </div>
 
-
-
         <div className="flex flex-wrap items-center gap-2">
           <Select
             value={filters.genreId ? String(filters.genreId) : "all"}
@@ -233,8 +225,7 @@ function WatchedPage() {
           <Select
             value={decadeVal}
             onValueChange={(v) => {
-              if (v === "all")
-                setFilters((f) => ({ ...f, yearFrom: null, yearTo: null }));
+              if (v === "all") setFilters((f) => ({ ...f, yearFrom: null, yearTo: null }));
               else {
                 const d = DECADES[Number(v)];
                 setFilters((f) => ({ ...f, yearFrom: d.from, yearTo: d.to }));
@@ -278,9 +269,7 @@ function WatchedPage() {
 
           <Select
             value={filters.sort}
-            onValueChange={(v) =>
-              setFilters((f) => ({ ...f, sort: v as WatchedSort }))
-            }
+            onValueChange={(v) => setFilters((f) => ({ ...f, sort: v as WatchedSort }))}
           >
             <SelectTrigger className="h-9 w-[170px] bg-surface">
               <SelectValue />
@@ -309,20 +298,14 @@ function WatchedPage() {
 
       {isLoading ? (
         <div className={gridClass}>
-
           {Array.from({ length: 15 }).map((_, i) => (
-            <div
-              key={i}
-              className="aspect-[2/3] animate-pulse rounded-xl bg-muted"
-            />
+            <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-muted" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-border bg-surface p-12 text-center">
           <CheckCircle2 className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h3 className="mt-3 font-display text-lg font-semibold">
-            Nothing matches
-          </h3>
+          <h3 className="mt-3 font-display text-lg font-semibold">Nothing matches</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             {library.length === 0
               ? "Mark titles as watched or import from TV Time to build your library."
@@ -331,7 +314,7 @@ function WatchedPage() {
         </div>
       ) : (
         (() => {
-          const renderCard = (item: typeof filtered[number], index: number) => (
+          const renderCard = (item: (typeof filtered)[number], index: number) => (
             <div
               key={`${item.media_type}-${item.tmdb_id}-${index}`}
               className="group relative overflow-hidden rounded-xl border border-t-0 border-border bg-card shadow-sm transition-shadow hover:shadow-md"
@@ -372,9 +355,7 @@ function WatchedPage() {
                     <Star className="h-3 w-3 fill-rating text-rating" />
                     {item.vote_average?.toFixed(1) ?? "—"}
                   </span>
-                  {item.episodes_watched != null && (
-                    <span>{item.episodes_watched} ep</span>
-                  )}
+                  {item.episodes_watched != null && <span>{item.episodes_watched} ep</span>}
                 </div>
                 <div className="mt-2 flex justify-end">
                   <PosterActions
@@ -419,9 +400,7 @@ function WatchedPage() {
                       </span>
                     </h2>
                     <div className={gridClass}>
-                      {finished.map((item, index) =>
-                        renderCard(item, upToDate.length + index)
-                      )}
+                      {finished.map((item, index) => renderCard(item, upToDate.length + index))}
                     </div>
                   </section>
                 )}
@@ -435,7 +414,7 @@ function WatchedPage() {
                     </h2>
                     <div className={gridClass}>
                       {dropped.map((item, index) =>
-                        renderCard(item, upToDate.length + finished.length + index)
+                        renderCard(item, upToDate.length + finished.length + index),
                       )}
                     </div>
                   </section>

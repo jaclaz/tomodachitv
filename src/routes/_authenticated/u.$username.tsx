@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getProfileByUsername,
@@ -7,16 +7,19 @@ import {
   getUserWatchlist,
   updateMyProfile,
 } from "@/lib/social.functions";
-import {
-  getUserFavorites,
-  getUserLists,
-  getUserRecentWatchedMedia,
-} from "@/lib/lists.functions";
+import { getUserWatchedLibrary, type WatchedLibraryItem } from "@/lib/watched-library.functions";
+import { getUserFavorites, getUserLists } from "@/lib/lists.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { BannerUpload } from "@/components/banner-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Lock,
   UserPlus,
@@ -27,14 +30,18 @@ import {
   Loader2,
   Tv,
   Film,
+  MoreVertical,
+  Star,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { PosterStrip, type PosterItem } from "@/components/poster-strip";
 import { PosterActions } from "@/components/poster-actions";
 import { UserListsSection } from "@/components/user-lists-section";
 import { ReportProfileButton } from "@/components/report-profile-button";
 import { FollowListDialog } from "@/components/follow-list-dialog";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
+import { posterUrl } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
   component: UserProfilePage,
@@ -44,6 +51,7 @@ function UserProfilePage() {
   const { username } = Route.useParams();
   const queryClient = useQueryClient();
   const [followDialogMode, setFollowDialogMode] = useState<"followers" | "following" | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", username],
@@ -58,9 +66,9 @@ function UserProfilePage() {
     enabled: !!profile,
   });
 
-  const { data: watched } = useQuery({
-    queryKey: ["user-recent-watched", profile?.id],
-    queryFn: () => getUserRecentWatchedMedia({ data: { user_id: profile!.id } }),
+  const { data: watchedLibrary = [] } = useQuery({
+    queryKey: ["user-watched-library", profile?.id],
+    queryFn: () => getUserWatchedLibrary({ data: { user_id: profile!.id } }),
     enabled: !!profile && canSeeWatched,
   });
 
@@ -84,7 +92,10 @@ function UserProfilePage() {
   }
   if (!profile) throw notFound();
 
-  const watchlistTv: PosterItem[] = watchlist
+  const activeWatchlist = watchlist.filter(
+    (w) => w.status !== "completed" && w.status !== "dropped",
+  );
+  const watchlistTv: PosterItem[] = activeWatchlist
     .filter((w) => w.media_type === "tv")
     .map((w) => ({
       tmdb_id: w.tmdb_id,
@@ -92,7 +103,7 @@ function UserProfilePage() {
       poster_path: w.poster_path,
       media_type: "tv" as const,
     }));
-  const watchlistMovies: PosterItem[] = watchlist
+  const watchlistMovies: PosterItem[] = activeWatchlist
     .filter((w) => w.media_type === "movie")
     .map((w) => ({
       tmdb_id: w.tmdb_id,
@@ -101,18 +112,24 @@ function UserProfilePage() {
       media_type: "movie" as const,
     }));
 
-  const watchedTv: PosterItem[] = (watched?.series ?? []).map((s) => ({
-    tmdb_id: s.tmdb_id,
-    title: s.title,
-    poster_path: s.poster_path,
-    media_type: "tv" as const,
-  }));
-  const watchedMovies: PosterItem[] = (watched?.movies ?? []).map((m) => ({
-    tmdb_id: m.tmdb_id,
-    title: m.title,
-    poster_path: m.poster_path,
-    media_type: "movie" as const,
-  }));
+  const isFinished = (s: string | null) => s === "Ended" || s === "Canceled" || s === "Cancelled";
+  const toItem = (w: WatchedLibraryItem): PosterItem => ({
+    tmdb_id: w.tmdb_id,
+    title: w.title,
+    poster_path: w.poster_path,
+    media_type: w.media_type,
+  });
+  const tvLib = watchedLibrary.filter((w) => w.media_type === "tv");
+  const watchedUpToDate = tvLib
+    .filter((w) => !w.dropped && !isFinished(w.series_status))
+    .map(toItem);
+  const watchedFinished = tvLib
+    .filter((w) => !w.dropped && isFinished(w.series_status))
+    .map(toItem);
+  const watchedDropped = tvLib.filter((w) => w.dropped).map(toItem);
+  const watchedMovies: PosterItem[] = watchedLibrary
+    .filter((w) => w.media_type === "movie" && !w.dropped)
+    .map(toItem);
 
   const favTv: PosterItem[] = favorites
     .filter((f) => f.media_type === "tv")
@@ -148,7 +165,6 @@ function UserProfilePage() {
                   />
                   <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0.4)_50%,transparent_80%)]" />
-
                 </>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
@@ -207,7 +223,27 @@ function UserProfilePage() {
               </div>
             </div>
 
-            {!profile.is_self && (
+            {profile.is_self ? (
+              <div className="flex items-end gap-1 self-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground"
+                      aria-label="Profile options"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit profile
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : (
               <div className="flex items-end gap-1 self-end">
                 {profile.is_following ? (
                   <Button
@@ -225,10 +261,7 @@ function UserProfilePage() {
                     <UserPlus className="mr-2 h-4 w-4" /> Follow
                   </Button>
                 )}
-                <ReportProfileButton
-                  reportedUserId={profile.id}
-                  username={profile.username}
-                />
+                <ReportProfileButton reportedUserId={profile.id} username={profile.username} />
               </div>
             )}
           </div>
@@ -237,8 +270,8 @@ function UserProfilePage() {
 
       <Tabs defaultValue="watched">
         <TabsList>
-          <TabsTrigger value="watched">Watched</TabsTrigger>
-          <TabsTrigger value="watchlist">Watchlist ({watchlist.length})</TabsTrigger>
+          <TabsTrigger value="watched">Watched ({tvLib.length + watchedMovies.length})</TabsTrigger>
+          <TabsTrigger value="watchlist">Watchlist ({activeWatchlist.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="watched" className="mt-4 space-y-6">
@@ -254,27 +287,30 @@ function UserProfilePage() {
             <>
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Tv className="h-4 w-4" /> Recently watched series
+                  <Tv className="h-4 w-4" /> Up to date ({watchedUpToDate.length})
                 </h3>
-                <PosterStrip
-                  items={watchedTv}
-                  emptyLabel="No series watched yet."
-                  moreHref={profile.is_self ? "/watched" : undefined}
-                  moreLabel="All watched"
-                />
+                <PosterStrip items={watchedUpToDate} emptyLabel="Nothing here yet." />
               </div>
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Film className="h-4 w-4" /> Recently watched movies
+                  <Tv className="h-4 w-4" /> Finished ({watchedFinished.length})
                 </h3>
-                <PosterStrip
-                  items={watchedMovies}
-                  emptyLabel="No movies watched yet."
-                  moreHref={profile.is_self ? "/watched" : undefined}
-                  moreLabel="All watched"
-                />
+                <PosterStrip items={watchedFinished} emptyLabel="No finished series yet." />
               </div>
-
+              {watchedDropped.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <Tv className="h-4 w-4" /> Dropped ({watchedDropped.length})
+                  </h3>
+                  <PosterStrip items={watchedDropped} emptyLabel="No dropped series." />
+                </div>
+              )}
+              <div className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Film className="h-4 w-4" /> Movies ({watchedMovies.length})
+                </h3>
+                <PosterStrip items={watchedMovies} emptyLabel="No movies watched yet." />
+              </div>
             </>
           )}
         </TabsContent>
@@ -282,13 +318,13 @@ function UserProfilePage() {
         <TabsContent value="watchlist" className="mt-4 space-y-6">
           <div className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Tv className="h-4 w-4" /> Series
+              <Tv className="h-4 w-4" /> Series ({watchlistTv.length})
             </h3>
             <PosterStrip items={watchlistTv} emptyLabel="No series in watchlist." />
           </div>
           <div className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Film className="h-4 w-4" /> Movies
+              <Film className="h-4 w-4" /> Movies ({watchlistMovies.length})
             </h3>
             <PosterStrip items={watchlistMovies} emptyLabel="No movies in watchlist." />
           </div>
@@ -360,6 +396,15 @@ function UserProfilePage() {
         mode={followDialogMode}
         onClose={() => setFollowDialogMode(null)}
       />
+
+      {profile.is_self && (
+        <EditProfileDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          currentDisplayName={profile.display_name}
+          currentUsername={profile.username}
+        />
+      )}
     </div>
   );
 }
@@ -373,7 +418,11 @@ function ListsSectionGate({ userId, isSelf }: { userId: string; isSelf: boolean 
   return <UserListsSection userId={userId} isSelf={isSelf} />;
 }
 
-function BioSection({ profile }: { profile: { id: string; bio: string | null; is_self: boolean } }) {
+function BioSection({
+  profile,
+}: {
+  profile: { id: string; bio: string | null; is_self: boolean };
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState(profile.bio ?? "");
   const queryClient = useQueryClient();
@@ -449,9 +498,7 @@ function BioSection({ profile }: { profile: { id: string; bio: string | null; is
 
   return (
     <div className="mt-1 flex max-w-xl items-start gap-2">
-      <p className="line-clamp-2 text-sm text-foreground/80 min-h-[1.25em]">
-        {profile.bio || ""}
-      </p>
+      <p className="line-clamp-2 text-sm text-foreground/80 min-h-[1.25em]">{profile.bio || ""}</p>
       {profile.is_self && (
         <button
           type="button"

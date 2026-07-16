@@ -25,7 +25,7 @@ export interface FollowUserItem extends PublicProfile {
 async function fetchFollowList(
   supabase: import("@supabase/supabase-js").SupabaseClient,
   userIds: string[],
-  currentUserId: string
+  currentUserId: string,
 ): Promise<FollowUserItem[]> {
   if (userIds.length === 0) return [];
   const [{ data: profiles }, { data: myFollows }] = await Promise.all([
@@ -90,7 +90,6 @@ export const searchUsers = createServerFn({ method: "POST" })
     return (rows ?? []) as PublicProfile[];
   });
 
-
 export const getProfileByUsername = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { username: string }) => input)
@@ -102,23 +101,22 @@ export const getProfileByUsername = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!profile) return null;
-    const [{ count: followers }, { count: following }, { data: rel }] =
-      await Promise.all([
-        context.supabase
-          .from("follows")
-          .select("*", { count: "exact", head: true })
-          .eq("following_id", profile.id),
-        context.supabase
-          .from("follows")
-          .select("*", { count: "exact", head: true })
-          .eq("follower_id", profile.id),
-        context.supabase
-          .from("follows")
-          .select("id")
-          .eq("follower_id", context.userId)
-          .eq("following_id", profile.id)
-          .maybeSingle(),
-      ]);
+    const [{ count: followers }, { count: following }, { data: rel }] = await Promise.all([
+      context.supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", profile.id),
+      context.supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", profile.id),
+      context.supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", context.userId)
+        .eq("following_id", profile.id)
+        .maybeSingle(),
+    ]);
     return {
       ...(profile as PublicProfile),
       followers_count: followers ?? 0,
@@ -198,12 +196,20 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       bio?: string | null;
       avatar_url?: string | null;
       banner_url?: string | null;
-    }) => input
+    }) => input,
   )
   .handler(async ({ context, data }) => {
     if (data.username) {
       const clean = data.username.toLowerCase().replace(/[^a-z0-9_]/g, "");
       if (clean.length < 3) throw new Error("Username must be at least 3 characters");
+      // Uniqueness check (case-insensitive)
+      const { data: existing } = await context.supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", clean)
+        .neq("id", context.userId)
+        .maybeSingle();
+      if (existing) throw new Error("This tag is already taken");
       data.username = clean;
     }
     if (data.avatar_url) {
@@ -218,10 +224,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
         throw new Error("Invalid banner URL");
       }
     }
-    const { error } = await context.supabase
-      .from("profiles")
-      .update(data)
-      .eq("id", context.userId);
+    const { error } = await context.supabase.from("profiles").update(data).eq("id", context.userId);
     if (error) throw error;
     return { success: true };
   });
@@ -280,10 +283,16 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
     ]);
 
     const allUserIds = [
-      ...new Set([...(movies ?? []).map((m) => m.user_id), ...(episodes ?? []).map((e) => e.user_id)]),
+      ...new Set([
+        ...(movies ?? []).map((m) => m.user_id),
+        ...(episodes ?? []).map((e) => e.user_id),
+      ]),
     ];
     const allTmdbIds = [
-      ...new Set([...(movies ?? []).map((m) => m.tmdb_id), ...(episodes ?? []).map((e) => e.tmdb_id)]),
+      ...new Set([
+        ...(movies ?? []).map((m) => m.tmdb_id),
+        ...(episodes ?? []).map((e) => e.tmdb_id),
+      ]),
     ];
 
     const [{ data: profiles }, { data: cache }] = await Promise.all([
@@ -292,13 +301,27 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
             .from("profiles")
             .select("id, username, display_name, avatar_url")
             .in("id", allUserIds)
-        : Promise.resolve({ data: [] as { id: string; username: string; display_name: string | null; avatar_url: string | null }[] }),
+        : Promise.resolve({
+            data: [] as {
+              id: string;
+              username: string;
+              display_name: string | null;
+              avatar_url: string | null;
+            }[],
+          }),
       allTmdbIds.length
         ? context.supabase
             .from("media_cache")
             .select("media_type, tmdb_id, title, poster_path")
             .in("tmdb_id", allTmdbIds)
-        : Promise.resolve({ data: [] as { media_type: string; tmdb_id: number; title: string | null; poster_path: string | null }[] }),
+        : Promise.resolve({
+            data: [] as {
+              media_type: string;
+              tmdb_id: number;
+              title: string | null;
+              poster_path: string | null;
+            }[],
+          }),
     ]);
 
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
@@ -312,7 +335,12 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
       items.push({
         id: `m:${m.id}`,
         kind: "movie",
-        user: { id: p.id, username: p.username, display_name: p.display_name, avatar_url: p.avatar_url },
+        user: {
+          id: p.id,
+          username: p.username,
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+        },
         tmdb_id: m.tmdb_id,
         title: m.title ?? c?.title ?? `#${m.tmdb_id}`,
         poster_path: c?.poster_path ?? null,
@@ -326,7 +354,12 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
       items.push({
         id: `e:${e.id}`,
         kind: "episode",
-        user: { id: p.id, username: p.username, display_name: p.display_name, avatar_url: p.avatar_url },
+        user: {
+          id: p.id,
+          username: p.username,
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+        },
         tmdb_id: e.tmdb_id,
         title: c?.title ?? `#${e.tmdb_id}`,
         poster_path: c?.poster_path ?? null,
