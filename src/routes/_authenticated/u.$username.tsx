@@ -69,9 +69,9 @@ function UserProfilePage() {
     enabled: !!profile,
   });
 
-  const { data: watched } = useQuery({
-    queryKey: ["user-recent-watched", profile?.id],
-    queryFn: () => getUserRecentWatchedMedia({ data: { user_id: profile!.id } }),
+  const { data: watchedLibrary = [] } = useQuery({
+    queryKey: ["user-watched-library", profile?.id],
+    queryFn: () => getUserWatchedLibrary({ data: { user_id: profile!.id } }),
     enabled: !!profile && canSeeWatched,
   });
 
