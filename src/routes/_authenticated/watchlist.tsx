@@ -333,6 +333,9 @@ function WatchlistPage() {
                   <section className="space-y-3">
                     <h2 className="font-display text-lg font-semibold text-foreground">
                       Currently watching
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        ({inProgress.length})
+                      </span>
                     </h2>
                     <div className={gridClass}>
                       {inProgress.map((item, index) => renderCard(item, index))}
