@@ -171,4 +171,18 @@ async function buildWatchedLibrary(
       }
     }
     return items;
-  });
+  }
+}
+
+export const getWatchedLibrary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(({ context }): Promise<WatchedLibraryItem[]> =>
+    buildWatchedLibrary(context.supabase, context.userId),
+  );
+
+export const getUserWatchedLibrary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { user_id: string }) => input)
+  .handler(({ context, data }): Promise<WatchedLibraryItem[]> =>
+    buildWatchedLibrary(context.supabase, data.user_id),
+  );
