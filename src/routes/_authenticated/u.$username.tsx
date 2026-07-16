@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getProfileByUsername,
@@ -7,16 +7,22 @@ import {
   getUserWatchlist,
   updateMyProfile,
 } from "@/lib/social.functions";
+import { getUserWatchedLibrary, type WatchedLibraryItem } from "@/lib/watched-library.functions";
 import {
   getUserFavorites,
   getUserLists,
-  getUserRecentWatchedMedia,
 } from "@/lib/lists.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { BannerUpload } from "@/components/banner-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Lock,
   UserPlus,
@@ -27,14 +33,18 @@ import {
   Loader2,
   Tv,
   Film,
+  MoreVertical,
+  Star,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { PosterStrip, type PosterItem } from "@/components/poster-strip";
 import { PosterActions } from "@/components/poster-actions";
 import { UserListsSection } from "@/components/user-lists-section";
 import { ReportProfileButton } from "@/components/report-profile-button";
 import { FollowListDialog } from "@/components/follow-list-dialog";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
+import { posterUrl } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
   component: UserProfilePage,
