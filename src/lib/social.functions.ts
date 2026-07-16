@@ -204,6 +204,14 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     if (data.username) {
       const clean = data.username.toLowerCase().replace(/[^a-z0-9_]/g, "");
       if (clean.length < 3) throw new Error("Username must be at least 3 characters");
+      // Uniqueness check (case-insensitive)
+      const { data: existing } = await context.supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", clean)
+        .neq("id", context.userId)
+        .maybeSingle();
+      if (existing) throw new Error("This tag is already taken");
       data.username = clean;
     }
     if (data.avatar_url) {
