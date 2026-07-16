@@ -95,7 +95,10 @@ function UserProfilePage() {
   }
   if (!profile) throw notFound();
 
-  const watchlistTv: PosterItem[] = watchlist
+  const activeWatchlist = watchlist.filter(
+    (w) => w.status !== "completed" && w.status !== "dropped",
+  );
+  const watchlistTv: PosterItem[] = activeWatchlist
     .filter((w) => w.media_type === "tv")
     .map((w) => ({
       tmdb_id: w.tmdb_id,
@@ -103,7 +106,7 @@ function UserProfilePage() {
       poster_path: w.poster_path,
       media_type: "tv" as const,
     }));
-  const watchlistMovies: PosterItem[] = watchlist
+  const watchlistMovies: PosterItem[] = activeWatchlist
     .filter((w) => w.media_type === "movie")
     .map((w) => ({
       tmdb_id: w.tmdb_id,
@@ -112,18 +115,21 @@ function UserProfilePage() {
       media_type: "movie" as const,
     }));
 
-  const watchedTv: PosterItem[] = (watched?.series ?? []).map((s) => ({
-    tmdb_id: s.tmdb_id,
-    title: s.title,
-    poster_path: s.poster_path,
-    media_type: "tv" as const,
-  }));
-  const watchedMovies: PosterItem[] = (watched?.movies ?? []).map((m) => ({
-    tmdb_id: m.tmdb_id,
-    title: m.title,
-    poster_path: m.poster_path,
-    media_type: "movie" as const,
-  }));
+  const isFinished = (s: string | null) =>
+    s === "Ended" || s === "Canceled" || s === "Cancelled";
+  const toItem = (w: WatchedLibraryItem): PosterItem => ({
+    tmdb_id: w.tmdb_id,
+    title: w.title,
+    poster_path: w.poster_path,
+    media_type: w.media_type,
+  });
+  const tvLib = watchedLibrary.filter((w) => w.media_type === "tv");
+  const watchedUpToDate = tvLib.filter((w) => !w.dropped && !isFinished(w.series_status)).map(toItem);
+  const watchedFinished = tvLib.filter((w) => !w.dropped && isFinished(w.series_status)).map(toItem);
+  const watchedDropped = tvLib.filter((w) => w.dropped).map(toItem);
+  const watchedMovies: PosterItem[] = watchedLibrary
+    .filter((w) => w.media_type === "movie" && !w.dropped)
+    .map(toItem);
 
   const favTv: PosterItem[] = favorites
     .filter((f) => f.media_type === "tv")
