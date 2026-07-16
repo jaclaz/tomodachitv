@@ -18,10 +18,12 @@ export interface WatchedLibraryItem {
   dropped: boolean;
 }
 
-export const getWatchedLibrary = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<WatchedLibraryItem[]> => {
-    // Pull library rows in scope: completed or dropped
+async function buildWatchedLibrary(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+): Promise<WatchedLibraryItem[]> {
+  const context = { supabase, userId };
+  {
     const { data: libRows, error: libErr } = await context.supabase
       .from("watchlist")
       .select("tmdb_id, media_type, series_name, poster_path, backdrop_path, first_air_date, vote_average, status, added_at")
