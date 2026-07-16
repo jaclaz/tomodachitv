@@ -346,6 +346,9 @@ function WatchlistPage() {
                   <section className="space-y-3">
                     <h2 className="font-display text-lg font-semibold text-foreground">
                       Not started yet
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        ({notStarted.length})
+                      </span>
                     </h2>
                     <div className={gridClass}>
                       {notStarted.map((item, index) =>
