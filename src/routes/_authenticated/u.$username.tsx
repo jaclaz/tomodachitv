@@ -259,7 +259,8 @@ function UserProfilePage() {
                   items={watchedTv}
                   emptyLabel="No series watched yet."
                   max={8}
-                  moreHref={profile.is_self ? "/watched?type=tv" : undefined}
+                  moreHref={profile.is_self ? "/watched" : undefined}
+                  moreSearch={{ type: "tv" }}
                   moreLabel="See all watched"
                 />
               </div>
@@ -271,7 +272,8 @@ function UserProfilePage() {
                   items={watchedMovies}
                   emptyLabel="No movies watched yet."
                   max={8}
-                  moreHref={profile.is_self ? "/watched?type=movie" : undefined}
+                  moreHref={profile.is_self ? "/watched" : undefined}
+                  moreSearch={{ type: "movie" }}
                   moreLabel="See all watched"
                 />
               </div>
@@ -288,7 +290,8 @@ function UserProfilePage() {
               items={watchlistTv}
               emptyLabel="No series in watchlist."
               max={8}
-              moreHref={profile.is_self ? "/watchlist?type=tv" : undefined}
+              moreHref={profile.is_self ? "/watchlist" : undefined}
+              moreSearch={{ type: "tv" }}
               moreLabel="See all watchlist"
             />
           </div>
@@ -300,10 +303,12 @@ function UserProfilePage() {
               items={watchlistMovies}
               emptyLabel="No movies in watchlist."
               max={8}
-              moreHref={profile.is_self ? "/watchlist?type=movie" : undefined}
+              moreHref={profile.is_self ? "/watchlist" : undefined}
+              moreSearch={{ type: "movie" }}
               moreLabel="See all watchlist"
             />
           </div>
+
         </TabsContent>
       </Tabs>
 
