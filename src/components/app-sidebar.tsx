@@ -180,6 +180,10 @@ export function AppSidebar() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setEditOpen(true)} className="cursor-pointer">
+                  <Pencil className="mr-2 h-4 w-4" /> Edit profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setConfirmLogout(true)} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
                 </DropdownMenuItem>
@@ -191,6 +195,7 @@ export function AppSidebar() {
                   <Trash2 className="mr-2 h-4 w-4" /> Delete account
                 </DropdownMenuItem>
               </DropdownMenuContent>
+
             </DropdownMenu>
           </div>
         </div>
