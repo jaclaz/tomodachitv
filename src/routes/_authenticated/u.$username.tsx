@@ -40,7 +40,6 @@ import { PosterActions } from "@/components/poster-actions";
 import { UserListsSection } from "@/components/user-lists-section";
 import { ReportProfileButton } from "@/components/report-profile-button";
 import { FollowListDialog } from "@/components/follow-list-dialog";
-import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { posterUrl } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
@@ -51,7 +50,7 @@ function UserProfilePage() {
   const { username } = Route.useParams();
   const queryClient = useQueryClient();
   const [followDialogMode, setFollowDialogMode] = useState<"followers" | "following" | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
+
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", username],
