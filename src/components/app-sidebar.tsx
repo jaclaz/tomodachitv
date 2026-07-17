@@ -66,6 +66,8 @@ export function AppSidebar() {
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
   const router = useRouter();
   const qc = useQueryClient();
 
