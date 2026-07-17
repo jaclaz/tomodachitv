@@ -94,24 +94,25 @@ function UserProfilePage() {
       media_type: "movie" as const,
     }));
 
-  const isFinished = (s: string | null) => s === "Ended" || s === "Canceled" || s === "Cancelled";
   const toItem = (w: WatchedLibraryItem): PosterItem => ({
     tmdb_id: w.tmdb_id,
     title: w.title,
     poster_path: w.poster_path,
     media_type: w.media_type,
   });
-  const tvLib = watchedLibrary.filter((w) => w.media_type === "tv");
-  const watchedUpToDate = tvLib
-    .filter((w) => !w.dropped && !isFinished(w.series_status))
+  const byRecent = (a: WatchedLibraryItem, b: WatchedLibraryItem) =>
+    (b.watched_at ?? "").localeCompare(a.watched_at ?? "");
+  const watchedTv: PosterItem[] = watchedLibrary
+    .filter((w) => w.media_type === "tv" && !w.dropped)
+    .slice()
+    .sort(byRecent)
     .map(toItem);
-  const watchedFinished = tvLib
-    .filter((w) => !w.dropped && isFinished(w.series_status))
-    .map(toItem);
-  const watchedDropped = tvLib.filter((w) => w.dropped).map(toItem);
   const watchedMovies: PosterItem[] = watchedLibrary
     .filter((w) => w.media_type === "movie" && !w.dropped)
+    .slice()
+    .sort(byRecent)
     .map(toItem);
+
 
   const favTv: PosterItem[] = favorites
     .filter((f) => f.media_type === "tv")
