@@ -19,6 +19,7 @@ export function PosterStrip({
   max = 12,
   actions,
   moreHref,
+  moreSearch,
   moreLabel = "See all",
 }: {
   items: PosterItem[];
@@ -26,6 +27,7 @@ export function PosterStrip({
   max?: number;
   actions?: (item: PosterItem) => ReactNode;
   moreHref?: string;
+  moreSearch?: Record<string, string>;
   moreLabel?: string;
 }) {
 
@@ -72,6 +74,7 @@ export function PosterStrip({
       {moreHref && items.length > 0 && (
         <Link
           to={moreHref as string}
+          search={moreSearch as never}
           className="group flex aspect-[2/3] w-[92px] flex-shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface text-muted-foreground transition-colors hover:border-primary hover:text-primary sm:w-[110px]"
           aria-label={moreLabel}
           title={moreLabel}
@@ -84,4 +87,5 @@ export function PosterStrip({
     </div>
   );
 }
+
 
