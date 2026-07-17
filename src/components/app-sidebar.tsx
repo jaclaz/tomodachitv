@@ -44,7 +44,10 @@ import {
   ShieldAlert,
   MoreVertical,
   Trash2,
+  Pencil,
 } from "lucide-react";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
+
 
 const navItems = [
   { to: "/", icon: Compass, label: "Home" },
