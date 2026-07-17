@@ -234,7 +234,9 @@ function UserProfilePage() {
 
       <Tabs defaultValue="watched">
         <TabsList>
-          <TabsTrigger value="watched">Watched ({tvLib.length + watchedMovies.length})</TabsTrigger>
+          <TabsTrigger value="watched">
+            Watched ({watchedTv.length + watchedMovies.length})
+          </TabsTrigger>
           <TabsTrigger value="watchlist">Watchlist ({activeWatchlist.length})</TabsTrigger>
         </TabsList>
 
@@ -251,29 +253,27 @@ function UserProfilePage() {
             <>
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Tv className="h-4 w-4" /> Up to date ({watchedUpToDate.length})
+                  <Tv className="h-4 w-4" /> TV Shows ({watchedTv.length})
                 </h3>
-                <PosterStrip items={watchedUpToDate} emptyLabel="Nothing here yet." />
+                <PosterStrip
+                  items={watchedTv}
+                  emptyLabel="No series watched yet."
+                  max={8}
+                  moreHref={profile.is_self ? "/watched?type=tv" : undefined}
+                  moreLabel="See all watched"
+                />
               </div>
-              <div className="space-y-2">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Tv className="h-4 w-4" /> Finished ({watchedFinished.length})
-                </h3>
-                <PosterStrip items={watchedFinished} emptyLabel="No finished series yet." />
-              </div>
-              {watchedDropped.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                    <Tv className="h-4 w-4" /> Dropped ({watchedDropped.length})
-                  </h3>
-                  <PosterStrip items={watchedDropped} emptyLabel="No dropped series." />
-                </div>
-              )}
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <Film className="h-4 w-4" /> Movies ({watchedMovies.length})
                 </h3>
-                <PosterStrip items={watchedMovies} emptyLabel="No movies watched yet." />
+                <PosterStrip
+                  items={watchedMovies}
+                  emptyLabel="No movies watched yet."
+                  max={8}
+                  moreHref={profile.is_self ? "/watched?type=movie" : undefined}
+                  moreLabel="See all watched"
+                />
               </div>
             </>
           )}
@@ -282,18 +282,31 @@ function UserProfilePage() {
         <TabsContent value="watchlist" className="mt-4 space-y-6">
           <div className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Tv className="h-4 w-4" /> Series ({watchlistTv.length})
+              <Tv className="h-4 w-4" /> TV Shows ({watchlistTv.length})
             </h3>
-            <PosterStrip items={watchlistTv} emptyLabel="No series in watchlist." />
+            <PosterStrip
+              items={watchlistTv}
+              emptyLabel="No series in watchlist."
+              max={8}
+              moreHref={profile.is_self ? "/watchlist?type=tv" : undefined}
+              moreLabel="See all watchlist"
+            />
           </div>
           <div className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
               <Film className="h-4 w-4" /> Movies ({watchlistMovies.length})
             </h3>
-            <PosterStrip items={watchlistMovies} emptyLabel="No movies in watchlist." />
+            <PosterStrip
+              items={watchlistMovies}
+              emptyLabel="No movies in watchlist."
+              max={8}
+              moreHref={profile.is_self ? "/watchlist?type=movie" : undefined}
+              moreLabel="See all watchlist"
+            />
           </div>
         </TabsContent>
       </Tabs>
+
 
       {/* Favorites — always for self; only if non-empty for others */}
       {canSeeWatched && (profile.is_self || favorites.length > 0) && (
