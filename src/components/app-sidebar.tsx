@@ -262,6 +262,16 @@ export function AppSidebar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {profile && (
+        <EditProfileDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          currentDisplayName={profile.display_name}
+          currentUsername={profile.username}
+        />
+      )}
     </>
+
   );
 }
