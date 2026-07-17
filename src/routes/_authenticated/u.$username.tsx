@@ -222,27 +222,7 @@ function UserProfilePage() {
               </div>
             </div>
 
-            {profile.is_self ? (
-              <div className="flex items-end gap-1 self-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-foreground"
-                      aria-label="Profile options"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                      <Pencil className="mr-2 h-4 w-4" /> Edit profile
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ) : (
+            {!profile.is_self && (
               <div className="flex items-end gap-1 self-end">
                 {profile.is_following ? (
                   <Button
@@ -263,6 +243,7 @@ function UserProfilePage() {
                 <ReportProfileButton reportedUserId={profile.id} username={profile.username} />
               </div>
             )}
+
           </div>
         </div>
       </div>
