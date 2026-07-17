@@ -377,14 +377,6 @@ function UserProfilePage() {
         onClose={() => setFollowDialogMode(null)}
       />
 
-      {profile.is_self && (
-        <EditProfileDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          currentDisplayName={profile.display_name}
-          currentUsername={profile.username}
-        />
-      )}
     </div>
   );
 }
