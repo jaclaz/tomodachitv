@@ -25,6 +25,34 @@ export interface WatchedMovie {
 // ---- library sync helpers ----
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
+function computeReleasedEpisodes(details: {
+  seasons?: Array<{ season_number: number; episode_count?: number; air_date?: string | null }>;
+  last_episode_to_air?: { season_number: number; episode_number: number; air_date?: string | null } | null;
+  number_of_episodes?: number | null;
+}): number | null {
+  const today = new Date().toISOString().slice(0, 10);
+  const last = details.last_episode_to_air;
+  const seasons = (details.seasons ?? []).filter((s) => s.season_number > 0);
+  if (last && (!last.air_date || last.air_date <= today)) {
+    let total = 0;
+    for (const s of seasons) {
+      const ec = s.episode_count ?? 0;
+      if (s.season_number < last.season_number) total += ec;
+      else if (s.season_number === last.season_number)
+        total += Math.min(last.episode_number, ec || last.episode_number);
+    }
+    return total;
+  }
+  if (seasons.length) {
+    let total = 0;
+    for (const s of seasons) {
+      if (s.air_date && s.air_date <= today) total += s.episode_count ?? 0;
+    }
+    if (total > 0) return total;
+  }
+  return details.number_of_episodes ?? null;
+}
+
 async function fetchTmdbSummary(
   media_type: "tv" | "movie",
   tmdb_id: number
@@ -54,7 +82,7 @@ async function fetchTmdbSummary(
         (media_type === "tv" ? d.first_air_date : d.release_date) || null,
       vote_average: d.vote_average ?? null,
       episode_count_aired:
-        media_type === "tv" ? d.number_of_episodes ?? null : null,
+        media_type === "tv" ? computeReleasedEpisodes(d) : null,
       series_status: media_type === "tv" ? d.status ?? null : null,
     };
   } catch {
@@ -93,23 +121,51 @@ async function syncTvLibrary(
   // Never overwrite 'dropped' unless the user explicitly resumes
   if (existing?.status === "dropped") return;
 
-  // If we're about to insert a new row and don't have decent metadata,
-  // or we can't tell if the show is finished, fetch live from TMDB so we
-  // don't store "Unknown series" and can compute completion correctly.
+  // Always refetch live TMDB when we might need to mark completed, since cached
+  // `episode_count_aired` may be stale (older imports stored total episodes,
+  // including unaired ones). Also fetch when inserting a new row without title.
   let tmdb: Awaited<ReturnType<typeof fetchTmdbSummary>> = null;
   const needTmdb =
+    watchedCount > 0 ||
     (!existing && (!cache || !cache.title)) ||
     !cache ||
     cache.episode_count_aired == null;
   if (needTmdb) tmdb = await fetchTmdbSummary("tv", tmdb_id);
 
-  const totalAired =
-    cache?.episode_count_aired ?? tmdb?.episode_count_aired ?? null;
+  // Prefer freshly fetched released count over cache (cache may be outdated).
+  const totalReleased =
+    tmdb?.episode_count_aired ?? cache?.episode_count_aired ?? null;
+
+  // Persist the freshly computed value back into media_cache so future reads
+  // reflect the strict "released only" count.
+  if (tmdb) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("media_cache").upsert(
+        {
+          media_type: "tv",
+          tmdb_id,
+          title: tmdb.title,
+          poster_path: tmdb.poster_path,
+          backdrop_path: tmdb.backdrop_path,
+          release_date: tmdb.release_date,
+          vote_average: tmdb.vote_average,
+          episode_count_aired: tmdb.episode_count_aired,
+          series_status: tmdb.series_status,
+        },
+        { onConflict: "media_type, tmdb_id" },
+      );
+    } catch {
+      // best-effort
+    }
+  }
+
   let desired: string;
   if (watchedCount === 0) desired = "watching";
-  else if (totalAired && totalAired > 0 && watchedCount >= totalAired)
+  else if (totalReleased && totalReleased > 0 && watchedCount >= totalReleased)
     desired = "completed";
   else desired = "watching";
+
 
   if (!existing) {
     await supabase.from("watchlist").insert({
