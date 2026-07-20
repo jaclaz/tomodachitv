@@ -108,6 +108,28 @@ async function buildWatchedLibrary(
             const r = await fetch(url.toString());
             if (!r.ok) return null;
             const d = await r.json();
+            let releasedCount: number | null = null;
+            if (k.media_type === "tv") {
+              const today = new Date().toISOString().slice(0, 10);
+              const last = d.last_episode_to_air as
+                | { season_number: number; episode_number: number; air_date?: string | null }
+                | null;
+              const seasons = (d.seasons ?? []).filter(
+                (s: { season_number: number }) => s.season_number > 0,
+              );
+              if (last && (!last.air_date || last.air_date <= today)) {
+                let total = 0;
+                for (const s of seasons) {
+                  const ec = s.episode_count ?? 0;
+                  if (s.season_number < last.season_number) total += ec;
+                  else if (s.season_number === last.season_number)
+                    total += Math.min(last.episode_number, ec || last.episode_number);
+                }
+                releasedCount = total;
+              } else {
+                releasedCount = d.number_of_episodes ?? null;
+              }
+            }
             return {
               media_type: k.media_type,
               tmdb_id: k.tmdb_id,
@@ -117,7 +139,7 @@ async function buildWatchedLibrary(
               vote_average: d.vote_average ?? null,
               release_date: (k.media_type === "tv" ? d.first_air_date : d.release_date) || null,
               genre_ids: (d.genres ?? []).map((g: any) => g.id),
-              episode_count_aired: k.media_type === "tv" ? (d.number_of_episodes ?? null) : null,
+              episode_count_aired: releasedCount,
               series_status: k.media_type === "tv" ? (d.status ?? null) : null,
             };
           } catch {
