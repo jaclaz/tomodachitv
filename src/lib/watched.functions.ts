@@ -446,3 +446,15 @@ export const getAllWatchedStats = createServerFn({ method: "POST" })
       movieMinutes,
     };
   });
+
+export const getWatchedShowIds = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<number[]> => {
+    const { data, error } = await context.supabase
+      .from("watched_episodes")
+      .select("tmdb_id")
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    return Array.from(new Set((data ?? []).map((r) => r.tmdb_id)));
+  });
+
