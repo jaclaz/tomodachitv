@@ -121,23 +121,51 @@ async function syncTvLibrary(
   // Never overwrite 'dropped' unless the user explicitly resumes
   if (existing?.status === "dropped") return;
 
-  // If we're about to insert a new row and don't have decent metadata,
-  // or we can't tell if the show is finished, fetch live from TMDB so we
-  // don't store "Unknown series" and can compute completion correctly.
+  // Always refetch live TMDB when we might need to mark completed, since cached
+  // `episode_count_aired` may be stale (older imports stored total episodes,
+  // including unaired ones). Also fetch when inserting a new row without title.
   let tmdb: Awaited<ReturnType<typeof fetchTmdbSummary>> = null;
   const needTmdb =
+    watchedCount > 0 ||
     (!existing && (!cache || !cache.title)) ||
     !cache ||
     cache.episode_count_aired == null;
   if (needTmdb) tmdb = await fetchTmdbSummary("tv", tmdb_id);
 
-  const totalAired =
-    cache?.episode_count_aired ?? tmdb?.episode_count_aired ?? null;
+  // Prefer freshly fetched released count over cache (cache may be outdated).
+  const totalReleased =
+    tmdb?.episode_count_aired ?? cache?.episode_count_aired ?? null;
+
+  // Persist the freshly computed value back into media_cache so future reads
+  // reflect the strict "released only" count.
+  if (tmdb) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("media_cache").upsert(
+        {
+          media_type: "tv",
+          tmdb_id,
+          title: tmdb.title,
+          poster_path: tmdb.poster_path,
+          backdrop_path: tmdb.backdrop_path,
+          release_date: tmdb.release_date,
+          vote_average: tmdb.vote_average,
+          episode_count_aired: tmdb.episode_count_aired,
+          series_status: tmdb.series_status,
+        },
+        { onConflict: "media_type, tmdb_id" },
+      );
+    } catch {
+      // best-effort
+    }
+  }
+
   let desired: string;
   if (watchedCount === 0) desired = "watching";
-  else if (totalAired && totalAired > 0 && watchedCount >= totalAired)
+  else if (totalReleased && totalReleased > 0 && watchedCount >= totalReleased)
     desired = "completed";
   else desired = "watching";
+
 
   if (!existing) {
     await supabase.from("watchlist").insert({
