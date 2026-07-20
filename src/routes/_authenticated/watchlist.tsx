@@ -138,9 +138,13 @@ function WatchlistPage() {
       if (aLast && bLast) return bLast.localeCompare(aLast);
       if (aLast) return -1;
       if (bLast) return 1;
+      const aStarted = startedSet.has(a.tmdb_id);
+      const bStarted = startedSet.has(b.tmdb_id);
+      if (aStarted && !bStarted) return -1;
+      if (bStarted && !aStarted) return 1;
       return 0;
     });
-  }, [data, filter, q, inProgressMap]);
+  }, [data, filter, q, inProgressMap, startedSet]);
 
   return (
     <div className="space-y-8">
