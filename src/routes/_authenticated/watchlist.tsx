@@ -328,8 +328,8 @@ function WatchlistPage() {
           );
 
           if (filter === "tv") {
-            const inProgress = filtered.filter((i) => inProgressMap.has(i.tmdb_id));
-            const notStarted = filtered.filter((i) => !inProgressMap.has(i.tmdb_id));
+            const inProgress = filtered.filter((i) => startedSet.has(i.tmdb_id));
+            const notStarted = filtered.filter((i) => !startedSet.has(i.tmdb_id));
             return (
               <div className="space-y-8">
                 {inProgress.length > 0 && (
