@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
 import { Trash2, Star, Search, X, Grid2x2, Grid3x3, Plus, Loader2 } from "lucide-react";
-import { markEpisodeWatched } from "@/lib/watched.functions";
+import { markEpisodeWatched, getWatchedShowIds } from "@/lib/watched.functions";
 import { toast } from "sonner";
 import type { CurrentlyWatchingItem } from "@/lib/currently-watching.functions";
 
@@ -53,11 +53,19 @@ function WatchlistPage() {
     staleTime: 60_000,
   });
 
+  const { data: watchedShowIds = [] } = useQuery({
+    queryKey: ["watched-show-ids"],
+    queryFn: () => getWatchedShowIds(),
+    staleTime: 60_000,
+  });
+
   const inProgressMap = useMemo(() => {
     const m = new Map<number, CurrentlyWatchingItem>();
     for (const s of currentlyWatching) m.set(s.tmdb_id, s);
     return m;
   }, [currentlyWatching]);
+
+  const startedSet = useMemo(() => new Set<number>(watchedShowIds), [watchedShowIds]);
 
   const markNext = useMutation({
     mutationFn: (item: CurrentlyWatchingItem) =>
@@ -99,6 +107,7 @@ function WatchlistPage() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
+      queryClient.invalidateQueries({ queryKey: ["watched-show-ids"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       queryClient.invalidateQueries({ queryKey: ["watched-library"] });
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
@@ -129,9 +138,13 @@ function WatchlistPage() {
       if (aLast && bLast) return bLast.localeCompare(aLast);
       if (aLast) return -1;
       if (bLast) return 1;
+      const aStarted = startedSet.has(a.tmdb_id);
+      const bStarted = startedSet.has(b.tmdb_id);
+      if (aStarted && !bStarted) return -1;
+      if (bStarted && !aStarted) return 1;
       return 0;
     });
-  }, [data, filter, q, inProgressMap]);
+  }, [data, filter, q, inProgressMap, startedSet]);
 
   return (
     <div className="space-y-8">
@@ -319,8 +332,8 @@ function WatchlistPage() {
           );
 
           if (filter === "tv") {
-            const inProgress = filtered.filter((i) => inProgressMap.has(i.tmdb_id));
-            const notStarted = filtered.filter((i) => !inProgressMap.has(i.tmdb_id));
+            const inProgress = filtered.filter((i) => startedSet.has(i.tmdb_id));
+            const notStarted = filtered.filter((i) => !startedSet.has(i.tmdb_id));
             return (
               <div className="space-y-8">
                 {inProgress.length > 0 && (
