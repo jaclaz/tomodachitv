@@ -25,6 +25,34 @@ export interface WatchedMovie {
 // ---- library sync helpers ----
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
+function computeReleasedEpisodes(details: {
+  seasons?: Array<{ season_number: number; episode_count?: number; air_date?: string | null }>;
+  last_episode_to_air?: { season_number: number; episode_number: number; air_date?: string | null } | null;
+  number_of_episodes?: number | null;
+}): number | null {
+  const today = new Date().toISOString().slice(0, 10);
+  const last = details.last_episode_to_air;
+  const seasons = (details.seasons ?? []).filter((s) => s.season_number > 0);
+  if (last && (!last.air_date || last.air_date <= today)) {
+    let total = 0;
+    for (const s of seasons) {
+      const ec = s.episode_count ?? 0;
+      if (s.season_number < last.season_number) total += ec;
+      else if (s.season_number === last.season_number)
+        total += Math.min(last.episode_number, ec || last.episode_number);
+    }
+    return total;
+  }
+  if (seasons.length) {
+    let total = 0;
+    for (const s of seasons) {
+      if (s.air_date && s.air_date <= today) total += s.episode_count ?? 0;
+    }
+    if (total > 0) return total;
+  }
+  return details.number_of_episodes ?? null;
+}
+
 async function fetchTmdbSummary(
   media_type: "tv" | "movie",
   tmdb_id: number
@@ -54,7 +82,7 @@ async function fetchTmdbSummary(
         (media_type === "tv" ? d.first_air_date : d.release_date) || null,
       vote_average: d.vote_average ?? null,
       episode_count_aired:
-        media_type === "tv" ? d.number_of_episodes ?? null : null,
+        media_type === "tv" ? computeReleasedEpisodes(d) : null,
       series_status: media_type === "tv" ? d.status ?? null : null,
     };
   } catch {
