@@ -53,11 +53,19 @@ function WatchlistPage() {
     staleTime: 60_000,
   });
 
+  const { data: watchedShowIds = [] } = useQuery({
+    queryKey: ["watched-show-ids"],
+    queryFn: () => getWatchedShowIds(),
+    staleTime: 60_000,
+  });
+
   const inProgressMap = useMemo(() => {
     const m = new Map<number, CurrentlyWatchingItem>();
     for (const s of currentlyWatching) m.set(s.tmdb_id, s);
     return m;
   }, [currentlyWatching]);
+
+  const startedSet = useMemo(() => new Set<number>(watchedShowIds), [watchedShowIds]);
 
   const markNext = useMutation({
     mutationFn: (item: CurrentlyWatchingItem) =>
