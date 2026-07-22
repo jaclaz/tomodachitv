@@ -458,3 +458,70 @@ export const getWatchedShowIds = createServerFn({ method: "POST" })
     return Array.from(new Set((data ?? []).map((r) => r.tmdb_id)));
   });
 
+export interface WatchedShowProgress {
+  tmdb_id: number;
+  watched_count: number;
+  total_released_episodes: number | null;
+  is_currently_watching: boolean;
+  is_completed: boolean;
+}
+
+export const getWatchedShowProgress = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<WatchedShowProgress[]> => {
+    const episodes: Array<{
+      tmdb_id: number;
+      season_number: number;
+      episode_number: number;
+    }> = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, season_number, episode_number")
+        .eq("user_id", context.userId)
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      episodes.push(...(data ?? []));
+      if (!data || data.length < pageSize) break;
+    }
+
+    const byShow = new Map<number, Set<string>>();
+    for (const ep of episodes) {
+      let watched = byShow.get(ep.tmdb_id);
+      if (!watched) {
+        watched = new Set<string>();
+        byShow.set(ep.tmdb_id, watched);
+      }
+      watched.add(`${ep.season_number}-${ep.episode_number}`);
+    }
+
+    const ids = Array.from(byShow.keys());
+    if (ids.length === 0) return [];
+
+    const { data: cacheRows, error: cacheError } = await context.supabase
+      .from("media_cache")
+      .select("tmdb_id, episode_count_aired")
+      .eq("media_type", "tv")
+      .in("tmdb_id", ids);
+    if (cacheError) throw cacheError;
+
+    const totals = new Map<number, number | null>(
+      (cacheRows ?? []).map((row) => [row.tmdb_id, row.episode_count_aired ?? null]),
+    );
+
+    return ids.map((tmdb_id) => {
+      const watchedCount = byShow.get(tmdb_id)?.size ?? 0;
+      const totalReleased = totals.get(tmdb_id) ?? null;
+      const hasKnownTotal = totalReleased != null && totalReleased > 0;
+      const isCompleted = hasKnownTotal && watchedCount >= totalReleased;
+      return {
+        tmdb_id,
+        watched_count: watchedCount,
+        total_released_episodes: totalReleased,
+        is_currently_watching: hasKnownTotal && watchedCount >= 1 && watchedCount < totalReleased,
+        is_completed: isCompleted,
+      } satisfies WatchedShowProgress;
+    });
+  });
+
