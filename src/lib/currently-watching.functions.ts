@@ -19,7 +19,7 @@ export interface CurrentlyWatchingItem {
 export const getCurrentlyWatching = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CurrentlyWatchingItem[]> => {
-    const [epsRes, droppedRes] = await Promise.all([
+    const [epsRes, droppedRes, libraryRes] = await Promise.all([
       context.supabase
         .from("watched_episodes")
         .select("tmdb_id, season_number, episode_number, watched_at")
@@ -30,10 +30,25 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .eq("media_type", "tv")
         .eq("status", "dropped"),
+      context.supabase
+        .from("watchlist")
+        .select("tmdb_id, series_name, poster_path, backdrop_path")
+        .eq("user_id", context.userId)
+        .eq("media_type", "tv"),
     ]);
     if (epsRes.error) throw epsRes.error;
     const eps = epsRes.data;
     const droppedIds = new Set<number>((droppedRes.data ?? []).map((r) => r.tmdb_id));
+    const libraryMap = new Map(
+      (libraryRes.data ?? []).map((row) => [
+        row.tmdb_id,
+        {
+          title: row.series_name,
+          poster_path: row.poster_path ?? null,
+          backdrop_path: row.backdrop_path ?? null,
+        },
+      ]),
+    );
 
     const byShow = new Map<number, { watched: Set<string>; last: string; count: number }>();
     for (const e of eps ?? []) {
@@ -43,8 +58,9 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
         cur = { watched: new Set(), last: e.watched_at, count: 0 };
         byShow.set(e.tmdb_id, cur);
       }
-      cur.watched.add(`${e.season_number}-${e.episode_number}`);
-      cur.count++;
+      const key = `${e.season_number}-${e.episode_number}`;
+      cur.watched.add(key);
+      cur.count = cur.watched.size;
       if (e.watched_at > cur.last) cur.last = e.watched_at;
     }
 
@@ -53,6 +69,17 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
     );
 
     if (showEntries.length === 0) return [];
+
+    const { data: cacheRows, error: cacheError } = await context.supabase
+      .from("media_cache")
+      .select("tmdb_id, title, poster_path, backdrop_path, episode_count_aired")
+      .eq("media_type", "tv")
+      .in(
+        "tmdb_id",
+        showEntries.map(([tmdb_id]) => tmdb_id),
+      );
+    if (cacheError) throw cacheError;
+    const cacheMap = new Map((cacheRows ?? []).map((row) => [row.tmdb_id, row]));
 
     const key = process.env.TMDB_API_KEY;
     if (!key) throw new Error("TMDB_API_KEY not configured");
@@ -70,7 +97,25 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
     const results = await Promise.all(
       showEntries.map(async ([tmdb_id, agg]) => {
         const details = await fetchShow(tmdb_id);
-        if (!details) return null;
+        const cached = cacheMap.get(tmdb_id);
+        const library = libraryMap.get(tmdb_id);
+        if (!details) {
+          const totalAired = cached?.episode_count_aired ?? null;
+          if (agg.count <= 0) return null;
+          if (totalAired != null && totalAired > 0 && agg.count >= totalAired) return null;
+          return {
+            tmdb_id,
+            title: cached?.title ?? library?.title ?? "Unknown",
+            poster_path: cached?.poster_path ?? library?.poster_path ?? null,
+            backdrop_path: cached?.backdrop_path ?? library?.backdrop_path ?? null,
+            episodes_watched: agg.count,
+            total_episodes: totalAired ?? 0,
+            next_season: 1,
+            next_episode: agg.count + 1,
+            runtime_minutes: null,
+            last_watched_at: agg.last,
+          } satisfies CurrentlyWatchingItem;
+        }
         const seasons = (details.seasons ?? []).filter(
           (s: { season_number: number }) => s.season_number > 0,
         );
