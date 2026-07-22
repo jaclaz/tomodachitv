@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
 import { Trash2, Star, Search, X, Grid2x2, Grid3x3, Plus, Loader2 } from "lucide-react";
-import { markEpisodeWatched, getWatchedShowIds } from "@/lib/watched.functions";
+import { markEpisodeWatched, getWatchedShowProgress } from "@/lib/watched.functions";
 import { toast } from "sonner";
 import type { CurrentlyWatchingItem } from "@/lib/currently-watching.functions";
 
@@ -53,9 +53,9 @@ function WatchlistPage() {
     staleTime: 60_000,
   });
 
-  const { data: watchedShowIds = [] } = useQuery({
-    queryKey: ["watched-show-ids"],
-    queryFn: () => getWatchedShowIds(),
+  const { data: watchedShowProgress = [] } = useQuery({
+    queryKey: ["watched-show-progress"],
+    queryFn: () => getWatchedShowProgress(),
     staleTime: 60_000,
   });
 
@@ -65,7 +65,26 @@ function WatchlistPage() {
     return m;
   }, [currentlyWatching]);
 
-  const startedSet = useMemo(() => new Set<number>(watchedShowIds), [watchedShowIds]);
+  const progressMap = useMemo(() => {
+    const m = new Map<number, (typeof watchedShowProgress)[number]>();
+    for (const item of watchedShowProgress) m.set(item.tmdb_id, item);
+    return m;
+  }, [watchedShowProgress]);
+
+  const startedSet = useMemo(
+    () => new Set(watchedShowProgress.filter((i) => i.watched_count >= 1).map((i) => i.tmdb_id)),
+    [watchedShowProgress],
+  );
+
+  const mathematicallyCurrentlyWatchingSet = useMemo(
+    () =>
+      new Set(
+        watchedShowProgress
+          .filter((i) => i.is_currently_watching)
+          .map((i) => i.tmdb_id),
+      ),
+    [watchedShowProgress],
+  );
 
   const markNext = useMutation({
     mutationFn: (item: CurrentlyWatchingItem) =>
@@ -107,7 +126,7 @@ function WatchlistPage() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
-      queryClient.invalidateQueries({ queryKey: ["watched-show-ids"] });
+      queryClient.invalidateQueries({ queryKey: ["watched-show-progress"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       queryClient.invalidateQueries({ queryKey: ["watched-library"] });
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
@@ -127,7 +146,7 @@ function WatchlistPage() {
     const list = data.filter(
       (item) =>
         item.media_type === filter &&
-        item.status !== "completed" &&
+        (item.media_type !== "tv" || !progressMap.get(item.tmdb_id)?.is_completed) &&
         item.status !== "dropped" &&
         (q === "" || item.series_name.toLowerCase().includes(q)),
     );
@@ -138,13 +157,13 @@ function WatchlistPage() {
       if (aLast && bLast) return bLast.localeCompare(aLast);
       if (aLast) return -1;
       if (bLast) return 1;
-      const aInProgress = inProgressMap.has(a.tmdb_id);
-      const bInProgress = inProgressMap.has(b.tmdb_id);
+      const aInProgress = mathematicallyCurrentlyWatchingSet.has(a.tmdb_id);
+      const bInProgress = mathematicallyCurrentlyWatchingSet.has(b.tmdb_id);
       if (aInProgress && !bInProgress) return -1;
       if (bInProgress && !aInProgress) return 1;
       return 0;
     });
-  }, [data, filter, q, inProgressMap, startedSet]);
+  }, [data, filter, q, inProgressMap, mathematicallyCurrentlyWatchingSet, progressMap]);
 
   return (
     <div className="space-y-8">
@@ -332,7 +351,9 @@ function WatchlistPage() {
           );
 
           if (filter === "tv") {
-            const inProgress = filtered.filter((i) => inProgressMap.has(i.tmdb_id));
+            const inProgress = filtered.filter((i) =>
+              mathematicallyCurrentlyWatchingSet.has(i.tmdb_id),
+            );
             const notStarted = filtered.filter((i) => !startedSet.has(i.tmdb_id));
             return (
               <div className="space-y-8">
