@@ -48,9 +48,9 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
       if (e.watched_at > cur.last) cur.last = e.watched_at;
     }
 
-    const showEntries = Array.from(byShow.entries())
-      .sort((a, b) => (b[1].last > a[1].last ? 1 : -1))
-      .slice(0, 12);
+    const showEntries = Array.from(byShow.entries()).sort((a, b) =>
+      b[1].last > a[1].last ? 1 : -1,
+    );
 
     if (showEntries.length === 0) return [];
 
