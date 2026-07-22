@@ -469,14 +469,25 @@ export interface WatchedShowProgress {
 export const getWatchedShowProgress = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<WatchedShowProgress[]> => {
-    const { data: episodes, error } = await context.supabase
-      .from("watched_episodes")
-      .select("tmdb_id, season_number, episode_number")
-      .eq("user_id", context.userId);
-    if (error) throw error;
+    const episodes: Array<{
+      tmdb_id: number;
+      season_number: number;
+      episode_number: number;
+    }> = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, season_number, episode_number")
+        .eq("user_id", context.userId)
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      episodes.push(...(data ?? []));
+      if (!data || data.length < pageSize) break;
+    }
 
     const byShow = new Map<number, Set<string>>();
-    for (const ep of episodes ?? []) {
+    for (const ep of episodes) {
       let watched = byShow.get(ep.tmdb_id);
       if (!watched) {
         watched = new Set<string>();
