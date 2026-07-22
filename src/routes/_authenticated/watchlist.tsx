@@ -138,10 +138,10 @@ function WatchlistPage() {
       if (aLast && bLast) return bLast.localeCompare(aLast);
       if (aLast) return -1;
       if (bLast) return 1;
-      const aStarted = startedSet.has(a.tmdb_id);
-      const bStarted = startedSet.has(b.tmdb_id);
-      if (aStarted && !bStarted) return -1;
-      if (bStarted && !aStarted) return 1;
+      const aInProgress = inProgressMap.has(a.tmdb_id);
+      const bInProgress = inProgressMap.has(b.tmdb_id);
+      if (aInProgress && !bInProgress) return -1;
+      if (bInProgress && !aInProgress) return 1;
       return 0;
     });
   }, [data, filter, q, inProgressMap, startedSet]);
@@ -332,7 +332,7 @@ function WatchlistPage() {
           );
 
           if (filter === "tv") {
-            const inProgress = filtered.filter((i) => startedSet.has(i.tmdb_id));
+            const inProgress = filtered.filter((i) => inProgressMap.has(i.tmdb_id));
             const notStarted = filtered.filter((i) => !startedSet.has(i.tmdb_id));
             return (
               <div className="space-y-8">
