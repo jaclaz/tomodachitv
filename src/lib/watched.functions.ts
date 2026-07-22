@@ -519,8 +519,7 @@ export const getWatchedShowProgress = createServerFn({ method: "POST" })
         tmdb_id,
         watched_count: watchedCount,
         total_released_episodes: totalReleased,
-        is_currently_watching:
-          watchedCount >= 1 && (!hasKnownTotal || watchedCount < totalReleased),
+        is_currently_watching: hasKnownTotal && watchedCount >= 1 && watchedCount < totalReleased,
         is_completed: isCompleted,
       } satisfies WatchedShowProgress;
     });

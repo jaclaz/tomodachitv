@@ -114,8 +114,8 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
         const library = libraryMap.get(tmdb_id);
         if (!details) {
           const totalAired = cached?.episode_count_aired ?? null;
-          if (agg.count <= 0) return null;
-          if (totalAired != null && totalAired > 0 && agg.count >= totalAired) return null;
+          if (agg.count <= 0 || totalAired == null || totalAired <= 0) return null;
+          if (agg.count >= totalAired) return null;
           return {
             tmdb_id,
             title: cached?.title ?? library?.title ?? "Unknown",
