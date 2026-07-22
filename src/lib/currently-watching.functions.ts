@@ -19,11 +19,7 @@ export interface CurrentlyWatchingItem {
 export const getCurrentlyWatching = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CurrentlyWatchingItem[]> => {
-    const [epsRes, droppedRes, libraryRes] = await Promise.all([
-      context.supabase
-        .from("watched_episodes")
-        .select("tmdb_id, season_number, episode_number, watched_at")
-        .eq("user_id", context.userId),
+    const [droppedRes, libraryRes] = await Promise.all([
       context.supabase
         .from("watchlist")
         .select("tmdb_id")
@@ -36,8 +32,25 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .eq("media_type", "tv"),
     ]);
-    if (epsRes.error) throw epsRes.error;
-    const eps = epsRes.data;
+
+    const eps: Array<{
+      tmdb_id: number;
+      season_number: number;
+      episode_number: number;
+      watched_at: string;
+    }> = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, season_number, episode_number, watched_at")
+        .eq("user_id", context.userId)
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      eps.push(...(data ?? []));
+      if (!data || data.length < pageSize) break;
+    }
+
     const droppedIds = new Set<number>((droppedRes.data ?? []).map((r) => r.tmdb_id));
     const libraryMap = new Map(
       (libraryRes.data ?? []).map((row) => [
