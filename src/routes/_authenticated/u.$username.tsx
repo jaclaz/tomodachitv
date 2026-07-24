@@ -74,6 +74,26 @@ function UserProfilePage() {
   }
   if (!profile) throw notFound();
 
+  const activeWatchlist = watchlist.filter(
+    (w) => w.status !== "completed" && w.status !== "dropped",
+  );
+  const watchlistTv: PosterItem[] = activeWatchlist
+    .filter((w) => w.media_type === "tv")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "tv" as const,
+    }));
+  const watchlistMovies: PosterItem[] = activeWatchlist
+    .filter((w) => w.media_type === "movie")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "movie" as const,
+    }));
+
   const toItem = (w: WatchedLibraryItem): PosterItem => ({
     tmdb_id: w.tmdb_id,
     title: w.title,
@@ -82,47 +102,16 @@ function UserProfilePage() {
   });
   const byRecent = (a: WatchedLibraryItem, b: WatchedLibraryItem) =>
     (b.watched_at ?? "").localeCompare(a.watched_at ?? "");
-
-  // Recent activity: TV with >=1 watched episode + all watched movies
-  const recentTvItems = watchedLibrary
-    .filter((w) => w.media_type === "tv" && (w.episodes_watched ?? 0) >= 1)
+  const watchedTv: PosterItem[] = watchedLibrary
+    .filter((w) => w.media_type === "tv" && !w.dropped)
     .slice()
-    .sort(byRecent);
-  const recentMovieItems = watchedLibrary
-    .filter((w) => w.media_type === "movie")
+    .sort(byRecent)
+    .map(toItem);
+  const watchedMovies: PosterItem[] = watchedLibrary
+    .filter((w) => w.media_type === "movie" && !w.dropped)
     .slice()
-    .sort(byRecent);
-  const recentTv: PosterItem[] = recentTvItems.map(toItem);
-  const recentMovies: PosterItem[] = recentMovieItems.map(toItem);
-
-  const startedTvIds = new Set(recentTvItems.map((w) => w.tmdb_id));
-  const watchedMovieIds = new Set(recentMovieItems.map((w) => w.tmdb_id));
-
-  // To start: watchlist items with status "planned" and no watched activity yet
-  const toStartTv: PosterItem[] = watchlist
-    .filter(
-      (w) =>
-        w.media_type === "tv" && w.status === "planned" && !startedTvIds.has(w.tmdb_id),
-    )
-    .map((w) => ({
-      tmdb_id: w.tmdb_id,
-      title: w.series_name,
-      poster_path: w.poster_path,
-      media_type: "tv" as const,
-    }));
-  const toStartMovies: PosterItem[] = watchlist
-    .filter(
-      (w) =>
-        w.media_type === "movie" &&
-        w.status === "planned" &&
-        !watchedMovieIds.has(w.tmdb_id),
-    )
-    .map((w) => ({
-      tmdb_id: w.tmdb_id,
-      title: w.series_name,
-      poster_path: w.poster_path,
-      media_type: "movie" as const,
-    }));
+    .sort(byRecent)
+    .map(toItem);
 
 
   const favTv: PosterItem[] = favorites
@@ -243,81 +232,85 @@ function UserProfilePage() {
         </div>
       </div>
 
-      <Tabs defaultValue="recent">
+      <Tabs defaultValue="watched">
         <TabsList>
-          <TabsTrigger value="recent">
-            Recent activity ({recentTv.length + recentMovies.length})
+          <TabsTrigger value="watched">
+            Watched ({watchedTv.length + watchedMovies.length})
           </TabsTrigger>
-          <TabsTrigger value="tostart">
-            To start ({toStartTv.length + toStartMovies.length})
-          </TabsTrigger>
+          <TabsTrigger value="watchlist">Watchlist ({activeWatchlist.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="recent" className="mt-4">
+        <TabsContent value="watched" className="mt-4 space-y-6">
           {!canSeeWatched ? (
             <div className="rounded-2xl border border-border bg-surface p-10 text-center">
               <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
               <p className="mt-3 font-semibold">Followers only</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Follow @{profile.username} to see their recent activity.
+                Follow @{profile.username} to see their watched history.
               </p>
             </div>
           ) : (
-            <MediaTypeSwitcher
-              tvCount={recentTv.length}
-              movieCount={recentMovies.length}
-              tv={
+            <>
+              <div className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Tv className="h-4 w-4" /> TV Shows ({watchedTv.length})
+                </h3>
                 <PosterStrip
-                  items={recentTv}
-                  emptyLabel="No series started yet."
+                  items={watchedTv}
+                  emptyLabel="No series watched yet."
                   max={8}
                   moreHref={profile.is_self ? "/watched" : undefined}
                   moreSearch={{ type: "tv" }}
                   moreLabel="See all watched"
                 />
-              }
-              movies={
+              </div>
+              <div className="space-y-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Film className="h-4 w-4" /> Movies ({watchedMovies.length})
+                </h3>
                 <PosterStrip
-                  items={recentMovies}
+                  items={watchedMovies}
                   emptyLabel="No movies watched yet."
                   max={8}
                   moreHref={profile.is_self ? "/watched" : undefined}
                   moreSearch={{ type: "movie" }}
                   moreLabel="See all watched"
                 />
-              }
-            />
+              </div>
+            </>
           )}
         </TabsContent>
 
-        <TabsContent value="tostart" className="mt-4">
-          <MediaTypeSwitcher
-            tvCount={toStartTv.length}
-            movieCount={toStartMovies.length}
-            tv={
-              <PosterStrip
-                items={toStartTv}
-                emptyLabel="No series to start."
-                max={8}
-                moreHref={profile.is_self ? "/watchlist" : undefined}
-                moreSearch={{ type: "tv" }}
-                moreLabel="See all watchlist"
-              />
-            }
-            movies={
-              <PosterStrip
-                items={toStartMovies}
-                emptyLabel="No movies to start."
-                max={8}
-                moreHref={profile.is_self ? "/watchlist" : undefined}
-                moreSearch={{ type: "movie" }}
-                moreLabel="See all watchlist"
-              />
-            }
-          />
+        <TabsContent value="watchlist" className="mt-4 space-y-6">
+          <div className="space-y-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Tv className="h-4 w-4" /> TV Shows ({watchlistTv.length})
+            </h3>
+            <PosterStrip
+              items={watchlistTv}
+              emptyLabel="No series in watchlist."
+              max={8}
+              moreHref={profile.is_self ? "/watchlist" : undefined}
+              moreSearch={{ type: "tv" }}
+              moreLabel="See all watchlist"
+            />
+          </div>
+          <div className="space-y-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Film className="h-4 w-4" /> Movies ({watchlistMovies.length})
+            </h3>
+            <PosterStrip
+              items={watchlistMovies}
+              emptyLabel="No movies in watchlist."
+              max={8}
+              moreHref={profile.is_self ? "/watchlist" : undefined}
+              moreSearch={{ type: "movie" }}
+              moreLabel="See all watchlist"
+            />
+          </div>
+
         </TabsContent>
       </Tabs>
-
 
 
       {/* Favorites — always for self; only if non-empty for others */}
@@ -390,33 +383,6 @@ function UserProfilePage() {
   );
 }
 
-function MediaTypeSwitcher({
-  tv,
-  movies,
-  tvCount,
-  movieCount,
-}: {
-  tv: React.ReactNode;
-  movies: React.ReactNode;
-  tvCount: number;
-  movieCount: number;
-}) {
-  return (
-    <Tabs defaultValue="tv" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="tv">
-          <Tv className="mr-1.5 h-4 w-4" /> TV Shows ({tvCount})
-        </TabsTrigger>
-        <TabsTrigger value="movies">
-          <Film className="mr-1.5 h-4 w-4" /> Movies ({movieCount})
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="tv">{tv}</TabsContent>
-      <TabsContent value="movies">{movies}</TabsContent>
-    </Tabs>
-  );
-}
-
 function ListsSectionGate({ userId, isSelf }: { userId: string; isSelf: boolean }) {
   const { data: lists = [] } = useQuery({
     queryKey: ["user-lists", userId],
@@ -425,7 +391,6 @@ function ListsSectionGate({ userId, isSelf }: { userId: string; isSelf: boolean 
   if (!isSelf && lists.length === 0) return null;
   return <UserListsSection userId={userId} isSelf={isSelf} />;
 }
-
 
 function BioSection({
   profile,
