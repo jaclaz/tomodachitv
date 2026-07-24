@@ -390,6 +390,33 @@ function UserProfilePage() {
   );
 }
 
+function MediaTypeSwitcher({
+  tv,
+  movies,
+  tvCount,
+  movieCount,
+}: {
+  tv: React.ReactNode;
+  movies: React.ReactNode;
+  tvCount: number;
+  movieCount: number;
+}) {
+  return (
+    <Tabs defaultValue="tv" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="tv">
+          <Tv className="mr-1.5 h-4 w-4" /> TV Shows ({tvCount})
+        </TabsTrigger>
+        <TabsTrigger value="movies">
+          <Film className="mr-1.5 h-4 w-4" /> Movies ({movieCount})
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="tv">{tv}</TabsContent>
+      <TabsContent value="movies">{movies}</TabsContent>
+    </Tabs>
+  );
+}
+
 function ListsSectionGate({ userId, isSelf }: { userId: string; isSelf: boolean }) {
   const { data: lists = [] } = useQuery({
     queryKey: ["user-lists", userId],
@@ -398,6 +425,7 @@ function ListsSectionGate({ userId, isSelf }: { userId: string; isSelf: boolean 
   if (!isSelf && lists.length === 0) return null;
   return <UserListsSection userId={userId} isSelf={isSelf} />;
 }
+
 
 function BioSection({
   profile,
