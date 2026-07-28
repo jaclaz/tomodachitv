@@ -668,8 +668,13 @@ export const retryPendingImports = createServerFn({ method: "POST" })
           } else if (p.source === "name" && p.title) {
             const params: Record<string, string> = { query: p.title };
             if (p.year) params.year = String(p.year);
-            const d = await tmdbFetch(`/search/movie`, params);
-            const mv = d?.results?.[0];
+            let d = await tmdbFetch(`/search/movie`, params);
+            let mv = d?.results?.[0];
+            if (!mv && p.year) {
+              // Release-year mismatches are common in exports: retry untargeted.
+              d = await tmdbFetch(`/search/movie`, { query: p.title });
+              mv = d?.results?.[0];
+            }
             if (mv)
               movie = {
                 tmdb_id: mv.id,
@@ -681,7 +686,9 @@ export const retryPendingImports = createServerFn({ method: "POST" })
                 runtime: null,
               };
           }
+          if (!movie) lastError = `No TMDB match for ${p.source} "${p.title ?? p.source_id}"`;
           if (movie) {
+
             if (p.kind === "watched_movie") {
               const { error: watchedMovieError } = await context.supabase.from("watched_movies").upsert(
                 {
