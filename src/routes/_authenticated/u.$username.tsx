@@ -258,7 +258,7 @@ function UserProfilePage() {
                 <PosterStrip
                   items={watchedTv}
                   emptyLabel="No series watched yet."
-                  max={8}
+                  max={20}
                   moreHref={profile.is_self ? "/watched" : undefined}
                   moreSearch={{ type: "tv" }}
                   moreLabel="See all watched"
@@ -271,7 +271,7 @@ function UserProfilePage() {
                 <PosterStrip
                   items={watchedMovies}
                   emptyLabel="No movies watched yet."
-                  max={8}
+                  max={20}
                   moreHref={profile.is_self ? "/watched" : undefined}
                   moreSearch={{ type: "movie" }}
                   moreLabel="See all watched"
@@ -289,7 +289,7 @@ function UserProfilePage() {
             <PosterStrip
               items={watchlistTv}
               emptyLabel="No series in watchlist."
-              max={8}
+              max={20}
               moreHref={profile.is_self ? "/watchlist" : undefined}
               moreSearch={{ type: "tv" }}
               moreLabel="See all watchlist"
@@ -302,7 +302,7 @@ function UserProfilePage() {
             <PosterStrip
               items={watchlistMovies}
               emptyLabel="No movies in watchlist."
-              max={8}
+              max={20}
               moreHref={profile.is_self ? "/watchlist" : undefined}
               moreSearch={{ type: "movie" }}
               moreLabel="See all watchlist"

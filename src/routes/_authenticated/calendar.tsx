@@ -91,7 +91,7 @@ function CalendarPage() {
           <p className="font-medium text-foreground">No upcoming releases</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Add movies or series to your{" "}
-            <Link to="/watchlist" className="text-primary underline">
+            <Link to="/watchlist" search={{ type: "tv" }} className="text-primary underline">
               watchlist
             </Link>{" "}
             to see their next release dates here.
