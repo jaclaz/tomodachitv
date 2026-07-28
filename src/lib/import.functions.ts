@@ -500,14 +500,24 @@ export const savePendingImports = createServerFn({ method: "POST" })
     return { inserted: rows.length };
   });
 
+// Items that failed this many times are considered unmatchable (dead-letter):
+// they stay visible to the user but no longer block the queue.
+const MAX_IMPORT_ATTEMPTS = 6;
+
 export const getPendingImportsCount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { count } = await (context.supabase as any)
       .from("pending_media_imports")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", context.userId);
-    return { count: count ?? 0 };
+      .eq("user_id", context.userId)
+      .lt("attempts", MAX_IMPORT_ATTEMPTS);
+    const { count: failed } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS);
+    return { count: count ?? 0, failed: failed ?? 0 };
   });
 
 export const retryPendingImports = createServerFn({ method: "POST" })
@@ -517,10 +527,14 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       .from("pending_media_imports")
       .select("*")
       .eq("user_id", context.userId)
+      .lt("attempts", MAX_IMPORT_ATTEMPTS)
+      // Fair queue: least-tried first, so a handful of unmatchable rows can
+      // never block the head of the queue forever.
+      .order("attempts", { ascending: true })
       .order("created_at", { ascending: true })
       .limit(50);
     if (error) throw error;
-    if (!pending?.length) return { resolved: 0, remaining: 0 };
+    if (!pending?.length) return { resolved: 0, skipped: 0, remaining: 0 };
 
     const dedupedPending = new Map<string, any>();
     const duplicateIds: string[] = [];
@@ -543,9 +557,49 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       }
     }
 
+    // One TMDB lookup per distinct source id, reused by every episode of the
+    // same show in this batch (hundreds of episodes = one request).
+    const showCache = new Map<string, ResolvedShow | null>();
+    const resolveShow = async (source: string, sourceId: string): Promise<ResolvedShow | null> => {
+      const key = `${source}:${sourceId}`;
+      if (showCache.has(key)) return showCache.get(key) ?? null;
+      let show: ResolvedShow | null = null;
+      if (source === "tvdb") {
+        const d = await tmdbFetch(`/find/${sourceId}`, { external_source: "tvdb_id" });
+        const tv = d?.tv_results?.[0];
+        if (tv) {
+          const details = await tmdbFetch(`/tv/${tv.id}`);
+          show = {
+            tmdb_id: tv.id,
+            name: tv.name,
+            poster_path: tv.poster_path ?? null,
+            backdrop_path: tv.backdrop_path ?? null,
+            first_air_date: tv.first_air_date ?? null,
+            vote_average: tv.vote_average ?? null,
+            runtime: details?.episode_run_time?.[0] ?? null,
+          };
+        }
+      } else if (source === "tmdb") {
+        const d = await tmdbFetch(`/tv/${sourceId}`);
+        if (d?.id)
+          show = {
+            tmdb_id: d.id,
+            name: d.name,
+            poster_path: d.poster_path ?? null,
+            backdrop_path: d.backdrop_path ?? null,
+            first_air_date: d.first_air_date ?? null,
+            vote_average: d.vote_average ?? null,
+            runtime: d.episode_run_time?.[0] ?? null,
+          };
+      }
+      showCache.set(key, show);
+      return show;
+    };
+
     let resolved = 0;
     let skipped = duplicateIds.length;
     for (const p of dedupedPending.values()) {
+
       let ok = false;
       let lastError: string | null = null;
       try {
