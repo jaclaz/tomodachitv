@@ -899,6 +899,46 @@ function ImportPage() {
         </div>
       )}
 
+      {failedCount > 0 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-display text-base font-semibold">
+                {failedCount} items could not be matched
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                These entries have no counterpart on TMDB (usually shows that only exist on TVDB).
+                They no longer block the sync queue.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={async () => {
+                await requeueFailedImports();
+                await refreshPendingCounts();
+                wakeLoop();
+              }}
+            >
+              <RefreshCw className="h-4 w-4" /> Try again
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={async () => {
+                await discardFailedImports();
+                await refreshPendingCounts();
+              }}
+            >
+              Discard them
+            </Button>
+          </div>
+        </div>
+      )}
+
 
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
