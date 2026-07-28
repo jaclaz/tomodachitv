@@ -279,14 +279,25 @@ function ImportPage() {
   const [doneSteps, setDoneSteps] = useState(0);
   const [counts, setCounts] = useState<Counts | null>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [failedCount, setFailedCount] = useState<number>(0);
   const [retrying, setRetrying] = useState(false);
   const [autoStatus, setAutoStatus] = useState<"idle" | "syncing" | "waiting" | "backoff">("idle");
   const loopTokenRef = useRef(0);
   const loopRunningRef = useRef(false);
 
+  const refreshPendingCounts = () =>
+    getPendingImportsCount()
+      .then((r) => {
+        setPendingCount(r.count);
+        setFailedCount(r.failed ?? 0);
+      })
+      .catch(() => {});
+
   useEffect(() => {
-    getPendingImportsCount().then((r) => setPendingCount(r.count)).catch(() => {});
+    void refreshPendingCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Continuous background resolver: whenever there are pending items, poll the
   // server every ~4s in small batches. On failure, back off for 10s. The loop
