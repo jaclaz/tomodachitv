@@ -28,6 +28,9 @@ import {
   savePendingImports,
   getPendingImportsCount,
   retryPendingImports,
+  requeueFailedImports,
+  discardFailedImports,
+
   exportLibrary,
   cleanupWatchedFromWatchlist,
   resetLibrary,
