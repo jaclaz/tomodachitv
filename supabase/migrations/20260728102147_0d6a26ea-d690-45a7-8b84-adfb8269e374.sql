@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.youtube_watched; DROP TABLE IF EXISTS public.youtube_watchlist;
