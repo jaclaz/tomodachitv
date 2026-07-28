@@ -775,6 +775,55 @@ export const retryPendingImports = createServerFn({ method: "POST" })
 
   });
 
+// ---- Dead-letter management (items TMDB could not match) ----
+export const listFailedImports = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .select("kind, source, source_id, title, year, last_error")
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS)
+      .limit(500);
+    if (error) throw error;
+    const grouped = new Map<
+      string,
+      { kind: string; source: string; source_id: string; title: string | null; year: number | null; last_error: string | null; items: number }
+    >();
+    for (const r of data ?? []) {
+      const key = `${r.kind}:${r.source}:${r.source_id}`;
+      const existing = grouped.get(key);
+      if (existing) existing.items++;
+      else grouped.set(key, { ...r, items: 1 });
+    }
+    return Array.from(grouped.values()).sort((a, b) => b.items - a.items);
+  });
+
+export const requeueFailedImports = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .update({ attempts: 0, last_error: null, updated_at: new Date().toISOString() })
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const discardFailedImports = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .delete()
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+
 // ---- Export (paginated to bypass 1000-row cap) ----
 export const exportLibrary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
