@@ -273,13 +273,13 @@ export const getFollowingActivity = createServerFn({ method: "POST" })
         .select("id, user_id, tmdb_id, title, watched_at")
         .in("user_id", ids)
         .order("watched_at", { ascending: false })
-        .limit(40),
+        .limit(100),
       context.supabase
         .from("watched_episodes")
         .select("id, user_id, tmdb_id, season_number, episode_number, episode_name, watched_at")
         .in("user_id", ids)
         .order("watched_at", { ascending: false })
-        .limit(40),
+        .limit(100),
     ]);
 
     const allUserIds = [
