@@ -316,9 +316,11 @@ function ImportPage() {
           setPendingCount(r.remaining);
           if (r.remaining <= 0) {
             setAutoStatus("idle");
+            void refreshPendingCounts();
             qc.invalidateQueries();
             break;
           }
+
           if (r.resolved > 0) qc.invalidateQueries();
           setAutoStatus("waiting");
           await wait(r.resolved > 0 ? 3000 : 5000);
