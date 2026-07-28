@@ -604,35 +604,9 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       let lastError: string | null = null;
       try {
         if (p.kind === "follow_show" || p.kind === "watched_episode") {
-          let show: ResolvedShow | null = null;
-          if (p.source === "tvdb") {
-            const d = await tmdbFetch(`/find/${p.source_id}`, { external_source: "tvdb_id" });
-            const tv = d?.tv_results?.[0];
-            if (tv) {
-              const details = await tmdbFetch(`/tv/${tv.id}`);
-              show = {
-                tmdb_id: tv.id,
-                name: tv.name,
-                poster_path: tv.poster_path ?? null,
-                backdrop_path: tv.backdrop_path ?? null,
-                first_air_date: tv.first_air_date ?? null,
-                vote_average: tv.vote_average ?? null,
-                runtime: details?.episode_run_time?.[0] ?? null,
-              };
-            }
-          } else if (p.source === "tmdb") {
-            const d = await tmdbFetch(`/tv/${p.source_id}`);
-            if (d?.id)
-              show = {
-                tmdb_id: d.id,
-                name: d.name,
-                poster_path: d.poster_path ?? null,
-                backdrop_path: d.backdrop_path ?? null,
-                first_air_date: d.first_air_date ?? null,
-                vote_average: d.vote_average ?? null,
-                runtime: d.episode_run_time?.[0] ?? null,
-              };
-          }
+          const show = await resolveShow(p.source, String(p.source_id));
+          if (!show) lastError = `No TMDB match for ${p.source} id ${p.source_id}`;
+
           if (show) {
             const { error: watchlistError } = await context.supabase.from("watchlist").upsert(
               {
