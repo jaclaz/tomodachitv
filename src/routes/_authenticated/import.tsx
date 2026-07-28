@@ -28,6 +28,9 @@ import {
   savePendingImports,
   getPendingImportsCount,
   retryPendingImports,
+  requeueFailedImports,
+  discardFailedImports,
+
   exportLibrary,
   cleanupWatchedFromWatchlist,
   resetLibrary,
@@ -279,14 +282,25 @@ function ImportPage() {
   const [doneSteps, setDoneSteps] = useState(0);
   const [counts, setCounts] = useState<Counts | null>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [failedCount, setFailedCount] = useState<number>(0);
   const [retrying, setRetrying] = useState(false);
   const [autoStatus, setAutoStatus] = useState<"idle" | "syncing" | "waiting" | "backoff">("idle");
   const loopTokenRef = useRef(0);
   const loopRunningRef = useRef(false);
 
+  const refreshPendingCounts = () =>
+    getPendingImportsCount()
+      .then((r) => {
+        setPendingCount(r.count);
+        setFailedCount(r.failed ?? 0);
+      })
+      .catch(() => {});
+
   useEffect(() => {
-    getPendingImportsCount().then((r) => setPendingCount(r.count)).catch(() => {});
+    void refreshPendingCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Continuous background resolver: whenever there are pending items, poll the
   // server every ~4s in small batches. On failure, back off for 10s. The loop
@@ -305,9 +319,11 @@ function ImportPage() {
           setPendingCount(r.remaining);
           if (r.remaining <= 0) {
             setAutoStatus("idle");
+            void refreshPendingCounts();
             qc.invalidateQueries();
             break;
           }
+
           if (r.resolved > 0) qc.invalidateQueries();
           setAutoStatus("waiting");
           await wait(r.resolved > 0 ? 3000 : 5000);
@@ -883,6 +899,46 @@ function ImportPage() {
             )}
             {retrying ? "Retrying…" : "Retry now"}
           </Button>
+        </div>
+      )}
+
+      {failedCount > 0 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-display text-base font-semibold">
+                {failedCount} items could not be matched
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                These entries have no counterpart on TMDB (usually shows that only exist on TVDB).
+                They no longer block the sync queue.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={async () => {
+                await requeueFailedImports();
+                await refreshPendingCounts();
+                wakeLoop();
+              }}
+            >
+              <RefreshCw className="h-4 w-4" /> Try again
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={async () => {
+                await discardFailedImports();
+                await refreshPendingCounts();
+              }}
+            >
+              Discard them
+            </Button>
+          </div>
         </div>
       )}
 

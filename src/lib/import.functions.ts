@@ -500,14 +500,24 @@ export const savePendingImports = createServerFn({ method: "POST" })
     return { inserted: rows.length };
   });
 
+// Items that failed this many times are considered unmatchable (dead-letter):
+// they stay visible to the user but no longer block the queue.
+const MAX_IMPORT_ATTEMPTS = 6;
+
 export const getPendingImportsCount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { count } = await (context.supabase as any)
       .from("pending_media_imports")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", context.userId);
-    return { count: count ?? 0 };
+      .eq("user_id", context.userId)
+      .lt("attempts", MAX_IMPORT_ATTEMPTS);
+    const { count: failed } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS);
+    return { count: count ?? 0, failed: failed ?? 0 };
   });
 
 export const retryPendingImports = createServerFn({ method: "POST" })
@@ -517,10 +527,14 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       .from("pending_media_imports")
       .select("*")
       .eq("user_id", context.userId)
+      .lt("attempts", MAX_IMPORT_ATTEMPTS)
+      // Fair queue: least-tried first, so a handful of unmatchable rows can
+      // never block the head of the queue forever.
+      .order("attempts", { ascending: true })
       .order("created_at", { ascending: true })
       .limit(50);
     if (error) throw error;
-    if (!pending?.length) return { resolved: 0, remaining: 0 };
+    if (!pending?.length) return { resolved: 0, skipped: 0, remaining: 0 };
 
     const dedupedPending = new Map<string, any>();
     const duplicateIds: string[] = [];
@@ -543,42 +557,56 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       }
     }
 
+    // One TMDB lookup per distinct source id, reused by every episode of the
+    // same show in this batch (hundreds of episodes = one request).
+    const showCache = new Map<string, ResolvedShow | null>();
+    const resolveShow = async (source: string, sourceId: string): Promise<ResolvedShow | null> => {
+      const key = `${source}:${sourceId}`;
+      if (showCache.has(key)) return showCache.get(key) ?? null;
+      let show: ResolvedShow | null = null;
+      if (source === "tvdb") {
+        const d = await tmdbFetch(`/find/${sourceId}`, { external_source: "tvdb_id" });
+        const tv = d?.tv_results?.[0];
+        if (tv) {
+          const details = await tmdbFetch(`/tv/${tv.id}`);
+          show = {
+            tmdb_id: tv.id,
+            name: tv.name,
+            poster_path: tv.poster_path ?? null,
+            backdrop_path: tv.backdrop_path ?? null,
+            first_air_date: tv.first_air_date ?? null,
+            vote_average: tv.vote_average ?? null,
+            runtime: details?.episode_run_time?.[0] ?? null,
+          };
+        }
+      } else if (source === "tmdb") {
+        const d = await tmdbFetch(`/tv/${sourceId}`);
+        if (d?.id)
+          show = {
+            tmdb_id: d.id,
+            name: d.name,
+            poster_path: d.poster_path ?? null,
+            backdrop_path: d.backdrop_path ?? null,
+            first_air_date: d.first_air_date ?? null,
+            vote_average: d.vote_average ?? null,
+            runtime: d.episode_run_time?.[0] ?? null,
+          };
+      }
+      showCache.set(key, show);
+      return show;
+    };
+
     let resolved = 0;
     let skipped = duplicateIds.length;
     for (const p of dedupedPending.values()) {
+
       let ok = false;
       let lastError: string | null = null;
       try {
         if (p.kind === "follow_show" || p.kind === "watched_episode") {
-          let show: ResolvedShow | null = null;
-          if (p.source === "tvdb") {
-            const d = await tmdbFetch(`/find/${p.source_id}`, { external_source: "tvdb_id" });
-            const tv = d?.tv_results?.[0];
-            if (tv) {
-              const details = await tmdbFetch(`/tv/${tv.id}`);
-              show = {
-                tmdb_id: tv.id,
-                name: tv.name,
-                poster_path: tv.poster_path ?? null,
-                backdrop_path: tv.backdrop_path ?? null,
-                first_air_date: tv.first_air_date ?? null,
-                vote_average: tv.vote_average ?? null,
-                runtime: details?.episode_run_time?.[0] ?? null,
-              };
-            }
-          } else if (p.source === "tmdb") {
-            const d = await tmdbFetch(`/tv/${p.source_id}`);
-            if (d?.id)
-              show = {
-                tmdb_id: d.id,
-                name: d.name,
-                poster_path: d.poster_path ?? null,
-                backdrop_path: d.backdrop_path ?? null,
-                first_air_date: d.first_air_date ?? null,
-                vote_average: d.vote_average ?? null,
-                runtime: d.episode_run_time?.[0] ?? null,
-              };
-          }
+          const show = await resolveShow(p.source, String(p.source_id));
+          if (!show) lastError = `No TMDB match for ${p.source} id ${p.source_id}`;
+
           if (show) {
             const { error: watchlistError } = await context.supabase.from("watchlist").upsert(
               {
@@ -640,8 +668,13 @@ export const retryPendingImports = createServerFn({ method: "POST" })
           } else if (p.source === "name" && p.title) {
             const params: Record<string, string> = { query: p.title };
             if (p.year) params.year = String(p.year);
-            const d = await tmdbFetch(`/search/movie`, params);
-            const mv = d?.results?.[0];
+            let d = await tmdbFetch(`/search/movie`, params);
+            let mv = d?.results?.[0];
+            if (!mv && p.year) {
+              // Release-year mismatches are common in exports: retry untargeted.
+              d = await tmdbFetch(`/search/movie`, { query: p.title });
+              mv = d?.results?.[0];
+            }
             if (mv)
               movie = {
                 tmdb_id: mv.id,
@@ -653,7 +686,9 @@ export const retryPendingImports = createServerFn({ method: "POST" })
                 runtime: null,
               };
           }
+          if (!movie) lastError = `No TMDB match for ${p.source} "${p.title ?? p.source_id}"`;
           if (movie) {
+
             if (p.kind === "watched_movie") {
               const { error: watchedMovieError } = await context.supabase.from("watched_movies").upsert(
                 {
@@ -708,13 +743,86 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       }
     }
 
+    // A show id TMDB simply doesn't know will never resolve: retire every one
+    // of its episodes at once instead of retrying them hundreds of times.
+    for (const [key, show] of showCache) {
+      if (show) continue;
+      const [source, sourceId] = key.split(":");
+      try {
+        await (context.supabase as any)
+          .from("pending_media_imports")
+          .update({
+            attempts: MAX_IMPORT_ATTEMPTS,
+            last_error: `No TMDB match for ${source} id ${sourceId}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", context.userId)
+          .eq("source", source)
+          .eq("source_id", sourceId)
+          .lt("attempts", MAX_IMPORT_ATTEMPTS);
+      } catch {
+        // Best effort: the fair queue keeps things moving regardless.
+      }
+    }
+
     const { count } = await (context.supabase as any)
       .from("pending_media_imports")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .lt("attempts", MAX_IMPORT_ATTEMPTS);
 
     return { resolved, skipped, remaining: count ?? 0 };
+
   });
+
+// ---- Dead-letter management (items TMDB could not match) ----
+export const listFailedImports = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .select("kind, source, source_id, title, year, last_error")
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS)
+      .limit(500);
+    if (error) throw error;
+    const grouped = new Map<
+      string,
+      { kind: string; source: string; source_id: string; title: string | null; year: number | null; last_error: string | null; items: number }
+    >();
+    for (const r of data ?? []) {
+      const key = `${r.kind}:${r.source}:${r.source_id}`;
+      const existing = grouped.get(key);
+      if (existing) existing.items++;
+      else grouped.set(key, { ...r, items: 1 });
+    }
+    return Array.from(grouped.values()).sort((a, b) => b.items - a.items);
+  });
+
+export const requeueFailedImports = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .update({ attempts: 0, last_error: null, updated_at: new Date().toISOString() })
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const discardFailedImports = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .delete()
+      .eq("user_id", context.userId)
+      .gte("attempts", MAX_IMPORT_ATTEMPTS);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 
 // ---- Export (paginated to bypass 1000-row cap) ----
 export const exportLibrary = createServerFn({ method: "GET" })
