@@ -743,12 +743,36 @@ export const retryPendingImports = createServerFn({ method: "POST" })
       }
     }
 
+    // A show id TMDB simply doesn't know will never resolve: retire every one
+    // of its episodes at once instead of retrying them hundreds of times.
+    for (const [key, show] of showCache) {
+      if (show) continue;
+      const [source, sourceId] = key.split(":");
+      try {
+        await (context.supabase as any)
+          .from("pending_media_imports")
+          .update({
+            attempts: MAX_IMPORT_ATTEMPTS,
+            last_error: `No TMDB match for ${source} id ${sourceId}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", context.userId)
+          .eq("source", source)
+          .eq("source_id", sourceId)
+          .lt("attempts", MAX_IMPORT_ATTEMPTS);
+      } catch {
+        // Best effort: the fair queue keeps things moving regardless.
+      }
+    }
+
     const { count } = await (context.supabase as any)
       .from("pending_media_imports")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .lt("attempts", MAX_IMPORT_ATTEMPTS);
 
     return { resolved, skipped, remaining: count ?? 0 };
+
   });
 
 // ---- Export (paginated to bypass 1000-row cap) ----
