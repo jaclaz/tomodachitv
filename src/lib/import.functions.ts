@@ -784,20 +784,33 @@ export const listFailedImports = createServerFn({ method: "POST" })
       .select("kind, source, source_id, title, year, last_error")
       .eq("user_id", context.userId)
       .gte("attempts", MAX_IMPORT_ATTEMPTS)
-      .limit(500);
+      .limit(2000);
     if (error) throw error;
+    const rows = data ?? [];
+    // Episode rows carry no title; the sibling "follow" row of the same
+    // source id does, so reuse it to label the group.
+    const titleBySource = new Map<string, string>();
+    for (const r of rows) {
+      if (r.title) titleBySource.set(`${r.source}:${r.source_id}`, r.title);
+    }
     const grouped = new Map<
       string,
       { kind: string; source: string; source_id: string; title: string | null; year: number | null; last_error: string | null; items: number }
     >();
-    for (const r of data ?? []) {
+    for (const r of rows) {
       const key = `${r.kind}:${r.source}:${r.source_id}`;
       const existing = grouped.get(key);
       if (existing) existing.items++;
-      else grouped.set(key, { ...r, items: 1 });
+      else
+        grouped.set(key, {
+          ...r,
+          title: r.title ?? titleBySource.get(`${r.source}:${r.source_id}`) ?? null,
+          items: 1,
+        });
     }
     return Array.from(grouped.values()).sort((a, b) => b.items - a.items);
   });
+
 
 export const requeueFailedImports = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -821,6 +834,142 @@ export const discardFailedImports = createServerFn({ method: "POST" })
       .gte("attempts", MAX_IMPORT_ATTEMPTS);
     if (error) throw error;
     return { ok: true };
+  });
+
+// Discard a single unmatched group (all rows sharing kind/source/source_id).
+export const discardFailedGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { kind: string; source: string; source_id: string }) => i)
+  .handler(async ({ context, data }) => {
+    const { error } = await (context.supabase as any)
+      .from("pending_media_imports")
+      .delete()
+      .eq("user_id", context.userId)
+      .eq("kind", data.kind)
+      .eq("source", data.source)
+      .eq("source_id", data.source_id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+// Search TMDB so the user can manually pick the right title for a dead-letter item.
+export const searchTmdbForImport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { query: string; mediaType: "tv" | "movie" }) => i)
+  .handler(async ({ data }) => {
+    const query = (data.query ?? "").trim();
+    if (!query) return [];
+    const d = await tmdbFetch(`/search/${data.mediaType}`, { query });
+    return (d?.results ?? []).slice(0, 8).map((r: any) => ({
+      id: r.id as number,
+      title: (r.name ?? r.title ?? "Untitled") as string,
+      year: ((r.first_air_date ?? r.release_date ?? "") as string).slice(0, 4) || null,
+      poster_path: (r.poster_path ?? null) as string | null,
+      overview: (r.overview ?? "") as string,
+    }));
+  });
+
+// Manually link an unmatched group to a TMDB id and import all of its rows.
+export const resolveFailedManually = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { kind: string; source: string; source_id: string; tmdbId: number }) => i)
+  .handler(async ({ context, data }) => {
+    const sb = context.supabase as any;
+    const { data: rows, error } = await sb
+      .from("pending_media_imports")
+      .select("*")
+      .eq("user_id", context.userId)
+      .eq("kind", data.kind)
+      .eq("source", data.source)
+      .eq("source_id", data.source_id)
+      .limit(2000);
+    if (error) throw error;
+    if (!rows?.length) return { imported: 0 };
+
+    const isTv = data.kind === "follow_show" || data.kind === "watched_episode";
+    let imported = 0;
+
+    if (isTv) {
+      const d = await tmdbFetch(`/tv/${data.tmdbId}`);
+      if (!d?.id) throw new Error("TMDB series not found");
+      const runtime = d.episode_run_time?.[0] ?? null;
+      const { error: wlError } = await context.supabase.from("watchlist").upsert(
+        {
+          user_id: context.userId,
+          tmdb_id: d.id,
+          media_type: "tv",
+          series_name: d.name,
+          poster_path: d.poster_path ?? null,
+          backdrop_path: d.backdrop_path ?? null,
+          first_air_date: d.first_air_date ?? null,
+          vote_average: d.vote_average ?? null,
+        },
+        { onConflict: "user_id, media_type, tmdb_id" },
+      );
+      if (wlError) throw wlError;
+
+      const episodes = rows
+        .filter((r: any) => r.kind === "watched_episode" && r.season_number >= 0 && r.episode_number >= 0)
+        .map((r: any) => ({
+          user_id: context.userId,
+          tmdb_id: d.id,
+          season_number: r.season_number,
+          episode_number: r.episode_number,
+          runtime_minutes: r.runtime_minutes ?? runtime,
+          watched_at: r.watched_at ?? new Date().toISOString(),
+        }));
+      for (let i = 0; i < episodes.length; i += 200) {
+        const { error: epError } = await context.supabase
+          .from("watched_episodes")
+          .upsert(episodes.slice(i, i + 200), {
+            onConflict: "user_id, tmdb_id, season_number, episode_number",
+          });
+        if (epError) throw epError;
+      }
+      imported = episodes.length || 1;
+    } else {
+      const d = await tmdbFetch(`/movie/${data.tmdbId}`);
+      if (!d?.id) throw new Error("TMDB movie not found");
+      if (data.kind === "watched_movie") {
+        const { error: mvError } = await context.supabase.from("watched_movies").upsert(
+          {
+            user_id: context.userId,
+            tmdb_id: d.id,
+            title: d.title,
+            runtime_minutes: d.runtime ?? null,
+            watched_at: rows[0]?.watched_at ?? new Date().toISOString(),
+          },
+          { onConflict: "user_id, tmdb_id" },
+        );
+        if (mvError) throw mvError;
+      } else {
+        const { error: mwError } = await context.supabase.from("watchlist").upsert(
+          {
+            user_id: context.userId,
+            tmdb_id: d.id,
+            media_type: "movie",
+            series_name: d.title,
+            poster_path: d.poster_path ?? null,
+            backdrop_path: d.backdrop_path ?? null,
+            first_air_date: d.release_date ?? null,
+            vote_average: d.vote_average ?? null,
+          },
+          { onConflict: "user_id, media_type, tmdb_id" },
+        );
+        if (mwError) throw mwError;
+      }
+      imported = 1;
+    }
+
+    await sb
+      .from("pending_media_imports")
+      .delete()
+      .eq("user_id", context.userId)
+      .eq("kind", data.kind)
+      .eq("source", data.source)
+      .eq("source_id", data.source_id);
+
+    return { imported };
   });
 
 

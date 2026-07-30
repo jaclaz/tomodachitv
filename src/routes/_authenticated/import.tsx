@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { UnmatchedImports } from "@/components/unmatched-imports";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
@@ -28,7 +29,6 @@ import {
   savePendingImports,
   getPendingImportsCount,
   retryPendingImports,
-  requeueFailedImports,
   discardFailedImports,
 
   exportLibrary,
@@ -902,45 +902,25 @@ function ImportPage() {
         </div>
       )}
 
+      <UnmatchedImports onChanged={refreshPendingCounts} />
+
       {failedCount > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
-            <div>
-              <p className="font-display text-base font-semibold">
-                {failedCount} items could not be matched
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                These entries have no counterpart on TMDB (usually shows that only exist on TVDB).
-                They no longer block the sync queue.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={async () => {
-                await requeueFailedImports();
-                await refreshPendingCounts();
-                wakeLoop();
-              }}
-            >
-              <RefreshCw className="h-4 w-4" /> Try again
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={async () => {
-                await discardFailedImports();
-                await refreshPendingCounts();
-              }}
-            >
-              Discard them
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              await discardFailedImports();
+              await refreshPendingCounts();
+              await qc.invalidateQueries({ queryKey: ["failed-imports"] });
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Discard all unmatched items
+          </Button>
         </div>
       )}
+
 
 
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
