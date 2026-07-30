@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { UnmatchedImports } from "@/components/unmatched-imports";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
@@ -28,7 +29,6 @@ import {
   savePendingImports,
   getPendingImportsCount,
   retryPendingImports,
-  requeueFailedImports,
   discardFailedImports,
 
   exportLibrary,
@@ -913,7 +913,7 @@ function ImportPage() {
             onClick={async () => {
               await discardFailedImports();
               await refreshPendingCounts();
-              await queryClient.invalidateQueries({ queryKey: ["failed-imports"] });
+              await qc.invalidateQueries({ queryKey: ["failed-imports"] });
             }}
           >
             <Trash2 className="h-4 w-4" /> Discard all unmatched items
