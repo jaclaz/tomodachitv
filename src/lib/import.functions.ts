@@ -784,20 +784,33 @@ export const listFailedImports = createServerFn({ method: "POST" })
       .select("kind, source, source_id, title, year, last_error")
       .eq("user_id", context.userId)
       .gte("attempts", MAX_IMPORT_ATTEMPTS)
-      .limit(500);
+      .limit(2000);
     if (error) throw error;
+    const rows = data ?? [];
+    // Episode rows carry no title; the sibling "follow" row of the same
+    // source id does, so reuse it to label the group.
+    const titleBySource = new Map<string, string>();
+    for (const r of rows) {
+      if (r.title) titleBySource.set(`${r.source}:${r.source_id}`, r.title);
+    }
     const grouped = new Map<
       string,
       { kind: string; source: string; source_id: string; title: string | null; year: number | null; last_error: string | null; items: number }
     >();
-    for (const r of data ?? []) {
+    for (const r of rows) {
       const key = `${r.kind}:${r.source}:${r.source_id}`;
       const existing = grouped.get(key);
       if (existing) existing.items++;
-      else grouped.set(key, { ...r, items: 1 });
+      else
+        grouped.set(key, {
+          ...r,
+          title: r.title ?? titleBySource.get(`${r.source}:${r.source_id}`) ?? null,
+          items: 1,
+        });
     }
     return Array.from(grouped.values()).sort((a, b) => b.items - a.items);
   });
+
 
 export const requeueFailedImports = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
