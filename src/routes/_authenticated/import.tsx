@@ -320,10 +320,16 @@ function ImportPage() {
           setPendingCount(r.remaining);
           if (r.remaining <= 0) {
             setAutoStatus("idle");
+            try {
+              await cleanupWatchedFromWatchlist();
+            } catch {
+              // best-effort
+            }
             void refreshPendingCounts();
             qc.invalidateQueries();
             break;
           }
+
 
           if (r.resolved > 0) qc.invalidateQueries();
           setAutoStatus("waiting");
