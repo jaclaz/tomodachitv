@@ -711,6 +711,24 @@ function ImportPage() {
     }
   };
 
+  const [syncing, setSyncing] = useState(false);
+  const handleSyncLibrary = async () => {
+    setSyncing(true);
+    try {
+      const r = await cleanupWatchedFromWatchlist();
+      toast.success(
+        `Library synced · ${r.completedMovies + r.completedShows + r.created} titles updated`,
+      );
+      qc.invalidateQueries();
+    } catch {
+      toast.error("Library sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+
+
   const [exporting, setExporting] = useState(false);
   const handleExport = async () => {
     setExporting(true);
