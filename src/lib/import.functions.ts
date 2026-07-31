@@ -408,7 +408,17 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const toInsert: Record<string, unknown>[] = [];
+    const toInsert: {
+      user_id: string;
+      tmdb_id: number;
+      media_type: string;
+      series_name: string;
+      poster_path: string | null;
+      backdrop_path: string | null;
+      first_air_date: string | null;
+      vote_average: number | null;
+      status: string;
+    }[] = [];
     const setCompleted: { tv: number[]; movie: number[] } = { tv: [], movie: [] };
     const setWatching: number[] = [];
 
