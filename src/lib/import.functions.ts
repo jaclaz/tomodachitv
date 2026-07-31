@@ -319,6 +319,7 @@ export const bulkInsertWatchlist = createServerFn({ method: "POST" })
         backdrop_path: string | null;
         first_air_date: string | null;
         vote_average: number | null;
+        status?: "planned" | "watching" | "completed" | "dropped";
       }[];
     }) => i,
   )
@@ -337,29 +338,31 @@ export const bulkInsertWatchlist = createServerFn({ method: "POST" })
 
   });
 
-// Classify shows/movies and keep watchlist consistent with watch state:
-// - Movie in watched_movies                       → remove from watchlist (WATCHED)
-// - TV show with watched >= AIRED episodes so far → remove from watchlist
-//   (nothing available to watch right now; future unaired episodes don't count)
-// - TV show with watched < aired episodes         → keep in watchlist (something to watch)
+// Reconcile the library (`watchlist` table) with what has actually been watched:
+// - Movie in watched_movies                       → library row with status "completed"
+// - TV show with watched >= AIRED episodes so far → status "completed"
+// - TV show with 1..aired-1 episodes watched      → status "watching"
+// - Rows already marked "dropped" are never touched.
+// Missing library rows are created (with TMDB metadata) so imported items show up
+// in Watched / Library instead of only existing as raw watch records.
 export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const PAGE = 1000;
 
     // Movies fully watched
-    const watchedMovieIds = new Set<number>();
+    const watchedMovies = new Map<number, string | null>();
     {
       let from = 0;
       while (true) {
         const { data, error } = await context.supabase
           .from("watched_movies")
-          .select("tmdb_id")
+          .select("tmdb_id, title")
           .eq("user_id", context.userId)
           .range(from, from + PAGE - 1);
         if (error) throw error;
         const chunk = data ?? [];
-        for (const r of chunk) watchedMovieIds.add(r.tmdb_id);
+        for (const r of chunk) watchedMovies.set(r.tmdb_id, r.title ?? null);
         if (chunk.length < PAGE) break;
         from += PAGE;
       }
@@ -386,26 +389,89 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
       }
     }
 
-    // For each show, compute the number of AIRED episodes (past/today).
-    // A show is removed from the watchlist only when the user has watched every
-    // episode that has already aired — pending future episodes don't put it back.
+    // Existing library rows
+    const existing = new Map<string, { status: string | null }>();
+    {
+      let from = 0;
+      while (true) {
+        const { data, error } = await context.supabase
+          .from("watchlist")
+          .select("tmdb_id, media_type, status")
+          .eq("user_id", context.userId)
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = data ?? [];
+        for (const r of chunk)
+          existing.set(`${r.media_type}:${r.tmdb_id}`, { status: r.status ?? null });
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
     const today = new Date().toISOString().slice(0, 10);
-    const caughtUpShowIds: number[] = [];
+    const toInsert: {
+      user_id: string;
+      tmdb_id: number;
+      media_type: string;
+      series_name: string;
+      poster_path: string | null;
+      backdrop_path: string | null;
+      first_air_date: string | null;
+      vote_average: number | null;
+      status: string;
+    }[] = [];
+    const setCompleted: { tv: number[]; movie: number[] } = { tv: [], movie: [] };
+    const setWatching: number[] = [];
+
+    // ---- Movies ----
+    const movieIds = [...watchedMovies.keys()];
+    await mapPool(movieIds, 4, async (id) => {
+      const cur = existing.get(`movie:${id}`);
+      if (cur) {
+        if (cur.status === "dropped" || cur.status === "completed") return;
+        setCompleted.movie.push(id);
+        return;
+      }
+      let d: any = null;
+      try {
+        d = await tmdbFetch(`/movie/${id}`);
+      } catch {
+        d = null;
+      }
+      toInsert.push({
+        user_id: context.userId,
+        tmdb_id: id,
+        media_type: "movie",
+        series_name: d?.title ?? watchedMovies.get(id) ?? "Movie",
+        poster_path: d?.poster_path ?? null,
+        backdrop_path: d?.backdrop_path ?? null,
+        first_air_date: d?.release_date ?? null,
+        vote_average: d?.vote_average ?? null,
+        status: "completed",
+      });
+    });
+
+    // ---- TV shows ----
     let inProgress = 0;
     const showIds = [...watchedPerShow.keys()];
     await mapPool(showIds, 2, async (id) => {
       const watched = watchedPerShow.get(id) ?? 0;
       if (watched === 0) return;
-      const details = await tmdbFetch(`/tv/${id}`);
-      if (!details?.id) return;
-      const seasons: { season_number: number; episode_count: number; air_date: string | null }[] =
-        details.seasons ?? [];
+      const cur = existing.get(`tv:${id}`);
+      if (cur?.status === "dropped") return;
+
+      let details: any = null;
+      try {
+        details = await tmdbFetch(`/tv/${id}`);
+      } catch {
+        details = null;
+      }
       let aired = 0;
+      const seasons: { season_number: number; episode_count: number; air_date: string | null }[] =
+        details?.seasons ?? [];
       for (const s of seasons) {
         if (s.season_number <= 0) continue;
-        // Season hasn't aired at all → skip.
         if (s.air_date && s.air_date > today) continue;
-        // Fetch season to count only episodes actually aired.
         try {
           const season = await tmdbFetch(`/tv/${id}/season/${s.season_number}`);
           const eps: { air_date: string | null }[] = season.episodes ?? [];
@@ -413,42 +479,62 @@ export const cleanupWatchedFromWatchlist = createServerFn({ method: "POST" })
             if (e.air_date && e.air_date <= today) aired++;
           }
         } catch {
-          // Fallback: assume the whole season is aired.
           aired += s.episode_count ?? 0;
         }
       }
-      if (aired > 0 && watched >= aired) caughtUpShowIds.push(id);
-      else inProgress++;
+
+      const desired = aired > 0 && watched >= aired ? "completed" : "watching";
+      if (desired === "watching") inProgress++;
+
+      if (!cur) {
+        toInsert.push({
+          user_id: context.userId,
+          tmdb_id: id,
+          media_type: "tv",
+          series_name: details?.name ?? "Unknown series",
+          poster_path: details?.poster_path ?? null,
+          backdrop_path: details?.backdrop_path ?? null,
+          first_air_date: details?.first_air_date ?? null,
+          vote_average: details?.vote_average ?? null,
+          status: desired,
+        });
+        return;
+      }
+      if (cur.status === desired) return;
+      if (desired === "completed") setCompleted.tv.push(id);
+      else setWatching.push(id);
     });
 
-    let removedMovies = 0;
-    let removedShows = 0;
     const CHUNK = 200;
-    const movieIds = [...watchedMovieIds];
-    for (let i = 0; i < movieIds.length; i += CHUNK) {
-      const slice = movieIds.slice(i, i + CHUNK);
-      const { error, count } = await context.supabase
+    for (let i = 0; i < toInsert.length; i += CHUNK) {
+      const { error } = await context.supabase
         .from("watchlist")
-        .delete({ count: "exact" })
-        .eq("user_id", context.userId)
-        .eq("media_type", "movie")
-        .in("tmdb_id", slice);
+        .upsert(toInsert.slice(i, i + CHUNK), { onConflict: "user_id, media_type, tmdb_id" });
       if (error) throw error;
-      removedMovies += count ?? 0;
     }
-    for (let i = 0; i < caughtUpShowIds.length; i += CHUNK) {
-      const slice = caughtUpShowIds.slice(i, i + CHUNK);
-      const { error, count } = await context.supabase
-        .from("watchlist")
-        .delete({ count: "exact" })
-        .eq("user_id", context.userId)
-        .eq("media_type", "tv")
-        .in("tmdb_id", slice);
-      if (error) throw error;
-      removedShows += count ?? 0;
-    }
-    return { removedMovies, removedShows, caughtUpShows: caughtUpShowIds.length, inProgress };
+    const applyStatus = async (media_type: "tv" | "movie", ids: number[], status: string) => {
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const { error } = await context.supabase
+          .from("watchlist")
+          .update({ status })
+          .eq("user_id", context.userId)
+          .eq("media_type", media_type)
+          .in("tmdb_id", ids.slice(i, i + CHUNK));
+        if (error) throw error;
+      }
+    };
+    await applyStatus("movie", setCompleted.movie, "completed");
+    await applyStatus("tv", setCompleted.tv, "completed");
+    await applyStatus("tv", setWatching, "watching");
+
+    return {
+      completedMovies: setCompleted.movie.length,
+      completedShows: setCompleted.tv.length,
+      created: toInsert.length,
+      inProgress,
+    };
   });
+
 
 // ---- Pending imports (unresolved) ----
 export const savePendingImports = createServerFn({ method: "POST" })
@@ -701,6 +787,22 @@ export const retryPendingImports = createServerFn({ method: "POST" })
                 { onConflict: "user_id, tmdb_id" },
               );
               if (watchedMovieError) throw watchedMovieError;
+              // Keep the library in sync: a watched movie belongs in Watched.
+              const { error: seenLibError } = await context.supabase.from("watchlist").upsert(
+                {
+                  user_id: context.userId,
+                  tmdb_id: movie.tmdb_id,
+                  media_type: "movie",
+                  series_name: movie.title,
+                  poster_path: movie.poster_path,
+                  backdrop_path: movie.backdrop_path,
+                  first_air_date: movie.release_date,
+                  vote_average: movie.vote_average,
+                  status: "completed",
+                },
+                { onConflict: "user_id, media_type, tmdb_id" },
+              );
+              if (seenLibError) throw seenLibError;
             } else {
               const { error: movieWatchlistError } = await context.supabase.from("watchlist").upsert(
                 {
@@ -942,6 +1044,21 @@ export const resolveFailedManually = createServerFn({ method: "POST" })
           { onConflict: "user_id, tmdb_id" },
         );
         if (mvError) throw mvError;
+        const { error: mvLibError } = await context.supabase.from("watchlist").upsert(
+          {
+            user_id: context.userId,
+            tmdb_id: d.id,
+            media_type: "movie",
+            series_name: d.title,
+            poster_path: d.poster_path ?? null,
+            backdrop_path: d.backdrop_path ?? null,
+            first_air_date: d.release_date ?? null,
+            vote_average: d.vote_average ?? null,
+            status: "completed",
+          },
+          { onConflict: "user_id, media_type, tmdb_id" },
+        );
+        if (mvLibError) throw mvLibError;
       } else {
         const { error: mwError } = await context.supabase.from("watchlist").upsert(
           {
