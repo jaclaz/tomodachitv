@@ -786,6 +786,22 @@ export const retryPendingImports = createServerFn({ method: "POST" })
                 { onConflict: "user_id, tmdb_id" },
               );
               if (watchedMovieError) throw watchedMovieError;
+              // Keep the library in sync: a watched movie belongs in Watched.
+              const { error: seenLibError } = await context.supabase.from("watchlist").upsert(
+                {
+                  user_id: context.userId,
+                  tmdb_id: movie.tmdb_id,
+                  media_type: "movie",
+                  series_name: movie.title,
+                  poster_path: movie.poster_path,
+                  backdrop_path: movie.backdrop_path,
+                  first_air_date: movie.release_date,
+                  vote_average: movie.vote_average,
+                  status: "completed",
+                },
+                { onConflict: "user_id, media_type, tmdb_id" },
+              );
+              if (seenLibError) throw seenLibError;
             } else {
               const { error: movieWatchlistError } = await context.supabase.from("watchlist").upsert(
                 {
