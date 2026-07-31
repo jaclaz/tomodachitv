@@ -542,6 +542,7 @@ function ImportPage() {
       // -------- Resolve & insert watched movies --------
       setPhase("Resolving watched movies on TMDB…");
       const watchedMovieRows: Parameters<typeof bulkInsertWatchedMovies>[0]["data"]["rows"] = [];
+      const watchedMovieLibRows: Parameters<typeof bulkInsertWatchlist>[0]["data"]["rows"] = [];
       const pendingWatchedMovies: Parameters<typeof savePendingImports>[0]["data"]["rows"] = [];
       for (const c of chunk(parsed.watchedMovies, RESOLVE_CHUNK)) {
         const items = c.map((m) => ({
@@ -561,6 +562,16 @@ function ImportPage() {
                 title: r.title,
                 runtime_minutes: r.runtime ?? src.runtime_minutes ?? null,
                 watched_at: src.watched_at ?? null,
+              });
+              watchedMovieLibRows.push({
+                tmdb_id: r.tmdb_id,
+                media_type: "movie",
+                series_name: r.title,
+                poster_path: r.poster_path ?? null,
+                backdrop_path: r.backdrop_path ?? null,
+                first_air_date: r.release_date ?? null,
+                vote_average: r.vote_average ?? null,
+                status: "completed",
               });
             } else {
               pendingWatchedMovies.push({
@@ -588,6 +599,10 @@ function ImportPage() {
         setLive({ moviesWatched: insertedMovies });
         bump();
       }
+      for (const c of chunk(watchedMovieLibRows, INSERT_CHUNK)) {
+        await bulkInsertWatchlist({ data: { rows: c } });
+      }
+
 
       // -------- Resolve & insert followed movies --------
       setPhase("Resolving movie watchlist…");
