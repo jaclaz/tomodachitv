@@ -8,6 +8,7 @@ import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertC
 
 import { Button } from "@/components/ui/button";
 import { UnmatchedImports } from "@/components/unmatched-imports";
+import { ImportedLibrary } from "@/components/imported-library";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
@@ -903,6 +904,8 @@ function ImportPage() {
       )}
 
       <UnmatchedImports onChanged={refreshPendingCounts} />
+
+      <ImportedLibrary />
 
       {failedCount > 0 && (
         <div className="flex flex-wrap items-center justify-end gap-2">

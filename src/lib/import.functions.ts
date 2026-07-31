@@ -1040,3 +1040,111 @@ export const exportLibrary = createServerFn({ method: "GET" })
     ]);
     return { episodes, movies, watchlist };
   });
+
+// ---- Full list of everything currently in the user's library ----
+export interface ImportedLibraryEntry {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string;
+  poster_path: string | null;
+  status: string;
+}
+
+export const listImportedLibrary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const PAGE = 1000;
+    const fetchAll = async <T>(
+      run: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+    ): Promise<T[]> => {
+      let from = 0;
+      const out: T[] = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await run(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = data ?? [];
+        out.push(...chunk);
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+      return out;
+    };
+
+    const [watchlist, movies, episodes] = await Promise.all([
+      fetchAll<{
+        tmdb_id: number;
+        media_type: string;
+        series_name: string;
+        poster_path: string | null;
+        status: string | null;
+      }>((f, t) =>
+        context.supabase
+          .from("watchlist")
+          .select("tmdb_id, media_type, series_name, poster_path, status")
+          .eq("user_id", context.userId)
+          .range(f, t),
+      ),
+      fetchAll<{ tmdb_id: number; title: string | null }>((f, t) =>
+        context.supabase
+          .from("watched_movies")
+          .select("tmdb_id, title")
+          .eq("user_id", context.userId)
+          .range(f, t),
+      ),
+      fetchAll<{ tmdb_id: number }>((f, t) =>
+        context.supabase
+          .from("watched_episodes")
+          .select("tmdb_id")
+          .eq("user_id", context.userId)
+          .range(f, t),
+      ),
+    ]);
+
+    const startedShows = new Set(episodes.map((e) => e.tmdb_id));
+    const toWatchTv: ImportedLibraryEntry[] = [];
+    const watchingTv: ImportedLibraryEntry[] = [];
+    const completedTv: ImportedLibraryEntry[] = [];
+    const droppedTv: ImportedLibraryEntry[] = [];
+    const toWatchMovies: ImportedLibraryEntry[] = [];
+
+    for (const w of watchlist) {
+      const entry: ImportedLibraryEntry = {
+        tmdb_id: w.tmdb_id,
+        media_type: w.media_type === "movie" ? "movie" : "tv",
+        title: w.series_name,
+        poster_path: w.poster_path,
+        status: w.status ?? "watching",
+      };
+      if (entry.media_type === "movie") {
+        toWatchMovies.push(entry);
+        continue;
+      }
+      if (entry.status === "dropped") droppedTv.push(entry);
+      else if (entry.status === "completed") completedTv.push(entry);
+      else if (startedShows.has(entry.tmdb_id)) watchingTv.push(entry);
+      else toWatchTv.push(entry);
+    }
+
+    const watchedMovies: ImportedLibraryEntry[] = movies.map((m) => ({
+      tmdb_id: m.tmdb_id,
+      media_type: "movie" as const,
+      title: m.title ?? `Movie #${m.tmdb_id}`,
+      poster_path: null,
+      status: "watched",
+    }));
+
+    const byTitle = (a: ImportedLibraryEntry, b: ImportedLibraryEntry) =>
+      a.title.localeCompare(b.title);
+
+    return {
+      toWatchTv: toWatchTv.sort(byTitle),
+      watchingTv: watchingTv.sort(byTitle),
+      completedTv: completedTv.sort(byTitle),
+      droppedTv: droppedTv.sort(byTitle),
+      toWatchMovies: toWatchMovies
+        .filter((m) => !movies.some((w) => w.tmdb_id === m.tmdb_id))
+        .sort(byTitle),
+      watchedMovies: watchedMovies.sort(byTitle),
+    };
+  });
