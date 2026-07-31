@@ -1102,10 +1102,6 @@ export const listImportedLibrary = createServerFn({ method: "POST" })
     ]);
 
     const startedShows = new Set(episodes.map((e) => e.tmdb_id));
-    const listedMovies = new Set(
-      watchlist.filter((w) => w.media_type === "movie").map((w) => w.tmdb_id),
-    );
-
     const toWatchTv: ImportedLibraryEntry[] = [];
     const watchingTv: ImportedLibraryEntry[] = [];
     const completedTv: ImportedLibraryEntry[] = [];
@@ -1149,8 +1145,6 @@ export const listImportedLibrary = createServerFn({ method: "POST" })
       toWatchMovies: toWatchMovies
         .filter((m) => !movies.some((w) => w.tmdb_id === m.tmdb_id))
         .sort(byTitle),
-      watchedMovies: watchedMovies
-        .filter((m) => !listedMovies.has(m.tmdb_id) || true)
-        .sort(byTitle),
+      watchedMovies: watchedMovies.sort(byTitle),
     };
   });
