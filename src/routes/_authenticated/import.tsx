@@ -942,7 +942,22 @@ function ImportPage() {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
+        <p className="text-xs text-muted-foreground">
+          Titles marked as watched but missing from your Watched library? Re-sync statuses.
+        </p>
+        <Button type="button" variant="secondary" onClick={handleSyncLibrary} disabled={syncing}>
+          {syncing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          {syncing ? "Syncing…" : "Sync library statuses"}
+        </Button>
+      </div>
+
       <UnmatchedImports onChanged={refreshPendingCounts} />
+
 
       <ImportedLibrary />
 
