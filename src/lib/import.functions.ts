@@ -319,6 +319,7 @@ export const bulkInsertWatchlist = createServerFn({ method: "POST" })
         backdrop_path: string | null;
         first_air_date: string | null;
         vote_average: number | null;
+        status?: "planned" | "watching" | "completed" | "dropped";
       }[];
     }) => i,
   )
