@@ -1043,6 +1043,21 @@ export const resolveFailedManually = createServerFn({ method: "POST" })
           { onConflict: "user_id, tmdb_id" },
         );
         if (mvError) throw mvError;
+        const { error: mvLibError } = await context.supabase.from("watchlist").upsert(
+          {
+            user_id: context.userId,
+            tmdb_id: d.id,
+            media_type: "movie",
+            series_name: d.title,
+            poster_path: d.poster_path ?? null,
+            backdrop_path: d.backdrop_path ?? null,
+            first_air_date: d.release_date ?? null,
+            vote_average: d.vote_average ?? null,
+            status: "completed",
+          },
+          { onConflict: "user_id, media_type, tmdb_id" },
+        );
+        if (mvLibError) throw mvLibError;
       } else {
         const { error: mwError } = await context.supabase.from("watchlist").upsert(
           {
