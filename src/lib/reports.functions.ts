@@ -202,3 +202,99 @@ export const isCurrentUserAdmin = createServerFn({ method: "GET" })
       .maybeSingle();
     return { admin: Boolean(data) };
   });
+
+export type AdminStats = {
+  totalUsers: number;
+  newUsers7d: number;
+  newUsers30d: number;
+  activeUsers7d: number;
+  totalShowsTracked: number;
+  totalMoviesTracked: number;
+  watchedEpisodes: number;
+  watchedMovies: number;
+  totalLists: number;
+  totalFollows: number;
+  pendingReports: number;
+};
+
+export const getAdminStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminStats> => {
+    const { supabase, userId } = context;
+    const { data: isAdminRole, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!isAdminRole) throw new Error("Forbidden");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const since = (days: number) =>
+      new Date(Date.now() - days * 86400_000).toISOString();
+
+    const count = async (
+      table: string,
+      apply?: (q: any) => any,
+    ): Promise<number> => {
+      let q = (supabaseAdmin as any).from(table).select("*", { count: "exact", head: true });
+      if (apply) q = apply(q);
+      const { count: c } = await q;
+      return c ?? 0;
+    };
+
+    const distinctActive = async (): Promise<number> => {
+      const ids = new Set<string>();
+      for (const table of ["watched_episodes", "watched_movies"]) {
+        const { data } = await (supabaseAdmin as any)
+          .from(table)
+          .select("user_id")
+          .gte("watched_at", since(7))
+          .limit(5000);
+        for (const r of (data ?? []) as { user_id: string }[]) ids.add(r.user_id);
+      }
+      return ids.size;
+    };
+
+    const [
+      totalUsers,
+      newUsers7d,
+      newUsers30d,
+      activeUsers7d,
+      totalShowsTracked,
+      totalMoviesTracked,
+      watchedEpisodes,
+      watchedMovies,
+      totalLists,
+      totalFollows,
+      pendingReports,
+    ] = await Promise.all([
+      count("profiles"),
+      count("profiles", (q: any) => q.gte("created_at", since(7))),
+      count("profiles", (q: any) => q.gte("created_at", since(30))),
+      distinctActive(),
+      count("watchlist", (q: any) => q.eq("media_type", "tv")),
+      count("watchlist", (q: any) => q.eq("media_type", "movie")),
+      count("watched_episodes"),
+      count("watched_movies"),
+      count("user_lists"),
+      count("follows"),
+      count("profile_reports", (q: any) => q.eq("status", "pending")),
+    ]);
+
+    return {
+      totalUsers,
+      newUsers7d,
+      newUsers30d,
+      activeUsers7d,
+      totalShowsTracked,
+      totalMoviesTracked,
+      watchedEpisodes,
+      watchedMovies,
+      totalLists,
+      totalFollows,
+      pendingReports,
+    };
+  });

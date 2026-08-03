@@ -7,6 +7,7 @@ import {
   resolveProfileReport,
   clearReportedProfileImages,
   isCurrentUserAdmin,
+  getAdminStats,
   type AdminReport,
 } from "@/lib/reports.functions";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,59 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldAlert, ExternalLink, Trash2, Check, X } from "lucide-react";
+
+function AdminStatsPanel() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-stats"],
+    queryFn: () => getAdminStats(),
+    staleTime: 60_000,
+  });
+
+  const cards: { label: string; value: number }[] = data
+    ? [
+        { label: "Users", value: data.totalUsers },
+        { label: "New (7d)", value: data.newUsers7d },
+        { label: "New (30d)", value: data.newUsers30d },
+        { label: "Active (7d)", value: data.activeUsers7d },
+        { label: "Shows tracked", value: data.totalShowsTracked },
+        { label: "Movies tracked", value: data.totalMoviesTracked },
+        { label: "Episodes watched", value: data.watchedEpisodes },
+        { label: "Movies watched", value: data.watchedMovies },
+        { label: "Lists", value: data.totalLists },
+        { label: "Follows", value: data.totalFollows },
+        { label: "Pending reports", value: data.pendingReports },
+      ]
+    : [];
+
+  return (
+    <section className="space-y-3">
+      <h2 className="font-display text-lg font-semibold">Overview</h2>
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading stats…
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {cards.map((c) => (
+            <div key={c.label} className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                {c.label}
+              </p>
+              <p className="mt-1 font-display text-2xl font-bold">
+                {c.value.toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        Aggregated counts only — no personal data is shown here. Page-view
+        analytics are not collected by the app.
+      </p>
+    </section>
+  );
+}
+
 
 export const Route = createFileRoute("/_authenticated/admin/reports")({
   beforeLoad: async () => {
@@ -71,6 +125,9 @@ function AdminReportsPage() {
           </p>
         </div>
       </header>
+
+      <AdminStatsPanel />
+
 
       <Tabs value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
         <TabsList>
