@@ -746,7 +746,10 @@ export const getUserRecommendations = createServerFn({ method: "POST" })
         kind: "tv" | "movie",
         map: (r: T) => MediaItem
       ): Promise<MediaItem[]> {
-        const seen = new Set<number>(seedIds);
+        const seen = new Set<number>([
+          ...seedIds,
+          ...(kind === "tv" ? excludeTv : excludeMovie),
+        ]);
         const scored = new Map<number, { item: MediaItem; score: number }>();
         const responses = await Promise.all(
           seedIds.map((id) =>
