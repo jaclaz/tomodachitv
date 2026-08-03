@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createNotification } from "./notifications.functions";
 
 const REPORT_REASONS = [
   "explicit_image",
@@ -51,9 +52,10 @@ export type AdminReport = {
   reported_user_id: string;
   reason: string;
   details: string | null;
-  status: "pending" | "reviewed" | "dismissed";
+  status: "pending" | "actioned" | "dismissed";
   source: "user" | "auto_moderation";
   admin_notes: string | null;
+  action_taken: string | null;
   created_at: string;
   reviewed_at: string | null;
   reporter_username: string | null;
@@ -69,7 +71,7 @@ export const listProfileReports = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
       .object({
-        status: z.enum(["pending", "reviewed", "dismissed", "all"]).default("pending"),
+        status: z.enum(["pending", "actioned", "dismissed", "all"]).default("pending"),
       })
       .parse(data ?? {}),
   )
@@ -117,6 +119,7 @@ export const listProfileReports = createServerFn({ method: "GET" })
         status: r.status as AdminReport["status"],
         source: r.source as AdminReport["source"],
         admin_notes: r.admin_notes,
+        action_taken: r.action_taken,
         created_at: r.created_at,
         reviewed_at: r.reviewed_at,
         reporter_username: reporter?.username ?? null,
@@ -135,8 +138,9 @@ export const resolveProfileReport = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        status: z.enum(["reviewed", "dismissed"]),
+        resolution: z.enum(["actioned", "dismissed"]),
         admin_notes: z.string().max(500).optional(),
+        notify_message: z.string().max(500).optional(),
       })
       .parse(data),
   )
@@ -152,23 +156,47 @@ export const resolveProfileReport = createServerFn({ method: "POST" })
     if (roleErr) throw new Error(roleErr.message);
     if (!isAdminRole) throw new Error("Forbidden");
 
+    const { data: report, error: fetchErr } = await supabase
+      .from("profile_reports")
+      .select("reported_user_id, status, reason")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (fetchErr) throw new Error(fetchErr.message);
+    if (!report) throw new Error("Report not found");
+    if (report.status !== "pending") throw new Error("Report is already resolved");
+
     const { error } = await supabase
       .from("profile_reports")
       .update({
-        status: data.status,
+        status: data.resolution,
+        action_taken: data.resolution === "actioned" ? "warned_user" : "dismissed",
         admin_notes: data.admin_notes ?? null,
         reviewed_at: new Date().toISOString(),
         reviewed_by: userId,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    if (data.resolution === "actioned") {
+      const body = data.notify_message?.trim()
+        ? data.notify_message.trim()
+        : `A moderator reviewed your profile content and found it violates our community guidelines. Reason: ${report.reason}.`;
+      await createNotification(
+        report.reported_user_id,
+        "profile_report_action",
+        "Your profile content was reported",
+        body,
+        null,
+      ).catch(() => {});
+    }
+
     return { ok: true };
   });
 
 export const clearReportedProfileImages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
-    z.object({ user_id: z.string().uuid() }).parse(data),
+    z.object({ user_id: z.string().uuid(), report_id: z.string().uuid().optional() }).parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -187,6 +215,33 @@ export const clearReportedProfileImages = createServerFn({ method: "POST" })
       .update({ avatar_url: null, banner_url: null })
       .eq("id", data.user_id);
     if (error) throw new Error(error.message);
+
+    if (data.report_id) {
+      const { data: report } = await supabaseAdmin
+        .from("profile_reports")
+        .select("reported_user_id, status")
+        .eq("id", data.report_id)
+        .maybeSingle();
+      if (report && report.status === "pending") {
+        await supabaseAdmin
+          .from("profile_reports")
+          .update({
+            status: "actioned",
+            action_taken: "cleared_images",
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: userId,
+          })
+          .eq("id", data.report_id);
+        await createNotification(
+          report.reported_user_id,
+          "profile_report_action",
+          "Your profile images were removed",
+          "A moderator removed your avatar and/or banner because it violated our community guidelines. You can upload a new image that follows the rules.",
+          null,
+        ).catch(() => {});
+      }
+    }
+
     return { ok: true };
   });
 
