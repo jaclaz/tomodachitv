@@ -160,6 +160,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read: boolean
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_media_imports: {
         Row: {
           attempts: number
@@ -216,6 +252,7 @@ export type Database = {
       }
       profile_reports: {
         Row: {
+          action_taken: string | null
           admin_notes: string | null
           created_at: string
           details: string | null
@@ -229,6 +266,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          action_taken?: string | null
           admin_notes?: string | null
           created_at?: string
           details?: string | null
@@ -242,6 +280,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          action_taken?: string | null
           admin_notes?: string | null
           created_at?: string
           details?: string | null
