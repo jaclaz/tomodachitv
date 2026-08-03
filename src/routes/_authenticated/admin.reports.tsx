@@ -126,6 +126,9 @@ function AdminReportsPage() {
         </div>
       </header>
 
+      <AdminStatsPanel />
+
+
       <Tabs value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
         <TabsList>
           <TabsTrigger value="pending">Pending</TabsTrigger>
