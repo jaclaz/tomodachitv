@@ -1,76 +1,132 @@
-# English UI + Movies support
+# Report + Notifiche: chiarezza azioni admin e sistema notifiche
 
-Two changes together: switch all UI copy to English, and make Pavulli work for both **TV series and movies** (TMDB has both).
+## Obiettivo
 
-## 1. Language: Italian → English
+Rendere chiaro nella scheda admin cosa succede quando si risolve un report:
+- **Warn user / Azione**: il contenuto viola le regole → segnalazione risolta e l'utente riceve una notifica.
+- **Dismiss / OK**: il contenuto è lecito → segnalazione risolta senza notificare l'utente.
 
-Rewrite all user-facing strings in:
-- Sidebar: "Home", "Trending", "Watchlist", "Stats", "Sign out"
-- Auth page: "Sign in" / "Sign up", "Email", "Password", "Display name", success/error messages
-- Home, Trending, Watchlist, Stats pages: headings, empty states, buttons
-- Detail pages: "Add to watchlist", "Remove", "Seasons", "Episodes", "Mark as watched", "Watched", etc.
-- Search placeholder, hero copy, TMDB attribution
-- App name stays **Pavulli**
-- TMDB API calls switch from `language=it-IT` to `language=en-US`
+Costruire inoltre un sistema di notifiche in-app da zero per informare l'utente segnalato.
 
-## 2. Movies support
+## Stato attuale
 
-TMDB exposes movies at `/movie/*` and `/trending/movie/week`, `/search/movie`. We add a **media type** dimension across the app.
+- `profile_reports` ha stati `pending | reviewed | dismissed` (campo testo libero).
+- I pulsanti admin sono "Mark reviewed" e "Dismiss".
+- Non esiste una tabella notifiche.
+- L'admin panel mostra già statistiche aggregate in `AdminStatsPanel`.
 
-### Database
+## Modifiche database
 
-Add `media_type` (`'tv' | 'movie'`) to the existing tables and add movie-watch tracking:
+### Nuova tabella `public.notifications`
 
 ```text
-watchlist:
-  + media_type text not null default 'tv'  -- 'tv' | 'movie'
-  (existing columns stay; `first_air_date` reused for movie release_date,
-   `series_name` reused as title)
-  unique(user_id, media_type, tmdb_id)
-
-watched_movies (new):
-  id uuid pk
-  user_id uuid
-  tmdb_id int
-  title text
-  runtime_minutes int
-  watched_at timestamptz
-  unique(user_id, tmdb_id)
-  RLS: user_id = auth.uid()
-  GRANT to authenticated + service_role
+id              uuid primary key default gen_random_uuid()
+user_id         uuid not null references auth.users(id) on delete cascade
+-- chi ha ricevuto la notifica
+type            text not null
+-- es. 'profile_report_action'
+title           text not null
+body            text
+link            text nullable
+-- es. '/settings/profile' o '/u/<username>'
+read            boolean not null default false
+created_at      timestamptz not null default now()
+updated_at      timestamptz not null default now()
 ```
 
-`watched_episodes` stays as-is (TV only).
+- GRANT `SELECT, INSERT, UPDATE, DELETE` a `authenticated`.
+- GRANT `ALL` a `service_role`.
+- Abilitare RLS.
+- Policy `SELECT` per `auth.uid() = user_id`.
+- Policy `UPDATE` per `auth.uid() = user_id` (solo mark read).
+- Policy `DELETE` per `auth.uid() = user_id`.
+- Trigger `set_updated_at` su `UPDATE`.
 
-### Server functions
+### Tabella `profile_reports`
 
-- `src/lib/tmdb.ts`: add `getTrendingMovies`, `searchMovies`, `getMovieDetails`. Extend `searchSeries` → unified `searchAll` (multi-search) OR keep two functions and let each page pick. Simplest: add a `searchMulti` that queries `/search/multi` and returns items tagged with `media_type`.
-- `src/lib/watchlist.functions.ts`: accept `media_type` on add/remove/list; queries filter by it or return all.
-- `src/lib/watched.functions.ts`: keep episode functions; add `markMovieWatched`, `unmarkMovieWatched`, `getWatchedMovies`.
+Il campo `status` è testo libero. Cambiare la semantica dei valori nel codice:
+- `pending` → in attesa.
+- `actioned` → admin ha preso provvedimento (warn user). Sostituisce `reviewed`.
+- `dismissed` → segnalazione infondata / tutto OK.
 
-### Routes / pages
+Non serve alterare la colonna, solo aggiornare i valori inseriti e i filtri UI.
+Aggiungere un campo `action_taken` testo nullable per registrare l'azione (es. `cleared_images`, `warned_user`).
 
-- `/` (home): show trending mix (both media types), tabs "All / TV / Movies".
-- `/trending`: same, with tabs.
-- `/watchlist`: tabs "All / TV / Movies", each card links to the right detail route.
-- `/stats`: extend to include movies watched, total movie minutes, combined totals.
-- Rename `/serie/$id` → keep for TV, add `/movie/$id` for movies. Detail page differs:
-  - TV: seasons + episodes tracking (current behaviour)
-  - Movie: overview, runtime, "Mark as watched" toggle, "Add to watchlist"
-- Search bar: uses multi-search, results show a small "TV" or "Movie" badge and route accordingly.
+## Backend
 
-### Components
+### Nuovo file `src/lib/notifications.functions.ts`
 
-- `series-card.tsx` → `media-card.tsx`, generic over `{ id, title, poster, backdrop, date, rating, media_type }`; links to `/serie/$id` or `/movie/$id`.
-- `hero-section.tsx`, `stats-strip.tsx`, `search-bar.tsx`: adapt to generic media items and English copy.
+Server functions:
+- `getMyNotifications()` — GET con `requireSupabaseAuth`, restituisce le notifiche dell'utente corrente ordinate per `created_at DESC`, con conteggio unread.
+- `markNotificationRead({ id })` — POST, aggiorna `read = true` solo se `user_id = auth.uid()`.
+- `deleteNotification({ id })` — POST, elimina solo se proprietario.
+- `createNotification({ data })` — POST con `requireSupabaseAuth`, riservato a admin/moderatori. Sarà usato internamente da `resolveProfileReport`.
 
-## Out of scope
+### Modifiche `src/lib/reports.functions.ts`
 
-- Recommendations, genres filter, per-user language preference. Locale is fixed to English for now.
+- Aggiornare `AdminReport.status` in `pending | actioned | dismissed`.
+- Aggiornare `resolveProfileReport`:
+  - input: `id`, `resolution: 'actioned' | 'dismissed'`, `admin_notes?`, `notify_message?`.
+  - Se `actioned`:
+    - aggiorna report con `status = 'actioned'`, `action_taken = 'warned_user'`.
+    - crea notifica per `reported_user_id` con titolo "Il tuo contenuto è stato segnalato" e body che riporta il motivo e le note admin.
+  - Se `dismissed`:
+    - aggiorna report con `status = 'dismissed'`, nessuna notifica.
+- Aggiornare `listProfileReports` per filtrare sui nuovi stati (`pending`, `actioned`, `dismissed`).
+- Aggiornare `clearReportedProfileImages`:
+  - dopo aver pulito avatar/banner, risolvere anche il report come `actioned` e inviare notifica.
 
-## Technical notes
+## Frontend
 
-- TMDB attribution text updated to English.
-- Route path `/serie/$id` stays (backwards compatible with existing watchlist rows for TV); new `/movie/$id` added.
-- Migration adds `media_type` with default `'tv'` so existing rows stay valid.
-- Unique constraint on `watchlist` widened to `(user_id, media_type, tmdb_id)`.
+### `src/routes/_authenticated/admin.reports.tsx`
+
+- Sostituire i tab/filtri: `Pending`, `Warned`, `Dismissed`, `All`.
+- Sostituire i pulsanti per i report pending:
+  - **"Warn user"** (variante destructive) → apre un dialogo di conferma con campo opzionale per messaggio personalizzato alla notifica.
+  - **"Dismiss"** (variante secondary) → conferma "Nessuna azione".
+- Mostrare nelle card già risolte:
+  - Badge `Warned` o `Dismissed`.
+  - Se `actioned`, indicare che l'utente è stato notificato.
+- Aggiornare `AdminStatsPanel` per conteggiare `pending` e `actioned` (se necessario).
+
+### Notifiche nell'UI (`src/components/app-sidebar.tsx`)
+
+Aggiungere un campanella notifiche nella parte alta o nel pannello account:
+- Dropdown che mostra le notifiche non lette + recenti.
+- Badge con conteggio unread.
+- Click su una notifica la segna come letta e, se presente `link`, naviga.
+- Pulsante "Mark all read".
+- Query key: `["notifications"]`.
+
+Se il dropdown risulta troppo affollato nella sidebar, posizionarlo nell'header mobile o nella barra superiore globale (`__root.tsx`); valutare in fase di implementazione.
+
+## Integrazione privacy
+
+- La notifica contiene solo: titolo, motivo generale della segnalazione, note admin (non mostra l'identità del segnalante).
+- Non viene inviata nessuna notifica quando il report viene dismissato.
+- I dati sono protetti da RLS: ogni utente vede solo le proprie notifiche.
+
+## Migrazione
+
+Creare un file SQL in `supabase/migrations/` con:
+1. CREATE TABLE `public.notifications`.
+2. GRANT statements.
+3. ALTER TABLE ... ENABLE ROW LEVEL SECURITY.
+4. CREATE POLICY per SELECT/UPDATE/DELETE.
+5. Trigger `set_updated_at` su `public.notifications`.
+6. (Opzionale) aggiornamento righe esistenti `profile_reports.status = 'reviewed'` in `'actioned'`.
+
+## Dipendenze
+
+Nessun nuovo pacchetto. Si riutilizzano:
+- `@/components/ui/dropdown-menu`, `dialog`, `badge`, `button`, `tabs`, `scroll-area`, `alert-dialog`.
+- `@tanstack/react-query` per fetching e mutazioni.
+- `sonner` per toast di conferma.
+
+## Verifica
+
+- L'admin vede i nuovi pulsanti e può scegliere tra "Warn user" e "Dismiss".
+- Dopo "Warn user", l'utente segnalato trova una nuova notifica non letta.
+- Dopo "Dismiss", nessuna notifica viene creata.
+- L'utente può marcare le notifiche come lette e il badge si aggiorna.
+- Il build passa e le policy RLS permettono le operazioni previste.
