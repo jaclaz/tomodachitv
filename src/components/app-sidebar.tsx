@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,6 +15,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,6 +32,13 @@ import {
 import { getMyProfile } from "@/lib/social.functions";
 import { isCurrentUserAdmin } from "@/lib/reports.functions";
 import { deleteMyAccount } from "@/lib/account.functions";
+import {
+  getMyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  type AppNotification,
+} from "@/lib/notifications.functions";
 import { toast } from "sonner";
 import logoUrl from "@/assets/logo.png";
 import {
@@ -44,9 +56,12 @@ import {
   MoreVertical,
   Trash2,
   Pencil,
+  Bell,
+  BellDot,
+  Check,
+  Trash,
 } from "lucide-react";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
-
 
 const navItems = [
   { to: "/", icon: Compass, label: "Home" },
@@ -58,7 +73,6 @@ const navItems = [
   { to: "/stats", icon: BarChart3, label: "Stats" },
   { to: "/import", icon: Download, label: "Import" },
 ] as const;
-
 
 export function AppSidebar() {
   const [open, setOpen] = useState(false);
@@ -164,6 +178,7 @@ export function AppSidebar() {
                 </p>
               </div>
             </Link>
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -193,14 +208,12 @@ export function AppSidebar() {
                   <Trash2 className="mr-2 h-4 w-4" /> Delete account
                 </DropdownMenuItem>
               </DropdownMenuContent>
-
             </DropdownMenu>
           </div>
         </div>
       )}
     </div>
   );
-
 
   return (
     <>
@@ -270,6 +283,126 @@ export function AppSidebar() {
         />
       )}
     </>
+  );
+}
 
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => getMyNotifications(),
+    staleTime: 30_000,
+  });
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const hasUnread = unreadCount > 0;
+
+  const readMut = useMutation({
+    mutationFn: (id: string) => markNotificationRead({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const readAllMut = useMutation({
+    mutationFn: () => markAllNotificationsRead(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteNotification({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const handleClick = (n: AppNotification) => {
+    if (!n.read) readMut.mutate(n.id);
+    if (n.link) {
+      router.navigate({ to: n.link as any }).catch(() => {});
+    }
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
+          aria-label="Notifications"
+        >
+          {hasUnread ? (
+            <BellDot className="h-5 w-5" />
+          ) : (
+            <Bell className="h-5 w-5" />
+          )}
+          {hasUnread && (
+            <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <div className="flex items-center justify-between border-b border-border p-3">
+          <p className="font-semibold">Notifications</p>
+          {hasUnread && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => readAllMut.mutate()}
+              disabled={readAllMut.isPending}
+              className="h-8 text-xs"
+            >
+              <Check className="mr-1 h-3.5 w-3.5" /> Mark all read
+            </Button>
+          )}
+        </div>
+        <ScrollArea className="max-h-72">
+          {isLoading ? (
+            <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          ) : notifications.length === 0 ? (
+            <p className="p-4 text-center text-sm text-muted-foreground">
+              No notifications yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {notifications.map((n) => (
+                <li
+                  key={n.id}
+                  className={`group flex cursor-pointer items-start gap-3 p-3 transition-colors hover:bg-muted/50 ${
+                    n.read ? "opacity-70" : "bg-primary/5"
+                  }`}
+                  onClick={() => handleClick(n)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{n.title}</p>
+                    {n.body && (
+                      <p className="line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {new Date(n.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteMut.mutate(n.id);
+                    }}
+                    aria-label="Delete notification"
+                  >
+                    <Trash className="h-3.5 w-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 }
