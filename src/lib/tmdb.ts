@@ -698,9 +698,9 @@ export const getUserRecommendations = createServerFn({ method: "POST" })
         ) => {
           let from = 0;
           for (;;) {
-            const cols =
+            const cols: string =
               table === "watchlist" ? "tmdb_id, media_type" : "tmdb_id";
-            const { data, error } = await context.supabase
+            const { data, error } = await (context.supabase as any)
               .from(table)
               .select(cols)
               .eq("user_id", context.userId)
