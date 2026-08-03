@@ -688,6 +688,43 @@ export const getUserRecommendations = createServerFn({ method: "POST" })
           .limit(20),
       ]);
 
+      // Everything already watched or already in the library must never be recommended.
+      const excludeTv = new Set<number>();
+      const excludeMovie = new Set<number>();
+      {
+        const PAGE = 1000;
+        const collect = async (
+          table: "watched_episodes" | "watched_movies" | "watchlist" | "dropped_shows",
+        ) => {
+          let from = 0;
+          for (;;) {
+            const cols =
+              table === "watchlist" ? "tmdb_id, media_type" : "tmdb_id";
+            const { data, error } = await context.supabase
+              .from(table)
+              .select(cols)
+              .eq("user_id", context.userId)
+              .range(from, from + PAGE - 1);
+            if (error) break;
+            const chunk = (data ?? []) as { tmdb_id: number; media_type?: string }[];
+            for (const r of chunk) {
+              if (table === "watched_movies") excludeMovie.add(r.tmdb_id);
+              else if (table === "watchlist")
+                (r.media_type === "movie" ? excludeMovie : excludeTv).add(r.tmdb_id);
+              else excludeTv.add(r.tmdb_id);
+            }
+            if (chunk.length < PAGE) break;
+            from += PAGE;
+          }
+        };
+        await Promise.all([
+          collect("watched_episodes"),
+          collect("watched_movies"),
+          collect("watchlist"),
+          collect("dropped_shows"),
+        ]);
+      }
+
       const tvSeedIds = [
         ...new Set(
           ((recentEpisodes.data ?? []) as { tmdb_id: number }[]).map(
@@ -702,6 +739,7 @@ export const getUserRecommendations = createServerFn({ method: "POST" })
           )
         ),
       ].slice(0, 5);
+
 
       async function aggregate<T>(
         seedIds: number[],
