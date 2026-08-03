@@ -186,7 +186,7 @@ export const resolveProfileReport = createServerFn({ method: "POST" })
         "profile_report_action",
         "Your profile content was reported",
         body,
-        "/settings/profile",
+        null,
       ).catch(() => {});
     }
 
@@ -237,7 +237,7 @@ export const clearReportedProfileImages = createServerFn({ method: "POST" })
           "profile_report_action",
           "Your profile images were removed",
           "A moderator removed your avatar and/or banner because it violated our community guidelines. You can upload a new image that follows the rules.",
-          "/settings/profile",
+          null,
         ).catch(() => {});
       }
     }
