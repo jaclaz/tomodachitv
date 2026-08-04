@@ -359,6 +359,7 @@ function NotificationBell() {
             </Button>
           )}
         </div>
+
         <ScrollArea className="max-h-72">
           {isLoading ? (
             <p className="p-4 text-sm text-muted-foreground">Loading…</p>
