@@ -77,6 +77,12 @@ export async function createNotification(
   link: string | null,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: prefs } = await supabaseAdmin
+    .from("notification_preferences")
+    .select("moderation")
+    .eq("user_id", user_id)
+    .maybeSingle();
+  if (prefs && prefs.moderation === false) return;
   const { error } = await supabaseAdmin.from("notifications").insert({
     user_id,
     type,
