@@ -160,10 +160,41 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          follows: boolean
+          moderation: boolean
+          new_episodes: boolean
+          new_releases: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          follows?: boolean
+          moderation?: boolean
+          new_episodes?: boolean
+          new_releases?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          follows?: boolean
+          moderation?: boolean
+          new_episodes?: boolean
+          new_releases?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
           created_at: string
+          dedupe_key: string | null
           id: string
           link: string | null
           read: boolean
@@ -175,6 +206,7 @@ export type Database = {
         Insert: {
           body?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           link?: string | null
           read?: boolean
@@ -186,6 +218,7 @@ export type Database = {
         Update: {
           body?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           link?: string | null
           read?: boolean
