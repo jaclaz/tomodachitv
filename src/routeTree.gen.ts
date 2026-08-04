@@ -17,6 +17,7 @@ import { Route as AuthenticatedWatchedRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedTrendingRouteImport } from './routes/_authenticated/trending'
 import { Route as AuthenticatedStatsRouteImport } from './routes/_authenticated/stats'
 import { Route as AuthenticatedSocialRouteImport } from './routes/_authenticated/social'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedUUsernameRouteImport } from './routes/_authenticated/u.$username'
@@ -65,6 +66,12 @@ const AuthenticatedSocialRoute = AuthenticatedSocialRouteImport.update({
   path: '/social',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -112,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/import': typeof AuthenticatedImportRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/social': typeof AuthenticatedSocialRoute
   '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
@@ -128,6 +136,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/import': typeof AuthenticatedImportRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/social': typeof AuthenticatedSocialRoute
   '/stats': typeof AuthenticatedStatsRoute
   '/trending': typeof AuthenticatedTrendingRoute
@@ -147,6 +156,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
+  '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/social': typeof AuthenticatedSocialRoute
   '/_authenticated/stats': typeof AuthenticatedStatsRoute
   '/_authenticated/trending': typeof AuthenticatedTrendingRoute
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/import'
+    | '/notifications'
     | '/social'
     | '/stats'
     | '/trending'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/import'
+    | '/notifications'
     | '/social'
     | '/stats'
     | '/trending'
@@ -201,6 +213,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/calendar'
     | '/_authenticated/import'
+    | '/_authenticated/notifications'
     | '/_authenticated/social'
     | '/_authenticated/stats'
     | '/_authenticated/trending'
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSocialRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/import': {
       id: '/_authenticated/import'
       path: '/import'
@@ -340,6 +360,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
+  AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedSocialRoute: typeof AuthenticatedSocialRoute
   AuthenticatedStatsRoute: typeof AuthenticatedStatsRoute
   AuthenticatedTrendingRoute: typeof AuthenticatedTrendingRoute
@@ -357,6 +378,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
+  AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedSocialRoute: AuthenticatedSocialRoute,
   AuthenticatedStatsRoute: AuthenticatedStatsRoute,
   AuthenticatedTrendingRoute: AuthenticatedTrendingRoute,
