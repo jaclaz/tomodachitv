@@ -403,7 +403,17 @@ function NotificationBell() {
             </ul>
           )}
         </ScrollArea>
+        <div className="border-t border-border p-2">
+          <Link
+            to="/notifications"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Settings2 className="h-4 w-4" /> Notification center
+          </Link>
+        </div>
       </PopoverContent>
+
     </Popover>
   );
 }
