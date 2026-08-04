@@ -60,6 +60,8 @@ import {
   BellDot,
   Check,
   Trash,
+  Settings2,
+
 } from "lucide-react";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
 
