@@ -248,12 +248,26 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
 
     if (pending.length === 0) return { created: 0 };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: insertError } = await supabaseAdmin
+    // The unique index on (user_id, dedupe_key) is partial, so ON CONFLICT
+    // can't target it — filter out already-created notifications manually.
+    const keys = [...new Set(pending.map((p) => p.dedupe_key))];
+    const { data: existing } = await supabase
       .from("notifications")
-      .upsert(pending, { onConflict: "user_id,dedupe_key", ignoreDuplicates: true });
+      .select("dedupe_key")
+      .eq("user_id", userId)
+      .in("dedupe_key", keys);
+    const seen = new Set((existing ?? []).map((r) => r.dedupe_key));
+    const toInsert = pending.filter((p) => {
+      if (seen.has(p.dedupe_key)) return false;
+      seen.add(p.dedupe_key);
+      return true;
+    });
+    if (toInsert.length === 0) return { created: 0 };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: insertError } = await supabaseAdmin.from("notifications").insert(toInsert);
     if (insertError) throw new Error(insertError.message);
 
-    return { created: pending.length };
+    return { created: toInsert.length };
   });
 
