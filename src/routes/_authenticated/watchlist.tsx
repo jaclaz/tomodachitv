@@ -176,7 +176,7 @@ function WatchlistPage() {
       if (bInProgress && !aInProgress) return 1;
       return 0;
     });
-  }, [data, filter, q, inProgressMap, mathematicallyCurrentlyWatchingSet, progressMap]);
+  }, [data, filter, q, inProgressMap, mathematicallyCurrentlyWatchingSet, progressMap, watchedMovieIds]);
 
   return (
     <div className="space-y-8">
