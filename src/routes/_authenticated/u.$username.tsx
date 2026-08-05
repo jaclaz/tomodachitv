@@ -74,26 +74,6 @@ function UserProfilePage() {
   }
   if (!profile) throw notFound();
 
-  const activeWatchlist = watchlist.filter(
-    (w) => w.status !== "completed" && w.status !== "dropped",
-  );
-  const watchlistTv: PosterItem[] = activeWatchlist
-    .filter((w) => w.media_type === "tv")
-    .map((w) => ({
-      tmdb_id: w.tmdb_id,
-      title: w.series_name,
-      poster_path: w.poster_path,
-      media_type: "tv" as const,
-    }));
-  const watchlistMovies: PosterItem[] = activeWatchlist
-    .filter((w) => w.media_type === "movie")
-    .map((w) => ({
-      tmdb_id: w.tmdb_id,
-      title: w.series_name,
-      poster_path: w.poster_path,
-      media_type: "movie" as const,
-    }));
-
   const toItem = (w: WatchedLibraryItem): PosterItem => ({
     tmdb_id: w.tmdb_id,
     title: w.title,
@@ -102,16 +82,50 @@ function UserProfilePage() {
   });
   const byRecent = (a: WatchedLibraryItem, b: WatchedLibraryItem) =>
     (b.watched_at ?? "").localeCompare(a.watched_at ?? "");
-  const watchedTv: PosterItem[] = watchedLibrary
-    .filter((w) => w.media_type === "tv" && !w.dropped)
+
+  // Recent = everything actually watched (movies + series with >= 1 episode)
+  const recentTv: PosterItem[] = watchedLibrary
+    .filter((w) => w.media_type === "tv" && !w.dropped && (w.episodes_watched ?? 0) >= 1)
     .slice()
     .sort(byRecent)
     .map(toItem);
-  const watchedMovies: PosterItem[] = watchedLibrary
+  const recentMovies: PosterItem[] = watchedLibrary
     .filter((w) => w.media_type === "movie" && !w.dropped)
     .slice()
     .sort(byRecent)
     .map(toItem);
+
+  // Wanna start = in library, not dropped/completed, nothing watched yet
+  const startedTvIds = new Set(
+    watchedLibrary
+      .filter((w) => w.media_type === "tv" && (w.episodes_watched ?? 0) >= 1)
+      .map((w) => w.tmdb_id),
+  );
+  const watchedMovieIds = new Set(
+    watchedLibrary.filter((w) => w.media_type === "movie").map((w) => w.tmdb_id),
+  );
+  const notStarted = watchlist.filter(
+    (w) =>
+      w.status !== "completed" &&
+      w.status !== "dropped" &&
+      (w.media_type === "tv" ? !startedTvIds.has(w.tmdb_id) : !watchedMovieIds.has(w.tmdb_id)),
+  );
+  const startTv: PosterItem[] = notStarted
+    .filter((w) => w.media_type === "tv")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "tv" as const,
+    }));
+  const startMovies: PosterItem[] = notStarted
+    .filter((w) => w.media_type === "movie")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "movie" as const,
+    }));
 
 
   const favTv: PosterItem[] = favorites
@@ -232,15 +246,17 @@ function UserProfilePage() {
         </div>
       </div>
 
-      <Tabs defaultValue="watched">
+      <Tabs defaultValue="recent">
         <TabsList>
-          <TabsTrigger value="watched">
-            Watched ({watchedTv.length + watchedMovies.length})
+          <TabsTrigger value="recent">
+            Recent ({recentTv.length + recentMovies.length})
           </TabsTrigger>
-          <TabsTrigger value="watchlist">Watchlist ({activeWatchlist.length})</TabsTrigger>
+          <TabsTrigger value="wanna-start">
+            Wanna start ({startTv.length + startMovies.length})
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="watched" className="mt-4 space-y-6">
+        <TabsContent value="recent" className="mt-4 space-y-6">
           {!canSeeWatched ? (
             <div className="rounded-2xl border border-border bg-surface p-10 text-center">
               <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
@@ -253,10 +269,10 @@ function UserProfilePage() {
             <>
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Tv className="h-4 w-4" /> TV Shows ({watchedTv.length})
+                  <Tv className="h-4 w-4" /> TV Shows ({recentTv.length})
                 </h3>
                 <PosterStrip
-                  items={watchedTv}
+                  items={recentTv}
                   emptyLabel="No series watched yet."
                   max={20}
                   moreHref={profile.is_self ? "/watched" : undefined}
@@ -266,10 +282,10 @@ function UserProfilePage() {
               </div>
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Film className="h-4 w-4" /> Movies ({watchedMovies.length})
+                  <Film className="h-4 w-4" /> Movies ({recentMovies.length})
                 </h3>
                 <PosterStrip
-                  items={watchedMovies}
+                  items={recentMovies}
                   emptyLabel="No movies watched yet."
                   max={20}
                   moreHref={profile.is_self ? "/watched" : undefined}
@@ -281,14 +297,14 @@ function UserProfilePage() {
           )}
         </TabsContent>
 
-        <TabsContent value="watchlist" className="mt-4 space-y-6">
+        <TabsContent value="wanna-start" className="mt-4 space-y-6">
           <div className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Tv className="h-4 w-4" /> TV Shows ({watchlistTv.length})
+              <Tv className="h-4 w-4" /> TV Shows ({startTv.length})
             </h3>
             <PosterStrip
-              items={watchlistTv}
-              emptyLabel="No series in watchlist."
+              items={startTv}
+              emptyLabel="No series to start yet."
               max={20}
               moreHref={profile.is_self ? "/watchlist" : undefined}
               moreSearch={{ type: "tv" }}
@@ -297,11 +313,11 @@ function UserProfilePage() {
           </div>
           <div className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Film className="h-4 w-4" /> Movies ({watchlistMovies.length})
+              <Film className="h-4 w-4" /> Movies ({startMovies.length})
             </h3>
             <PosterStrip
-              items={watchlistMovies}
-              emptyLabel="No movies in watchlist."
+              items={startMovies}
+              emptyLabel="No movies to start yet."
               max={20}
               moreHref={profile.is_self ? "/watchlist" : undefined}
               moreSearch={{ type: "movie" }}
@@ -311,6 +327,7 @@ function UserProfilePage() {
 
         </TabsContent>
       </Tabs>
+
 
 
       {/* Favorites — always for self; only if non-empty for others */}
