@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PosterActions } from "@/components/poster-actions";
 import { Trash2, Star, Search, X, Grid2x2, Grid3x3, Plus, Loader2 } from "lucide-react";
-import { markEpisodeWatched, getWatchedShowProgress } from "@/lib/watched.functions";
+import { markEpisodeWatched, getWatchedShowProgress, getWatchedMovies } from "@/lib/watched.functions";
 import { toast } from "sonner";
 import type { CurrentlyWatchingItem } from "@/lib/currently-watching.functions";
 
@@ -58,6 +58,17 @@ function WatchlistPage() {
     queryFn: () => getWatchedShowProgress(),
     staleTime: 60_000,
   });
+
+  const { data: watchedMovies = [] } = useQuery({
+    queryKey: ["watched-movies"],
+    queryFn: () => getWatchedMovies(),
+    staleTime: 60_000,
+  });
+
+  const watchedMovieIds = useMemo(
+    () => new Set(watchedMovies.map((m) => m.tmdb_id)),
+    [watchedMovies],
+  );
 
   const inProgressMap = useMemo(() => {
     const m = new Map<number, CurrentlyWatchingItem>();
@@ -147,6 +158,8 @@ function WatchlistPage() {
       (item) =>
         item.media_type === filter &&
         (item.media_type !== "tv" || !progressMap.get(item.tmdb_id)?.is_completed) &&
+        (item.media_type !== "movie" ||
+          (!watchedMovieIds.has(item.tmdb_id) && item.status !== "completed")) &&
         item.status !== "dropped" &&
         (q === "" || item.series_name.toLowerCase().includes(q)),
     );
@@ -163,7 +176,7 @@ function WatchlistPage() {
       if (bInProgress && !aInProgress) return 1;
       return 0;
     });
-  }, [data, filter, q, inProgressMap, mathematicallyCurrentlyWatchingSet, progressMap]);
+  }, [data, filter, q, inProgressMap, mathematicallyCurrentlyWatchingSet, progressMap, watchedMovieIds]);
 
   return (
     <div className="space-y-8">
