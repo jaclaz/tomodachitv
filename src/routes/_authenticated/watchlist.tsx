@@ -59,6 +59,17 @@ function WatchlistPage() {
     staleTime: 60_000,
   });
 
+  const { data: watchedMovies = [] } = useQuery({
+    queryKey: ["watched-movies"],
+    queryFn: () => getWatchedMovies(),
+    staleTime: 60_000,
+  });
+
+  const watchedMovieIds = useMemo(
+    () => new Set(watchedMovies.map((m) => m.tmdb_id)),
+    [watchedMovies],
+  );
+
   const inProgressMap = useMemo(() => {
     const m = new Map<number, CurrentlyWatchingItem>();
     for (const s of currentlyWatching) m.set(s.tmdb_id, s);
