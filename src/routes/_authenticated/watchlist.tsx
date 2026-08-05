@@ -158,6 +158,8 @@ function WatchlistPage() {
       (item) =>
         item.media_type === filter &&
         (item.media_type !== "tv" || !progressMap.get(item.tmdb_id)?.is_completed) &&
+        (item.media_type !== "movie" ||
+          (!watchedMovieIds.has(item.tmdb_id) && item.status !== "completed")) &&
         item.status !== "dropped" &&
         (q === "" || item.series_name.toLowerCase().includes(q)),
     );
