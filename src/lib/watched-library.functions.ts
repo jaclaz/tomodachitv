@@ -30,7 +30,7 @@ async function buildWatchedLibrary(
         "tmdb_id, media_type, series_name, poster_path, backdrop_path, first_air_date, vote_average, status, added_at",
       )
       .eq("user_id", context.userId)
-      .in("status", ["completed", "dropped"]);
+      .in("status", ["completed", "dropped", "watching"]);
     if (libErr) throw libErr;
 
     const tvIds = (libRows ?? []).filter((r) => r.media_type === "tv").map((r) => r.tmdb_id);
