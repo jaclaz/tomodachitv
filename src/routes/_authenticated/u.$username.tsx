@@ -74,26 +74,6 @@ function UserProfilePage() {
   }
   if (!profile) throw notFound();
 
-  const activeWatchlist = watchlist.filter(
-    (w) => w.status !== "completed" && w.status !== "dropped",
-  );
-  const watchlistTv: PosterItem[] = activeWatchlist
-    .filter((w) => w.media_type === "tv")
-    .map((w) => ({
-      tmdb_id: w.tmdb_id,
-      title: w.series_name,
-      poster_path: w.poster_path,
-      media_type: "tv" as const,
-    }));
-  const watchlistMovies: PosterItem[] = activeWatchlist
-    .filter((w) => w.media_type === "movie")
-    .map((w) => ({
-      tmdb_id: w.tmdb_id,
-      title: w.series_name,
-      poster_path: w.poster_path,
-      media_type: "movie" as const,
-    }));
-
   const toItem = (w: WatchedLibraryItem): PosterItem => ({
     tmdb_id: w.tmdb_id,
     title: w.title,
@@ -102,16 +82,50 @@ function UserProfilePage() {
   });
   const byRecent = (a: WatchedLibraryItem, b: WatchedLibraryItem) =>
     (b.watched_at ?? "").localeCompare(a.watched_at ?? "");
-  const watchedTv: PosterItem[] = watchedLibrary
-    .filter((w) => w.media_type === "tv" && !w.dropped)
+
+  // Recent = everything actually watched (movies + series with >= 1 episode)
+  const recentTv: PosterItem[] = watchedLibrary
+    .filter((w) => w.media_type === "tv" && !w.dropped && (w.episodes_watched ?? 0) >= 1)
     .slice()
     .sort(byRecent)
     .map(toItem);
-  const watchedMovies: PosterItem[] = watchedLibrary
+  const recentMovies: PosterItem[] = watchedLibrary
     .filter((w) => w.media_type === "movie" && !w.dropped)
     .slice()
     .sort(byRecent)
     .map(toItem);
+
+  // Wanna start = in library, not dropped/completed, nothing watched yet
+  const startedTvIds = new Set(
+    watchedLibrary
+      .filter((w) => w.media_type === "tv" && (w.episodes_watched ?? 0) >= 1)
+      .map((w) => w.tmdb_id),
+  );
+  const watchedMovieIds = new Set(
+    watchedLibrary.filter((w) => w.media_type === "movie").map((w) => w.tmdb_id),
+  );
+  const notStarted = watchlist.filter(
+    (w) =>
+      w.status !== "completed" &&
+      w.status !== "dropped" &&
+      (w.media_type === "tv" ? !startedTvIds.has(w.tmdb_id) : !watchedMovieIds.has(w.tmdb_id)),
+  );
+  const startTv: PosterItem[] = notStarted
+    .filter((w) => w.media_type === "tv")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "tv" as const,
+    }));
+  const startMovies: PosterItem[] = notStarted
+    .filter((w) => w.media_type === "movie")
+    .map((w) => ({
+      tmdb_id: w.tmdb_id,
+      title: w.series_name,
+      poster_path: w.poster_path,
+      media_type: "movie" as const,
+    }));
 
 
   const favTv: PosterItem[] = favorites
