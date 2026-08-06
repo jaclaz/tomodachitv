@@ -7,7 +7,11 @@ import {
   getUserWatchlist,
   updateMyProfile,
 } from "@/lib/social.functions";
-import { getUserWatchedLibrary, type WatchedLibraryItem } from "@/lib/watched-library.functions";
+import {
+  getUserWatchedLibrary,
+  getUserRecentlyWatchedShows,
+  type WatchedLibraryItem,
+} from "@/lib/watched-library.functions";
 import { getUserFavorites, getUserLists } from "@/lib/lists.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/avatar-upload";
