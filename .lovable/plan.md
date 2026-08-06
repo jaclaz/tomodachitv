@@ -8,14 +8,16 @@ Nella pagina profilo, la scheda "Watched" per le serie mostra solo i titoli con 
 
 Sì, il record delle ultime cose viste esiste: ogni episodio segnato viene salvato con la data di visione (tabella `watched_episodes`, campo `watched_at`). Quindi si può ricostruire l'ordine reale di "ultima visione" per ogni serie.
 
-## Cosa cambia
+## Cosa cambia (SOLO nella pagina profilo)
 
-Scheda profilo con due tab (come ora):
+Le pagine Watched e Watchlist normali non vengono toccate: la modifica riguarda esclusivamente `/u/:username`.
+
+Obiettivo: chi guarda il profilo capisce **cosa ho guardato ultimamente** e **cosa voglio guardare**.
 
 - **Last watched** (ex "Watched")
-  - **TV Shows** — le serie ordinate per episodio guardato più di recente, **indipendentemente** dal fatto che siano finite, in corso o abbandonate. Sotto ogni poster resta il conteggio/etichetta esistente dello strip.
+  - **TV Shows** — le serie ordinate per episodio guardato più di recente, **indipendentemente** dal fatto che siano finite, in corso o abbandonate. Così una serie in corso appare qui, non tra i "da guardare".
   - **Movies** — invariato (film visti, ordinati per data di visione).
-- **Watchlist** — serie e film in libreria non ancora iniziati.
+- **Watchlist** — solo i titoli **mai iniziati**: serie senza alcun episodio segnato e film non ancora visti (esclusi completed/dropped, come ora).
 
 ## Note tecniche
 
@@ -23,5 +25,5 @@ Scheda profilo con due tab (come ora):
   - aggrega `watched_episodes` per `tmdb_id` con `max(watched_at)` e conteggio episodi (fetch paginato, come già fatto altrove per il limite di 1000 righe);
   - recupera titolo/poster da `media_cache`, con fallback su `watchlist` per le righe non ancora in cache;
   - ritorna gli item ordinati per ultima visione, limitati a 20 (stesso limite degli altri strip del profilo).
-- `src/routes/_authenticated/u.$username.tsx`: la strip TV della tab "Watched" usa questa nuova query invece di filtrare `getUserWatchedLibrary`; la strip Movies e la tab Watchlist restano invariate. La tab viene rinominata "Last watched".
-- Nessuna modifica al database.
+- `src/routes/_authenticated/u.$username.tsx` (unico file UI modificato): la strip TV della tab "Watched" usa la nuova query invece di filtrare `getUserWatchedLibrary`; la tab viene rinominata "Last watched"; la strip TV della tab Watchlist esclude le serie presenti in "Last watched" (quelle con almeno un episodio segnato). Strip Movies e resto del profilo invariati.
+- Nessuna modifica al database, né a `src/routes/_authenticated/watched.tsx` / `watchlist.tsx`.
