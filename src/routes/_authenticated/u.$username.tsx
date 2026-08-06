@@ -7,7 +7,11 @@ import {
   getUserWatchlist,
   updateMyProfile,
 } from "@/lib/social.functions";
-import { getUserWatchedLibrary, type WatchedLibraryItem } from "@/lib/watched-library.functions";
+import {
+  getUserWatchedLibrary,
+  getUserRecentlyWatchedShows,
+  type WatchedLibraryItem,
+} from "@/lib/watched-library.functions";
 import { getUserFavorites, getUserLists } from "@/lib/lists.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarUpload } from "@/components/avatar-upload";
@@ -54,6 +58,12 @@ function UserProfilePage() {
     enabled: !!profile && canSeeWatched,
   });
 
+  const { data: recentShows = [] } = useQuery({
+    queryKey: ["user-recent-shows", profile?.id],
+    queryFn: () => getUserRecentlyWatchedShows({ data: { user_id: profile!.id } }),
+    enabled: !!profile && canSeeWatched,
+  });
+
   const { data: favorites = [] } = useQuery({
     queryKey: ["user-favorites", profile?.id],
     queryFn: () => getUserFavorites({ data: { user_id: profile!.id } }),
@@ -74,8 +84,15 @@ function UserProfilePage() {
   }
   if (!profile) throw notFound();
 
+  // Profile-only view: TV shows with any watched episode count as "last watched",
+  // so the watchlist tab shows only titles never started.
+  const startedShowIds = new Set(recentShows.map((s) => s.tmdb_id));
+
   const activeWatchlist = watchlist.filter(
-    (w) => w.status !== "completed" && w.status !== "dropped",
+    (w) =>
+      w.status !== "completed" &&
+      w.status !== "dropped" &&
+      !(w.media_type === "tv" && startedShowIds.has(w.tmdb_id)),
   );
   const watchlistTv: PosterItem[] = activeWatchlist
     .filter((w) => w.media_type === "tv")
@@ -102,11 +119,12 @@ function UserProfilePage() {
   });
   const byRecent = (a: WatchedLibraryItem, b: WatchedLibraryItem) =>
     (b.watched_at ?? "").localeCompare(a.watched_at ?? "");
-  const watchedTv: PosterItem[] = watchedLibrary
-    .filter((w) => w.media_type === "tv" && !w.dropped)
-    .slice()
-    .sort(byRecent)
-    .map(toItem);
+  const watchedTv: PosterItem[] = recentShows.map((s) => ({
+    tmdb_id: s.tmdb_id,
+    title: s.title,
+    poster_path: s.poster_path,
+    media_type: "tv" as const,
+  }));
   const watchedMovies: PosterItem[] = watchedLibrary
     .filter((w) => w.media_type === "movie" && !w.dropped)
     .slice()
@@ -235,7 +253,7 @@ function UserProfilePage() {
       <Tabs defaultValue="watched">
         <TabsList>
           <TabsTrigger value="watched">
-            Watched ({watchedTv.length + watchedMovies.length})
+            Last watched ({watchedTv.length + watchedMovies.length})
           </TabsTrigger>
           <TabsTrigger value="watchlist">Watchlist ({activeWatchlist.length})</TabsTrigger>
         </TabsList>
