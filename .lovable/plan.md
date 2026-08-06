@@ -15,7 +15,7 @@ Scheda profilo con due tab (come ora):
 - **Last watched** (ex "Watched")
   - **TV Shows** — le serie ordinate per episodio guardato più di recente, **indipendentemente** dal fatto che siano finite, in corso o abbandonate. Sotto ogni poster resta il conteggio/etichetta esistente dello strip.
   - **Movies** — invariato (film visti, ordinati per data di visione).
-- **Watchlist** — invariato: serie e film in libreria non ancora completati.
+- **Watchlist** — serie e film in libreria non ancora iniziati.
 
 ## Note tecniche
 
