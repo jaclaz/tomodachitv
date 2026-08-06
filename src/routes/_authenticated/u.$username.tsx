@@ -253,7 +253,7 @@ function UserProfilePage() {
       <Tabs defaultValue="watched">
         <TabsList>
           <TabsTrigger value="watched">
-            Watched ({watchedTv.length + watchedMovies.length})
+            Last watched ({watchedTv.length + watchedMovies.length})
           </TabsTrigger>
           <TabsTrigger value="watchlist">Watchlist ({activeWatchlist.length})</TabsTrigger>
         </TabsList>
