@@ -54,6 +54,12 @@ function UserProfilePage() {
     enabled: !!profile && canSeeWatched,
   });
 
+  const { data: recentShows = [] } = useQuery({
+    queryKey: ["user-recent-shows", profile?.id],
+    queryFn: () => getUserRecentlyWatchedShows({ data: { user_id: profile!.id } }),
+    enabled: !!profile && canSeeWatched,
+  });
+
   const { data: favorites = [] } = useQuery({
     queryKey: ["user-favorites", profile?.id],
     queryFn: () => getUserFavorites({ data: { user_id: profile!.id } }),
