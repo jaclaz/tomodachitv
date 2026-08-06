@@ -84,8 +84,15 @@ function UserProfilePage() {
   }
   if (!profile) throw notFound();
 
+  // Profile-only view: TV shows with any watched episode count as "last watched",
+  // so the watchlist tab shows only titles never started.
+  const startedShowIds = new Set(recentShows.map((s) => s.tmdb_id));
+
   const activeWatchlist = watchlist.filter(
-    (w) => w.status !== "completed" && w.status !== "dropped",
+    (w) =>
+      w.status !== "completed" &&
+      w.status !== "dropped" &&
+      !(w.media_type === "tv" && startedShowIds.has(w.tmdb_id)),
   );
   const watchlistTv: PosterItem[] = activeWatchlist
     .filter((w) => w.media_type === "tv")
@@ -112,11 +119,12 @@ function UserProfilePage() {
   });
   const byRecent = (a: WatchedLibraryItem, b: WatchedLibraryItem) =>
     (b.watched_at ?? "").localeCompare(a.watched_at ?? "");
-  const watchedTv: PosterItem[] = watchedLibrary
-    .filter((w) => w.media_type === "tv" && !w.dropped)
-    .slice()
-    .sort(byRecent)
-    .map(toItem);
+  const watchedTv: PosterItem[] = recentShows.map((s) => ({
+    tmdb_id: s.tmdb_id,
+    title: s.title,
+    poster_path: s.poster_path,
+    media_type: "tv" as const,
+  }));
   const watchedMovies: PosterItem[] = watchedLibrary
     .filter((w) => w.media_type === "movie" && !w.dropped)
     .slice()
