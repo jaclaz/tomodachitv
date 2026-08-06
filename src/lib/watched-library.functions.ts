@@ -223,3 +223,95 @@ export const getUserWatchedLibrary = createServerFn({ method: "POST" })
     ({ context, data }): Promise<WatchedLibraryItem[]> =>
       buildWatchedLibrary(context.supabase, data.user_id),
   );
+
+// ---------- Recently watched TV shows (profile) ----------
+
+export interface RecentlyWatchedShow {
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  episodes_watched: number;
+  last_watched_at: string;
+}
+
+async function buildRecentlyWatchedShows(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+  limit = 20,
+): Promise<RecentlyWatchedShow[]> {
+  // Paginated fetch: Supabase caps rows at 1000 per request.
+  const PAGE = 1000;
+  const agg = new Map<number, { count: number; last: string }>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("watched_episodes")
+      .select("tmdb_id, watched_at")
+      .eq("user_id", userId)
+      .order("watched_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    for (const r of rows) {
+      const cur = agg.get(r.tmdb_id);
+      if (!cur) agg.set(r.tmdb_id, { count: 1, last: r.watched_at });
+      else {
+        cur.count += 1;
+        if (r.watched_at > cur.last) cur.last = r.watched_at;
+      }
+    }
+    if (rows.length < PAGE) break;
+  }
+  if (agg.size === 0) return [];
+
+  const ordered = [...agg.entries()]
+    .sort((a, b) => b[1].last.localeCompare(a[1].last))
+    .slice(0, limit);
+  const ids = ordered.map(([id]) => id);
+
+  const [cacheRes, libRes] = await Promise.all([
+    supabase
+      .from("media_cache")
+      .select("tmdb_id, title, poster_path")
+      .eq("media_type", "tv")
+      .in("tmdb_id", ids),
+    supabase
+      .from("watchlist")
+      .select("tmdb_id, series_name, poster_path")
+      .eq("user_id", userId)
+      .eq("media_type", "tv")
+      .in("tmdb_id", ids),
+  ]);
+  const cacheMap = new Map<number, { title: string | null; poster_path: string | null }>();
+  for (const r of (cacheRes.data ?? []) as any[])
+    cacheMap.set(r.tmdb_id, { title: r.title, poster_path: r.poster_path });
+  const libMap = new Map<number, { title: string | null; poster_path: string | null }>();
+  for (const r of (libRes.data ?? []) as any[])
+    libMap.set(r.tmdb_id, { title: r.series_name, poster_path: r.poster_path });
+
+  return ordered.map(([tmdb_id, v]) => {
+    const c = cacheMap.get(tmdb_id);
+    const l = libMap.get(tmdb_id);
+    return {
+      tmdb_id,
+      title: c?.title ?? l?.title ?? "Unknown series",
+      poster_path: c?.poster_path ?? l?.poster_path ?? null,
+      episodes_watched: v.count,
+      last_watched_at: v.last,
+    };
+  });
+}
+
+export const getRecentlyWatchedShows = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    ({ context }): Promise<RecentlyWatchedShow[]> =>
+      buildRecentlyWatchedShows(context.supabase, context.userId),
+  );
+
+export const getUserRecentlyWatchedShows = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { user_id: string }) => input)
+  .handler(
+    ({ context, data }): Promise<RecentlyWatchedShow[]> =>
+      buildRecentlyWatchedShows(context.supabase, data.user_id),
+  );
