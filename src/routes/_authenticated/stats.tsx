@@ -250,9 +250,10 @@ function StatsPage() {
           </Card>
 
           <Card
-            title="Average rating"
-            subtitle="TMDB score of the titles you've watched"
+            title="Average TMDB score"
+            subtitle="Public TMDB rating of the titles you've watched — not your own rating"
           >
+
             {advLoading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
             ) : adv?.avgRating == null ? (
