@@ -312,12 +312,13 @@ function StatsPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Card
             title="Seasons completed"
-            subtitle="Full seasons watched across all your shows"
+            subtitle="Fully aired seasons you've watched end to end (specials excluded)"
           >
             <p className="font-display text-4xl font-bold">
-              {adv?.seasonsCompleted ?? 0}
+              {advLoading ? "…" : (adv?.seasonsCompleted ?? 0)}
             </p>
           </Card>
+
 
           <Card
             title="Most-watched shows"
