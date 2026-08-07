@@ -145,19 +145,20 @@ function StatsPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <Card title="Last 7 days">
             <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast7 ?? 0)}
+              {advLoading ? "…" : formatHours(adv?.minutesLast7 ?? 0)}
             </p>
           </Card>
           <Card title="Last 30 days">
             <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast30 ?? 0)}
+              {advLoading ? "…" : formatHours(adv?.minutesLast30 ?? 0)}
             </p>
           </Card>
           <Card title="Last 90 days">
             <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast90 ?? 0)}
+              {advLoading ? "…" : formatHours(adv?.minutesLast90 ?? 0)}
             </p>
           </Card>
+
         </div>
 
         <Card
