@@ -70,7 +70,9 @@ function BarRow({
 }
 
 function StatsPage() {
+  const [showAllProgress, setShowAllProgress] = useState(false);
   const { data: watchlist = [] } = useQuery({
+
     queryKey: ["watchlist"],
     queryFn: () => getWatchlist(),
   });
