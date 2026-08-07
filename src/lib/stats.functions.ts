@@ -9,12 +9,28 @@ function getApiKey() {
   return key;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function tmdbFetch<T>(path: string): Promise<T> {
   const key = getApiKey();
   const url = `${TMDB_BASE}${path}?api_key=${key}&language=en-US`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TMDB ${res.status}`);
-  return res.json() as Promise<T>;
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429) {
+        const retryAfter = Number(res.headers.get("retry-after") ?? 1);
+        await sleep(Math.min(5000, (Number.isFinite(retryAfter) ? retryAfter : 1) * 1000));
+        continue;
+      }
+      if (!res.ok) throw new Error(`TMDB ${res.status}`);
+      return (await res.json()) as T;
+    } catch (e) {
+      lastErr = e;
+      await sleep(250 * (attempt + 1));
+    }
+  }
+  throw lastErr ?? new Error("TMDB request failed");
 }
 
 async function mapLimit<T, R>(
@@ -59,11 +75,15 @@ export interface AdvancedStats {
     watched: number;
     total: number;
     percent: number;
+    last_watched_at: string;
   }[];
   seasonsCompleted: number;
   tvMinutes: number;
   movieMinutes: number;
   totalMinutes: number;
+  // Meta
+  seriesTracked: number;
+  unresolvedTitles: number;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -77,6 +97,7 @@ interface TvRaw {
   genres?: { id: number; name: string }[];
   episode_run_time?: number[];
   seasons?: { season_number: number; episode_count: number }[];
+  last_episode_to_air?: { season_number: number; episode_number: number } | null;
 }
 interface MovieRaw {
   id: number;
@@ -87,36 +108,173 @@ interface MovieRaw {
   genres?: { id: number; name: string }[];
 }
 
+interface WatchedEpisodeRow {
+  tmdb_id: number;
+  season_number: number;
+  episode_number: number;
+  runtime_minutes: number | null;
+  watched_at: string | null;
+}
+interface WatchedMovieRow {
+  tmdb_id: number;
+  runtime_minutes: number | null;
+  watched_at: string | null;
+}
+
+const PAGE = 1000;
+
 export const getAdvancedStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdvancedStats> => {
-    const [epRes, mvRes] = await Promise.all([
-      context.supabase
+    // ---- Load full history (paginated: the API caps a single read at 1000 rows) ----
+    const rawEps: WatchedEpisodeRow[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await context.supabase
         .from("watched_episodes")
         .select("tmdb_id, season_number, episode_number, runtime_minutes, watched_at")
-        .eq("user_id", context.userId),
-      context.supabase
+        .eq("user_id", context.userId)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      rawEps.push(...((data ?? []) as WatchedEpisodeRow[]));
+      if (!data || data.length < PAGE) break;
+    }
+
+    const rawMovies: WatchedMovieRow[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await context.supabase
         .from("watched_movies")
         .select("tmdb_id, runtime_minutes, watched_at")
-        .eq("user_id", context.userId),
-    ]);
-    if (epRes.error) throw epRes.error;
-    if (mvRes.error) throw mvRes.error;
-    const eps = epRes.data ?? [];
-    const movies = mvRes.data ?? [];
+        .eq("user_id", context.userId)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      rawMovies.push(...((data ?? []) as WatchedMovieRow[]));
+      if (!data || data.length < PAGE) break;
+    }
+
+    // Dedupe episodes by (series, season, episode) and movies by tmdb_id.
+    const epSeen = new Set<string>();
+    const eps = rawEps.filter((e) => {
+      const k = `${e.tmdb_id}-${e.season_number}-${e.episode_number}`;
+      if (epSeen.has(k)) return false;
+      epSeen.add(k);
+      return true;
+    });
+    const mvSeen = new Set<number>();
+    const movies = rawMovies.filter((m) => {
+      if (mvSeen.has(m.tmdb_id)) return false;
+      mvSeen.add(m.tmdb_id);
+      return true;
+    });
 
     const tvIds = Array.from(new Set(eps.map((e) => e.tmdb_id)));
     const movieIds = Array.from(new Set(movies.map((m) => m.tmdb_id)));
 
+    // ---- Dropped shows are excluded from "in progress" ----
+    const { data: droppedRows } = await context.supabase
+      .from("watchlist")
+      .select("tmdb_id")
+      .eq("user_id", context.userId)
+      .eq("media_type", "tv")
+      .eq("status", "dropped");
+    const droppedIds = new Set<number>((droppedRows ?? []).map((r) => r.tmdb_id));
+
+    // ---- Cached metadata first, TMDB only for what's missing ----
+    const cacheRows: Array<{
+      media_type: string;
+      tmdb_id: number;
+      title: string | null;
+      vote_average: number | null;
+      release_date: string | null;
+      genre_ids: number[];
+      episode_count_aired: number | null;
+    }> = [];
+    const allIds = [
+      ...tvIds.map((id) => ({ media_type: "tv", tmdb_id: id })),
+      ...movieIds.map((id) => ({ media_type: "movie", tmdb_id: id })),
+    ];
+    for (const type of ["tv", "movie"] as const) {
+      const ids = type === "tv" ? tvIds : movieIds;
+      for (let i = 0; i < ids.length; i += 300) {
+        const { data } = await context.supabase
+          .from("media_cache")
+          .select(
+            "media_type, tmdb_id, title, vote_average, release_date, genre_ids, episode_count_aired"
+          )
+          .eq("media_type", type)
+          .in("tmdb_id", ids.slice(i, i + 300));
+        cacheRows.push(...((data ?? []) as typeof cacheRows));
+      }
+    }
+    void allIds;
+    const cacheKey = (t: string, id: number) => `${t}-${id}`;
+    const cacheMap = new Map(cacheRows.map((r) => [cacheKey(r.media_type, r.tmdb_id), r]));
+
     const [tvDetails, movieDetails] = await Promise.all([
-      mapLimit(tvIds, 6, (id) => tmdbFetch<TvRaw>(`/tv/${id}`)),
-      mapLimit(movieIds, 6, (id) => tmdbFetch<MovieRaw>(`/movie/${id}`)),
+      mapLimit(tvIds, 4, (id) => tmdbFetch<TvRaw>(`/tv/${id}`)),
+      mapLimit(movieIds, 4, (id) => tmdbFetch<MovieRaw>(`/movie/${id}`)),
     ]);
 
     const tvMap = new Map<number, TvRaw>();
     tvDetails.forEach((d) => d && tvMap.set(d.id, d));
     const movieMap = new Map<number, MovieRaw>();
     movieDetails.forEach((d) => d && movieMap.set(d.id, d));
+
+    // Genre id -> name maps, used for titles resolved only from cache.
+    const genreNames = new Map<string, string>();
+    try {
+      const [tvGenres, movieGenres] = await Promise.all([
+        tmdbFetch<{ genres: { id: number; name: string }[] }>("/genre/tv/list"),
+        tmdbFetch<{ genres: { id: number; name: string }[] }>("/genre/movie/list"),
+      ]);
+      for (const g of tvGenres.genres ?? []) genreNames.set(`tv-${g.id}`, g.name);
+      for (const g of movieGenres.genres ?? []) genreNames.set(`movie-${g.id}`, g.name);
+    } catch {
+      // genre names stay empty; cache-only titles just won't contribute genres
+    }
+
+    const tvGenreList = (id: number): string[] => {
+      const d = tvMap.get(id);
+      if (d?.genres?.length) return d.genres.map((g) => g.name);
+      const c = cacheMap.get(cacheKey("tv", id));
+      return (c?.genre_ids ?? [])
+        .map((g) => genreNames.get(`tv-${g}`))
+        .filter((n): n is string => !!n);
+    };
+    const movieGenreList = (id: number): string[] => {
+      const d = movieMap.get(id);
+      if (d?.genres?.length) return d.genres.map((g) => g.name);
+      const c = cacheMap.get(cacheKey("movie", id));
+      return (c?.genre_ids ?? [])
+        .map((g) => genreNames.get(`movie-${g}`))
+        .filter((n): n is string => !!n);
+    };
+    const tvTitle = (id: number) =>
+      tvMap.get(id)?.name ?? cacheMap.get(cacheKey("tv", id))?.title ?? null;
+    const tvYear = (id: number) => {
+      const s =
+        tvMap.get(id)?.first_air_date ?? cacheMap.get(cacheKey("tv", id))?.release_date ?? null;
+      const y = s ? parseInt(s.slice(0, 4), 10) : NaN;
+      return Number.isFinite(y) ? y : null;
+    };
+    const movieYear = (id: number) => {
+      const s =
+        movieMap.get(id)?.release_date ??
+        cacheMap.get(cacheKey("movie", id))?.release_date ??
+        null;
+      const y = s ? parseInt(s.slice(0, 4), 10) : NaN;
+      return Number.isFinite(y) ? y : null;
+    };
+    const tvScore = (id: number) =>
+      tvMap.get(id)?.vote_average ?? cacheMap.get(cacheKey("tv", id))?.vote_average ?? null;
+    const movieScore = (id: number) =>
+      movieMap.get(id)?.vote_average ??
+      cacheMap.get(cacheKey("movie", id))?.vote_average ??
+      null;
+
+    const unresolvedTitles =
+      tvIds.filter((id) => !tvMap.has(id) && !cacheMap.has(cacheKey("tv", id))).length +
+      movieIds.filter((id) => !movieMap.has(id) && !cacheMap.has(cacheKey("movie", id)))
+        .length;
 
     // Helpers to get effective runtime for an episode
     const epRuntime = (tmdb_id: number, stored: number | null) => {
@@ -147,33 +305,31 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       decadeAgg.set(dec, (decadeAgg.get(dec) ?? 0) + 1);
     };
 
-    // Episodes: attribute per-episode by series genre; decade by series first_air_date (count once per series)
-    const epsBySeries = new Map<number, typeof eps>();
+    // Episodes grouped by series (specials kept here: they still count as watch time)
+    const epsBySeries = new Map<number, WatchedEpisodeRow[]>();
     for (const e of eps) {
       const arr = epsBySeries.get(e.tmdb_id) ?? [];
       arr.push(e);
       epsBySeries.set(e.tmdb_id, arr);
     }
     for (const [tmdb_id, arr] of epsBySeries) {
-      const d = tvMap.get(tmdb_id);
       const totalMin = arr.reduce((s, e) => s + epRuntime(tmdb_id, e.runtime_minutes), 0);
-      if (d?.genres?.length) {
-        const per = totalMin / d.genres.length;
-        for (const g of d.genres) bumpGenre(g.name, per);
+      const gs = tvGenreList(tmdb_id);
+      if (gs.length) {
+        const per = totalMin / gs.length;
+        for (const g of gs) bumpGenre(g, per);
       }
-      const year = d?.first_air_date ? parseInt(d.first_air_date.slice(0, 4), 10) : null;
-      bumpDecade(year);
+      bumpDecade(tvYear(tmdb_id));
     }
     // Movies
     for (const m of movies) {
-      const d = movieMap.get(m.tmdb_id);
       const mins = mvRuntime(m.tmdb_id, m.runtime_minutes);
-      if (d?.genres?.length) {
-        const per = mins / d.genres.length;
-        for (const g of d.genres) bumpGenre(g.name, per);
+      const gs = movieGenreList(m.tmdb_id);
+      if (gs.length) {
+        const per = mins / gs.length;
+        for (const g of gs) bumpGenre(g, per);
       }
-      const year = d?.release_date ? parseInt(d.release_date.slice(0, 4), 10) : null;
-      bumpDecade(year);
+      bumpDecade(movieYear(m.tmdb_id));
     }
 
     const genres = Array.from(genreAgg.entries())
@@ -184,15 +340,15 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       .map(([decade, count]) => ({ decade, count }))
       .sort((a, b) => a.decade.localeCompare(b.decade));
 
-    // ---- Average rating (movies fully watched + series with at least one ep) ----
+    // ---- Average TMDB score of watched titles (unresolved titles are skipped) ----
     const ratings: number[] = [];
     for (const id of movieIds) {
-      const r = movieMap.get(id)?.vote_average;
-      if (typeof r === "number" && r > 0) ratings.push(r);
+      const r = movieScore(id);
+      if (typeof r === "number" && r > 0) ratings.push(Number(r));
     }
     for (const id of tvIds) {
-      const r = tvMap.get(id)?.vote_average;
-      if (typeof r === "number" && r > 0) ratings.push(r);
+      const r = tvScore(id);
+      if (typeof r === "number" && r > 0) ratings.push(Number(r));
     }
     const avgRating = ratings.length
       ? +(ratings.reduce((s, r) => s + r, 0) / ratings.length).toFixed(2)
@@ -206,10 +362,7 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
     let minutesLast90 = 0;
     const weekday = new Array(7).fill(0) as number[];
 
-    const addWatched = (
-      watched_at: string | null,
-      minutes: number,
-    ) => {
+    const addWatched = (watched_at: string | null, minutes: number) => {
       if (!minutes) return;
       if (!watched_at) return;
       const t = new Date(watched_at).getTime();
@@ -228,58 +381,94 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       day: WEEKDAYS[i],
       minutes: Math.round(minutes),
     }));
-    const busiestIdx = weekday.reduce(
-      (best, v, i) => (v > weekday[best] ? i : best),
-      0
-    );
-    const busiestWeekday =
-      weekday[busiestIdx] > 0 ? WEEKDAYS[busiestIdx] : null;
+    const busiestIdx = weekday.reduce((best, v, i) => (v > weekday[best] ? i : best), 0);
+    const busiestWeekday = weekday[busiestIdx] > 0 ? WEEKDAYS[busiestIdx] : null;
 
     // ---- Top series by episodes watched ----
     const topSeriesByEpisodes = Array.from(epsBySeries.entries())
       .map(([tmdb_id, arr]) => ({
         tmdb_id,
-        title: tvMap.get(tmdb_id)?.name ?? `TV #${tmdb_id}`,
+        title: tvTitle(tmdb_id) ?? `TV #${tmdb_id}`,
         episodes: arr.length,
       }))
       .sort((a, b) => b.episodes - a.episodes)
       .slice(0, 5);
 
-    // ---- Series in progress with completion % ----
+    // ---- Aired-episode helpers (specials excluded from completion) ----
+    const airedTotal = (tmdb_id: number): number => {
+      const d = tvMap.get(tmdb_id);
+      if (d) {
+        const seasons = (d.seasons ?? []).filter((s) => s.season_number > 0);
+        const last = d.last_episode_to_air;
+        if (last) {
+          let total = 0;
+          for (const s of seasons) {
+            const ec = s.episode_count ?? 0;
+            if (s.season_number < last.season_number) total += ec;
+            else if (s.season_number === last.season_number)
+              total += Math.min(last.episode_number, ec || last.episode_number);
+          }
+          if (total > 0) return total;
+        }
+        if (d.number_of_episodes && d.number_of_episodes > 0) return d.number_of_episodes;
+      }
+      return cacheMap.get(cacheKey("tv", tmdb_id))?.episode_count_aired ?? 0;
+    };
+
+    const regularWatchedCount = (arr: WatchedEpisodeRow[]) =>
+      arr.filter((e) => e.season_number > 0).length;
+
+    const lastWatchedAt = (arr: WatchedEpisodeRow[]) =>
+      arr.reduce<string>((max, e) => (e.watched_at && e.watched_at > max ? e.watched_at : max), "");
+
+    // ---- Series in progress (aired-only, no specials, no dropped) ----
     const seriesInProgress = Array.from(epsBySeries.entries())
+      .filter(([tmdb_id]) => !droppedIds.has(tmdb_id))
       .map(([tmdb_id, arr]) => {
-        const d = tvMap.get(tmdb_id);
-        const total = d?.number_of_episodes ?? 0;
-        const watched = arr.length;
+        const total = airedTotal(tmdb_id);
+        const watched = Math.min(regularWatchedCount(arr), total || Number.MAX_SAFE_INTEGER);
         const percent = total > 0 ? Math.min(100, Math.round((watched / total) * 100)) : 0;
         return {
           tmdb_id,
-          title: d?.name ?? `TV #${tmdb_id}`,
+          title: tvTitle(tmdb_id) ?? `TV #${tmdb_id}`,
           watched,
           total,
           percent,
+          last_watched_at: lastWatchedAt(arr),
         };
       })
-      .filter((s) => s.total > 0 && s.percent < 100)
-      .sort((a, b) => b.percent - a.percent)
-      .slice(0, 8);
+      .filter((s) => s.total > 0 && s.watched > 0 && s.watched < s.total)
+      .sort((a, b) => (b.last_watched_at > a.last_watched_at ? 1 : -1));
 
-    // ---- Seasons completed ----
+    // ---- Seasons completed (aired episodes only, specials excluded) ----
     let seasonsCompleted = 0;
     for (const [tmdb_id, arr] of epsBySeries) {
       const d = tvMap.get(tmdb_id);
       if (!d?.seasons) continue;
+      const last = d.last_episode_to_air;
       const bySeason = new Map<number, Set<number>>();
       for (const e of arr) {
+        if (e.season_number <= 0) continue;
         const set = bySeason.get(e.season_number) ?? new Set<number>();
         set.add(e.episode_number);
         bySeason.set(e.season_number, set);
       }
       for (const s of d.seasons) {
         if (s.season_number === 0) continue;
-        if (s.episode_count <= 0) continue;
+        const ec = s.episode_count ?? 0;
+        if (ec <= 0) continue;
+        // Number of episodes of this season that already aired.
+        let aired = ec;
+        if (last) {
+          if (s.season_number > last.season_number) aired = 0;
+          else if (s.season_number === last.season_number)
+            aired = Math.min(last.episode_number, ec);
+        }
+        if (aired <= 0) continue;
+        // Only count a season as completed when it has fully aired.
+        if (aired < ec) continue;
         const watched = bySeason.get(s.season_number)?.size ?? 0;
-        if (watched >= s.episode_count) seasonsCompleted += 1;
+        if (watched >= ec) seasonsCompleted += 1;
       }
     }
 
@@ -307,5 +496,7 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       tvMinutes,
       movieMinutes,
       totalMinutes: tvMinutes + movieMinutes,
+      seriesTracked: tvIds.length,
+      unresolvedTitles,
     };
   });
