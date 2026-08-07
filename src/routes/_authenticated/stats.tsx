@@ -124,12 +124,18 @@ function StatsPage() {
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface p-6">
-          <h3 className="font-display text-lg font-semibold">Total watch time</h3>
+          <h3 className="font-display text-lg font-semibold">Shows tracked</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            About {Math.round((stats?.totalMinutes ?? 0) / 60)} hours of content
-            watched.
+            {advLoading
+              ? "Loading…"
+              : `${adv?.seriesTracked ?? 0} series with at least one episode watched${
+                  adv?.unresolvedTitles
+                    ? ` · ${adv.unresolvedTitles} title${adv.unresolvedTitles === 1 ? "" : "s"} couldn't be resolved`
+                    : ""
+                }.`}
           </p>
         </div>
+
       </div>
 
       {/* ============ Habits ============ */}
