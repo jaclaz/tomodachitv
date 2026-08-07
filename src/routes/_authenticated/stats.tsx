@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+
 import { getWatchlist } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
 import { getAdvancedStats } from "@/lib/stats.functions";
@@ -68,7 +70,9 @@ function BarRow({
 }
 
 function StatsPage() {
+  const [showAllProgress, setShowAllProgress] = useState(false);
   const { data: watchlist = [] } = useQuery({
+
     queryKey: ["watchlist"],
     queryFn: () => getWatchlist(),
   });
@@ -120,12 +124,18 @@ function StatsPage() {
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface p-6">
-          <h3 className="font-display text-lg font-semibold">Total watch time</h3>
+          <h3 className="font-display text-lg font-semibold">Shows tracked</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            About {Math.round((stats?.totalMinutes ?? 0) / 60)} hours of content
-            watched.
+            {advLoading
+              ? "Loading…"
+              : `${adv?.seriesTracked ?? 0} series with at least one episode watched${
+                  adv?.unresolvedTitles
+                    ? ` · ${adv.unresolvedTitles} title${adv.unresolvedTitles === 1 ? "" : "s"} couldn't be resolved`
+                    : ""
+                }.`}
           </p>
         </div>
+
       </div>
 
       {/* ============ Habits ============ */}
@@ -135,19 +145,20 @@ function StatsPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <Card title="Last 7 days">
             <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast7 ?? 0)}
+              {advLoading ? "…" : formatHours(adv?.minutesLast7 ?? 0)}
             </p>
           </Card>
           <Card title="Last 30 days">
             <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast30 ?? 0)}
+              {advLoading ? "…" : formatHours(adv?.minutesLast30 ?? 0)}
             </p>
           </Card>
           <Card title="Last 90 days">
             <p className="font-display text-3xl font-bold">
-              {formatHours(adv?.minutesLast90 ?? 0)}
+              {advLoading ? "…" : formatHours(adv?.minutesLast90 ?? 0)}
             </p>
           </Card>
+
         </div>
 
         <Card
@@ -240,9 +251,10 @@ function StatsPage() {
           </Card>
 
           <Card
-            title="Average rating"
-            subtitle="TMDB score of the titles you've watched"
+            title="Average TMDB score"
+            subtitle="Public TMDB rating of the titles you've watched — not your own rating"
           >
+
             {advLoading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
             ) : adv?.avgRating == null ? (
@@ -300,12 +312,13 @@ function StatsPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Card
             title="Seasons completed"
-            subtitle="Full seasons watched across all your shows"
+            subtitle="Fully aired seasons you've watched end to end (specials excluded)"
           >
             <p className="font-display text-4xl font-bold">
-              {adv?.seasonsCompleted ?? 0}
+              {advLoading ? "…" : (adv?.seasonsCompleted ?? 0)}
             </p>
           </Card>
+
 
           <Card
             title="Most-watched shows"
@@ -339,7 +352,7 @@ function StatsPage() {
 
         <Card
           title="Series in progress"
-          subtitle="Percentage of episodes you've watched"
+          subtitle="Aired episodes you've watched, most recent first"
         >
           {advLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
@@ -349,7 +362,10 @@ function StatsPage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {adv.seriesInProgress.map((s) => (
+              {(showAllProgress
+                ? adv.seriesInProgress
+                : adv.seriesInProgress.slice(0, 8)
+              ).map((s) => (
                 <div key={s.tmdb_id} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <Link
@@ -371,9 +387,21 @@ function StatsPage() {
                   </div>
                 </div>
               ))}
+              {adv.seriesInProgress.length > 8 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllProgress((v) => !v)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {showAllProgress
+                    ? "Show less"
+                    : `Show all ${adv.seriesInProgress.length}`}
+                </button>
+              )}
             </div>
           )}
         </Card>
+
       </section>
     </div>
   );
