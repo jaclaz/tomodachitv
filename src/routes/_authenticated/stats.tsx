@@ -339,7 +339,7 @@ function StatsPage() {
 
         <Card
           title="Series in progress"
-          subtitle="Percentage of episodes you've watched"
+          subtitle="Aired episodes you've watched, most recent first"
         >
           {advLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
@@ -349,7 +349,10 @@ function StatsPage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {adv.seriesInProgress.map((s) => (
+              {(showAllProgress
+                ? adv.seriesInProgress
+                : adv.seriesInProgress.slice(0, 8)
+              ).map((s) => (
                 <div key={s.tmdb_id} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <Link
@@ -371,9 +374,21 @@ function StatsPage() {
                   </div>
                 </div>
               ))}
+              {adv.seriesInProgress.length > 8 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllProgress((v) => !v)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {showAllProgress
+                    ? "Show less"
+                    : `Show all ${adv.seriesInProgress.length}`}
+                </button>
+              )}
             </div>
           )}
         </Card>
+
       </section>
     </div>
   );
