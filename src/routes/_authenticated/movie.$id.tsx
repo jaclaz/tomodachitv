@@ -20,6 +20,7 @@ import { CastList } from "@/components/cast-list";
 import { MovieInfo } from "@/components/movie-info";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 import { SearchBar } from "@/components/search-bar";
+import { RelatedTitles } from "@/components/related-titles";
 
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
@@ -254,6 +255,8 @@ function MovieDetailPage() {
       />
 
       <MovieInfo movie={movie} />
+
+      <RelatedTitles id={tmdbId} type="movie" />
     </div>
   );
 }

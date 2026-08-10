@@ -17,6 +17,7 @@ import { WatchProviders } from "@/components/watch-providers";
 import { WatchLanguages } from "@/components/watch-languages";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 import { SearchBar } from "@/components/search-bar";
+import { RelatedTitles } from "@/components/related-titles";
 
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
@@ -244,6 +245,8 @@ function SeriesDetailPage() {
       />
 
       <SeriesInfo series={series} />
+
+      <RelatedTitles id={tmdbId} type="tv" />
 
     </div>
   );
