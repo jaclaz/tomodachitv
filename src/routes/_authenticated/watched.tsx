@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
-import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
+import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watched")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -65,9 +65,12 @@ function WatchedPage() {
       search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, type: v }),
       replace: true,
     });
-  const clearFav = () =>
+  const toggleFav = () =>
     navigate({
-      search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, fav: undefined }),
+      search: (prev: { type: TypeTab; fav?: "1" }) => ({
+        ...prev,
+        fav: favOnly ? undefined : ("1" as const),
+      }),
       replace: true,
     });
 
@@ -104,7 +107,6 @@ function WatchedPage() {
   const { data: favorites = [] } = useQuery({
     queryKey: ["my-favorites"],
     queryFn: () => getMyFavorites(),
-    enabled: favOnly,
     staleTime: 60_000,
   });
 
@@ -182,20 +184,14 @@ function WatchedPage() {
   return (
     <div className="space-y-6">
       <div className="pt-12 sm:pt-0">
-        <h1 className="font-display text-2xl font-bold text-foreground">
-          {favOnly ? "Favorites" : "Watched"}
-        </h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Watched</h1>
         <p className="text-sm text-muted-foreground">
           {favOnly
             ? `${filtered.length} favorite ${type === "tv" ? "series" : "movies"}.`
             : `${library.length} title${library.length === 1 ? "" : "s"} in your library.`}
         </p>
-        {favOnly && (
-          <Button variant="ghost" size="sm" onClick={clearFav} className="mt-1 gap-1 px-0">
-            <X className="h-3 w-3" /> Show all watched
-          </Button>
-        )}
       </div>
+
 
 
       <div className="flex flex-col gap-3">
@@ -228,6 +224,18 @@ function WatchedPage() {
               )}
             </div>
             <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant={favOnly ? "default" : "outline"}
+                size="icon"
+                onClick={toggleFav}
+                aria-pressed={favOnly}
+                aria-label="Show favorites only"
+                title="Favorites only"
+                className="h-9 w-9 flex-shrink-0"
+              >
+                <Heart className={`h-4 w-4 ${favOnly ? "fill-current" : ""}`} />
+              </Button>
               <Button
                 type="button"
                 variant={gridSize === "normal" ? "default" : "outline"}
