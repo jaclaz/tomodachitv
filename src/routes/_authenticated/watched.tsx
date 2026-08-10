@@ -108,7 +108,6 @@ function WatchedPage() {
     queryKey: ["my-favorites"],
     queryFn: () => getMyFavorites(),
     staleTime: 60_000,
-    staleTime: 60_000,
   });
 
   const filtered = useMemo(() => {
