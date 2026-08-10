@@ -794,3 +794,38 @@ export const getUserRecommendations = createServerFn({ method: "POST" })
 
 
 
+
+// ============ Related titles (recommendations + similar) ============
+export interface RelatedTitle {
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  media_type: MediaType;
+}
+
+export const getRelatedTitles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { id: number; type: MediaType }) => input)
+  .handler(async ({ data }): Promise<RelatedTitle[]> => {
+    const map = new Map<number, RelatedTitle>();
+    const push = (results: any[] | undefined) => {
+      for (const r of results ?? []) {
+        if (!r?.id || !r.poster_path) continue;
+        if (map.has(r.id)) continue;
+        map.set(r.id, {
+          tmdb_id: r.id,
+          title: r.title ?? r.name ?? "Untitled",
+          poster_path: r.poster_path ?? null,
+          media_type: data.type,
+        });
+      }
+    };
+
+    const recs = await tmdbFetch(`/${data.type}/${data.id}/recommendations`).catch(() => null);
+    push(recs?.results);
+    if (map.size < 6) {
+      const similar = await tmdbFetch(`/${data.type}/${data.id}/similar`).catch(() => null);
+      push(similar?.results);
+    }
+    return Array.from(map.values()).slice(0, 20);
+  });
