@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { UnmatchedImports } from "@/components/unmatched-imports";
