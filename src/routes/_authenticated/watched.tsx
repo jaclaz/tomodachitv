@@ -60,9 +60,16 @@ function WatchedPage() {
   const favOnly = fav === "1";
   const navigate = useNavigate({ from: Route.fullPath });
   const setType = (v: TypeTab) =>
-    navigate({ search: (prev) => ({ ...prev, type: v }), replace: true });
+    navigate({
+      search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, type: v }),
+      replace: true,
+    });
   const clearFav = () =>
-    navigate({ search: (prev) => ({ ...prev, fav: undefined }), replace: true });
+    navigate({
+      search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, fav: undefined }),
+      replace: true,
+    });
+
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
 
   const [query, setQuery] = useState("");
