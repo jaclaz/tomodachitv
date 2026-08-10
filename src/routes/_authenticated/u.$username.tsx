@@ -351,6 +351,7 @@ function UserProfilePage() {
                 <PosterStrip
                   items={favTv}
                   emptyLabel="No favorite series yet."
+                  max={20}
                   actions={(item) => (
                     <PosterActions
                       media_type={item.media_type}
@@ -371,6 +372,7 @@ function UserProfilePage() {
                 <PosterStrip
                   items={favMovies}
                   emptyLabel="No favorite movies yet."
+                  max={20}
                   actions={(item) => (
                     <PosterActions
                       media_type={item.media_type}
