@@ -352,6 +352,9 @@ function UserProfilePage() {
                   items={favTv}
                   emptyLabel="No favorite series yet."
                   max={20}
+                  moreHref={profile.is_self && favTv.length > 20 ? "/watched" : undefined}
+                  moreSearch={{ type: "tv", fav: "1" }}
+                  moreLabel="See all favorites"
                   actions={(item) => (
                     <PosterActions
                       media_type={item.media_type}
@@ -373,6 +376,9 @@ function UserProfilePage() {
                   items={favMovies}
                   emptyLabel="No favorite movies yet."
                   max={20}
+                  moreHref={profile.is_self && favMovies.length > 20 ? "/watched" : undefined}
+                  moreSearch={{ type: "movie", fav: "1" }}
+                  moreLabel="See all favorites"
                   actions={(item) => (
                     <PosterActions
                       media_type={item.media_type}
@@ -383,6 +389,7 @@ function UserProfilePage() {
                     />
                   )}
                 />
+
               </div>
             )}
           </div>
