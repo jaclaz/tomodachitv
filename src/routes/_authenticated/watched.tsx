@@ -107,7 +107,7 @@ function WatchedPage() {
   const { data: favorites = [] } = useQuery({
     queryKey: ["my-favorites"],
     queryFn: () => getMyFavorites(),
-    enabled: favOnly,
+    staleTime: 60_000,
     staleTime: 60_000,
   });
 
