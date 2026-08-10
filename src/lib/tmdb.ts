@@ -669,10 +669,22 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
   });
 
 // ============ Personalized recommendations ============
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const copy = [...arr];
+  let rng = Math.abs(seed) + 1;
+  for (let i = copy.length - 1; i > 0; i--) {
+    rng = (rng * 9301 + 49297) % 233280;
+    const j = Math.floor((rng / 233280) * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export const getUserRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
+  .validator((input: { seed: number }) => input)
   .handler(
-    async ({ context }): Promise<{ tv: MediaItem[]; movie: MediaItem[] }> => {
+    async ({ data, context }): Promise<{ tv: MediaItem[]; movie: MediaItem[] }> => {
       const [recentEpisodes, recentMovies] = await Promise.all([
         context.supabase
           .from("watched_episodes")
@@ -725,20 +737,27 @@ export const getUserRecommendations = createServerFn({ method: "POST" })
         ]);
       }
 
-      const tvSeedIds = [
-        ...new Set(
-          ((recentEpisodes.data ?? []) as { tmdb_id: number }[]).map(
-            (e) => e.tmdb_id
-          )
-        ),
-      ].slice(0, 5);
-      const movieSeedIds = [
-        ...new Set(
-          ((recentMovies.data ?? []) as { tmdb_id: number }[]).map(
-            (m) => m.tmdb_id
-          )
-        ),
-      ].slice(0, 5);
+      const seed = data.seed ?? 0;
+      const tvSeedIds = seededShuffle(
+        [
+          ...new Set(
+            ((recentEpisodes.data ?? []) as { tmdb_id: number }[]).map(
+              (e) => e.tmdb_id
+            )
+          ),
+        ],
+        seed
+      ).slice(0, 5);
+      const movieSeedIds = seededShuffle(
+        [
+          ...new Set(
+            ((recentMovies.data ?? []) as { tmdb_id: number }[]).map(
+              (m) => m.tmdb_id
+            )
+          ),
+        ],
+        seed + 1
+      ).slice(0, 5);
 
 
       async function aggregate<T>(
