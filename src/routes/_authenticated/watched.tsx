@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getWatchedLibrary } from "@/lib/watched-library.functions";
+import { getMyFavorites } from "@/lib/lists.functions";
 import { getGenres, posterUrl, type MediaType, type SortBy } from "@/lib/tmdb";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -19,9 +20,11 @@ import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/watched")({
   validateSearch: (search: Record<string, unknown>) => ({
     type: (search.type === "movie" ? "movie" : "tv") as "tv" | "movie",
+    fav: search.fav === "1" || search.fav === true ? ("1" as const) : undefined,
   }),
   component: WatchedPage,
 });
+
 
 type TypeTab = "tv" | "movie";
 type WatchedSort = "recent.desc" | "recent.asc" | "rating.desc" | "release.desc" | "title.asc";
@@ -54,11 +57,22 @@ const DEFAULTS: Filters = {
 };
 
 function WatchedPage() {
-  const { type } = Route.useSearch();
+  const { type, fav } = Route.useSearch();
+  const favOnly = fav === "1";
   const navigate = useNavigate({ from: Route.fullPath });
   const setType = (v: TypeTab) =>
-    navigate({ search: (prev: { type: TypeTab }) => ({ ...prev, type: v }), replace: true });
+    navigate({
+      search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, type: v }),
+      replace: true,
+    });
+  const clearFav = () =>
+    navigate({
+      search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, fav: undefined }),
+      replace: true,
+    });
+
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
+
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
     if (typeof window === "undefined") return "normal";
@@ -87,9 +101,40 @@ function WatchedPage() {
   });
   const genres = genresData?.genres ?? [];
 
+  const { data: favorites = [] } = useQuery({
+    queryKey: ["my-favorites"],
+    queryFn: () => getMyFavorites(),
+    enabled: favOnly,
+    staleTime: 60_000,
+  });
+
   const filtered = useMemo(() => {
     let list = library.slice();
+    if (favOnly) {
+      const inLibrary = new Set(list.map((i) => `${i.media_type}-${i.tmdb_id}`));
+      const favKeys = new Set(favorites.map((f) => `${f.media_type}-${f.tmdb_id}`));
+      // keep favorites, and add favorites that are not in the watched library
+      list = list.filter((i) => favKeys.has(`${i.media_type}-${i.tmdb_id}`));
+      for (const f of favorites) {
+        if (inLibrary.has(`${f.media_type}-${f.tmdb_id}`)) continue;
+        list.push({
+          media_type: f.media_type as "tv" | "movie",
+          tmdb_id: f.tmdb_id,
+          title: f.title,
+          poster_path: f.poster_path,
+          backdrop_path: null,
+          vote_average: null,
+          release_date: null,
+          genre_ids: [],
+          watched_at: f.added_at,
+          episodes_watched: null,
+          series_status: null,
+          dropped: false,
+        });
+      }
+    }
     list = list.filter((i) => i.media_type === type);
+
     const q = query.trim().toLowerCase();
     if (q !== "") list = list.filter((i) => i.title.toLowerCase().includes(q));
     if (filters.genreId != null)
@@ -122,7 +167,7 @@ function WatchedPage() {
       }
     });
     return list;
-  }, [library, type, filters, query]);
+  }, [library, favorites, favOnly, type, filters, query]);
 
   const currentDecadeIdx = DECADES.findIndex(
     (d) => d.from === filters.yearFrom && d.to === filters.yearTo,
@@ -137,11 +182,21 @@ function WatchedPage() {
   return (
     <div className="space-y-6">
       <div className="pt-12 sm:pt-0">
-        <h1 className="font-display text-2xl font-bold text-foreground">Watched</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">
+          {favOnly ? "Favorites" : "Watched"}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          {library.length} title{library.length === 1 ? "" : "s"} in your library.
+          {favOnly
+            ? `${filtered.length} favorite ${type === "tv" ? "series" : "movies"}.`
+            : `${library.length} title${library.length === 1 ? "" : "s"} in your library.`}
         </p>
+        {favOnly && (
+          <Button variant="ghost" size="sm" onClick={clearFav} className="mt-1 gap-1 px-0">
+            <X className="h-3 w-3" /> Show all watched
+          </Button>
+        )}
       </div>
+
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
