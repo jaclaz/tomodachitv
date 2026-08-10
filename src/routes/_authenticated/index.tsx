@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Shuffle } from "lucide-react";
 import {
   getTrendingSeries,
   getTrendingMovies,
@@ -14,6 +16,7 @@ import { MediaCard } from "@/components/media-card";
 import { SearchBar } from "@/components/search-bar";
 import { CurrentlyWatching } from "@/components/currently-watching";
 import { UpcomingPreview } from "@/components/upcoming-preview";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: HomePage,
