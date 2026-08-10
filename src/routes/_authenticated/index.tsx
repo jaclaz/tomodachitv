@@ -139,13 +139,25 @@ function HomePage() {
       </section>
 
       <section className="space-y-5">
-        <div>
-          <h2 className="font-display text-xl font-semibold text-foreground">
-            Recommended for you
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Based on what you've been watching.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl font-semibold text-foreground">
+              Recommended for you
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Based on what you've been watching.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRecSeed((s) => s + 1)}
+            disabled={recLoading}
+            className="gap-2"
+          >
+            <Shuffle className="h-4 w-4" />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
         </div>
         <MediaRow
           title="TV Shows"
