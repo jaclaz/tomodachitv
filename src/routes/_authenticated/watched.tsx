@@ -100,9 +100,40 @@ function WatchedPage() {
   });
   const genres = genresData?.genres ?? [];
 
+  const { data: favorites = [] } = useQuery({
+    queryKey: ["my-favorites"],
+    queryFn: () => getMyFavorites(),
+    enabled: favOnly,
+    staleTime: 60_000,
+  });
+
   const filtered = useMemo(() => {
     let list = library.slice();
+    if (favOnly) {
+      const inLibrary = new Set(list.map((i) => `${i.media_type}-${i.tmdb_id}`));
+      const favKeys = new Set(favorites.map((f) => `${f.media_type}-${f.tmdb_id}`));
+      // keep favorites, and add favorites that are not in the watched library
+      list = list.filter((i) => favKeys.has(`${i.media_type}-${i.tmdb_id}`));
+      for (const f of favorites) {
+        if (inLibrary.has(`${f.media_type}-${f.tmdb_id}`)) continue;
+        list.push({
+          media_type: f.media_type as "tv" | "movie",
+          tmdb_id: f.tmdb_id,
+          title: f.title,
+          poster_path: f.poster_path,
+          backdrop_path: null,
+          vote_average: null,
+          release_date: null,
+          genre_ids: [],
+          watched_at: f.added_at,
+          episodes_watched: null,
+          series_status: null,
+          dropped: false,
+        });
+      }
+    }
     list = list.filter((i) => i.media_type === type);
+
     const q = query.trim().toLowerCase();
     if (q !== "") list = list.filter((i) => i.title.toLowerCase().includes(q));
     if (filters.genreId != null)
