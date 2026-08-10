@@ -65,9 +65,12 @@ function WatchedPage() {
       search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, type: v }),
       replace: true,
     });
-  const clearFav = () =>
+  const toggleFav = () =>
     navigate({
-      search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, fav: undefined }),
+      search: (prev: { type: TypeTab; fav?: "1" }) => ({
+        ...prev,
+        fav: favOnly ? undefined : ("1" as const),
+      }),
       replace: true,
     });
 
