@@ -9,13 +9,13 @@ Aggiungere nella pagina `/import` una sezione informativa concisa, a elenco punt
 - **Componente UI**: un nuovo box rientrato (es. `rounded-2xl border border-border bg-surface p-6`) con un titolo tipo "How it works" e un elenco a punti.
 
 ## Contenuto della guida (draft)
-1. **Upload your ZIP** — drag & drop o selezione del file esportato da TV Time (o dal backup di Tomodachi).
-2. **We parse it in your browser** — i CSV dentro lo ZIP vengono letti localmente; nessun dato grezzo lascia il dispositivo.
-3. **We match titles on TMDB** — le serie, gli episodi e i film vengono collegati ai corrispettivi ID TMDB.
-4. **Background resolution** — i titoli non trovati subito vengono messi in coda e riprovati automaticamente per evitare il rate-limit di TMDB.
-5. **Manual match** — se un titolo non viene riconosciuto, compare nella lista "Couldn't be imported" dove puoi cercarlo manualmente su TMDB.
-6. **Library sync** — alla fine gli stati vengono sincronizzati: film visti → completati, serie TV con episodi visti → watching/completed.
-7. **Export & reset** — puoi esportare la libreria come ZIP oppure ripulire solo TV, solo film o tutto.
+1. **Upload your ZIP** — drop the TV Time export (or your Tomodachi backup ZIP) into the box.
+2. **Matching on TMDB** — we try to link every series, episode and movie to its TMDB entry.
+3. **Manual match** — if a title isn't recognized, it appears under "Couldn't be imported" so you can search TMDB and link it yourself.
+4. **Library sync** — we turn your matched data into watched/completed entries in your library.
+5. **Something looks off?** — click **Sync library statuses** again to fix statuses that didn't update correctly.
+6. **Export & reset** — you can download your library as a ZIP, or wipe just TV, just movies, or everything.
+
 
 ## Implementazione tecnica
 - Creare un componente locale o inserire direttamente JSX nell'ordine della pagina.
