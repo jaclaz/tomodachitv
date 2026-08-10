@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, FileArchive, Download, RefreshCw, AlertCircle, Trash2, Zap, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { UnmatchedImports } from "@/components/unmatched-imports";
@@ -795,6 +795,27 @@ function ImportPage() {
           later.
         </p>
       </div>
+
+      <div className="rounded-2xl border border-border bg-surface p-6">
+        <div className="flex items-start gap-3">
+          <Info className="mt-0.5 h-5 w-5 text-primary" />
+          <div>
+            <p className="font-display text-base font-semibold">How it works</p>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+              <li>Drop your TV Time export (or Tomodachi backup ZIP) into the box.</li>
+              <li>We try to match every series, episode and movie to a TMDB entry.</li>
+              <li>
+                Items that don't match appear under "Couldn't be imported" — you can search TMDB and
+                link them manually.
+              </li>
+              <li>Matched data becomes watched or completed entries in your library.</li>
+              <li>If something looks off, click "Sync library statuses" again to fix it.</li>
+              <li>You can also export your library as a ZIP, or reset TV, movies, or everything.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
 
       <div className="rounded-2xl border border-border bg-surface p-8">
         <label className="flex cursor-pointer flex-col items-center justify-center gap-4 text-center">
