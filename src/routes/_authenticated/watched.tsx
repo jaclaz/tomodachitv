@@ -226,6 +226,18 @@ function WatchedPage() {
             <div className="flex items-center gap-1">
               <Button
                 type="button"
+                variant={favOnly ? "default" : "outline"}
+                size="icon"
+                onClick={toggleFav}
+                aria-pressed={favOnly}
+                aria-label="Show favorites only"
+                title="Favorites only"
+                className="h-9 w-9 flex-shrink-0"
+              >
+                <Heart className={`h-4 w-4 ${favOnly ? "fill-current" : ""}`} />
+              </Button>
+              <Button
+                type="button"
                 variant={gridSize === "normal" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setGrid("normal")}
