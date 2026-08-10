@@ -77,10 +77,13 @@ function HomePage() {
     queryFn: () => getTrendingMovies(),
   });
 
+  const [recSeed, setRecSeed] = useState(0);
+
   const { data: recommendations, isFetching: recLoading } = useQuery({
-    queryKey: ["recommendations"],
-    queryFn: () => getUserRecommendations(),
-    staleTime: 1000 * 60 * 10,
+    queryKey: ["recommendations", recSeed],
+    queryFn: () => getUserRecommendations({ data: { seed: recSeed } }),
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5,
   });
 
   const { data: watchlist = [] } = useQuery({
