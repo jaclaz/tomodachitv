@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { Shuffle } from "lucide-react";
 import {
   getTrendingSeries,
   getTrendingMovies,
@@ -14,6 +16,7 @@ import { MediaCard } from "@/components/media-card";
 import { SearchBar } from "@/components/search-bar";
 import { CurrentlyWatching } from "@/components/currently-watching";
 import { UpcomingPreview } from "@/components/upcoming-preview";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: HomePage,
@@ -74,10 +77,20 @@ function HomePage() {
     queryFn: () => getTrendingMovies(),
   });
 
+  const [recSeed, setRecSeed] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRecSeed((s) => s + 1);
+    }, 1000 * 60 * 30);
+    return () => clearInterval(interval);
+  }, []);
+
   const { data: recommendations, isFetching: recLoading } = useQuery({
-    queryKey: ["recommendations"],
-    queryFn: () => getUserRecommendations(),
-    staleTime: 1000 * 60 * 10,
+    queryKey: ["recommendations", recSeed],
+    queryFn: () => getUserRecommendations({ data: { seed: recSeed } }),
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5,
   });
 
   const { data: watchlist = [] } = useQuery({
@@ -133,13 +146,25 @@ function HomePage() {
       </section>
 
       <section className="space-y-5">
-        <div>
-          <h2 className="font-display text-xl font-semibold text-foreground">
-            Recommended for you
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Based on what you've been watching.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl font-semibold text-foreground">
+              Recommended for you
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Based on what you've been watching.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRecSeed((s) => s + 1)}
+            disabled={recLoading}
+            className="gap-2"
+          >
+            <Shuffle className="h-4 w-4" />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
         </div>
         <MediaRow
           title="TV Shows"
