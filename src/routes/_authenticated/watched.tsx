@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getWatchedLibrary } from "@/lib/watched-library.functions";
+import { getMyFavorites } from "@/lib/lists.functions";
 import { getGenres, posterUrl, type MediaType, type SortBy } from "@/lib/tmdb";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
