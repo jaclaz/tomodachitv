@@ -56,11 +56,15 @@ const DEFAULTS: Filters = {
 };
 
 function WatchedPage() {
-  const { type } = Route.useSearch();
+  const { type, fav } = Route.useSearch();
+  const favOnly = fav === "1";
   const navigate = useNavigate({ from: Route.fullPath });
   const setType = (v: TypeTab) =>
-    navigate({ search: (prev: { type: TypeTab }) => ({ ...prev, type: v }), replace: true });
+    navigate({ search: (prev) => ({ ...prev, type: v }), replace: true });
+  const clearFav = () =>
+    navigate({ search: (prev) => ({ ...prev, fav: undefined }), replace: true });
   const [filters, setFilters] = useState<Filters>(DEFAULTS);
+
   const [query, setQuery] = useState("");
   const [gridSize, setGridSize] = useState<"normal" | "small">(() => {
     if (typeof window === "undefined") return "normal";
