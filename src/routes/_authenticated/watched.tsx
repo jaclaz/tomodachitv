@@ -19,9 +19,11 @@ import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3 } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/watched")({
   validateSearch: (search: Record<string, unknown>) => ({
     type: (search.type === "movie" ? "movie" : "tv") as "tv" | "movie",
+    fav: search.fav === "1" || search.fav === true ? ("1" as const) : undefined,
   }),
   component: WatchedPage,
 });
+
 
 type TypeTab = "tv" | "movie";
 type WatchedSort = "recent.desc" | "recent.asc" | "rating.desc" | "release.desc" | "title.asc";
