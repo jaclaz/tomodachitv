@@ -185,20 +185,14 @@ function WatchedPage() {
   return (
     <div className="space-y-6">
       <div className="pt-12 sm:pt-0">
-        <h1 className="font-display text-2xl font-bold text-foreground">
-          {favOnly ? "Favorites" : "Watched"}
-        </h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Watched</h1>
         <p className="text-sm text-muted-foreground">
           {favOnly
             ? `${filtered.length} favorite ${type === "tv" ? "series" : "movies"}.`
             : `${library.length} title${library.length === 1 ? "" : "s"} in your library.`}
         </p>
-        {favOnly && (
-          <Button variant="ghost" size="sm" onClick={clearFav} className="mt-1 gap-1 px-0">
-            <X className="h-3 w-3" /> Show all watched
-          </Button>
-        )}
       </div>
+
 
 
       <div className="flex flex-col gap-3">
