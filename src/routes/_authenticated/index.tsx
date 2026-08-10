@@ -79,6 +79,13 @@ function HomePage() {
 
   const [recSeed, setRecSeed] = useState(0);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRecSeed((s) => s + 1);
+    }, 1000 * 60 * 30);
+    return () => clearInterval(interval);
+  }, []);
+
   const { data: recommendations, isFetching: recLoading } = useQuery({
     queryKey: ["recommendations", recSeed],
     queryFn: () => getUserRecommendations({ data: { seed: recSeed } }),
