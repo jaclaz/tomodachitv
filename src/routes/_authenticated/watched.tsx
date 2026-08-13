@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
 import { getMyRatings } from "@/lib/ratings.functions";
 import { ScoreBadge } from "@/components/rating-input";
-import { PopcornIcon } from "@/components/popcorn-icon";
 import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watched")({
