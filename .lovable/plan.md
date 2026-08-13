@@ -7,7 +7,7 @@ Un sistema di valutazione personale, separato dal punteggio TMDB (che resta a st
 - Nella scheda di un film o di una serie compare una fila di 5 popcorn cliccabili (mezzo popcorn = mezzo voto), accanto ai pulsanti "Mark as watched" / preferiti.
 - Cliccando si salva subito il voto; cliccando di nuovo sullo stesso valore si rimuove il voto.
 - Il voto personale appare anche sulle card dei poster (piccolo badge popcorn) così si distingue a colpo d'occhio dal voto TMDB con la stella.
-- Nella pagina Watched, accanto a ricerca / preferiti / dimensione griglia, si aggiunge un filtro "Voto": scelta rapida tra Tutti, 4,5+, 4+, 3+, 2+ e "Non votati", più ordinamento per voto (dal più alto).
+- Nella pagina Watched, accanto a ricerca / preferiti / dimensione griglia, si aggiunge un filtro "Voto": scelta rapida tra Tutti, 5, 4,5+, 4+, 3,5+, 3+, 2,5+, 2+, 1,5+, 1+, 0,5+ e "Non votati", più ordinamento per voto (dal più alto).
 - Nel profilo pubblico il voto è visibile agli utenti che ti seguono, coerentemente con come già funzionano watched/preferiti.
 
 ## Simbolo
