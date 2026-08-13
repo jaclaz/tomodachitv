@@ -193,3 +193,77 @@ export function ScoreBadge({ value, className }: ScoreBadgeProps) {
     </span>
   );
 }
+
+interface RatingButtonProps {
+  media_type: RatingMediaKind;
+  tmdb_id: number;
+  title?: string | null;
+  poster_path?: string | null;
+}
+
+/** Dropdown button matching the other detail-page actions. */
+export function RatingButton({
+  media_type,
+  tmdb_id,
+  title,
+  poster_path,
+}: RatingButtonProps) {
+  const queryClient = useQueryClient();
+  const { data: ratings = [] } = useQuery({
+    queryKey: ["my-ratings"],
+    queryFn: () => getMyRatings(),
+    staleTime: 60_000,
+  });
+
+  const current =
+    ratings.find((r) => r.media_type === media_type && r.tmdb_id === tmdb_id)
+      ?.rating ?? 0;
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["my-ratings"] });
+
+  const saveMutation = useMutation({
+    mutationFn: (value: number) =>
+      setRatingFn({
+        data: { media_type, tmdb_id, rating: value, title, poster_path },
+      }),
+    onSettled: invalidate,
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: () => clearRatingFn({ data: { media_type, tmdb_id } }),
+    onSettled: invalidate,
+  });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant={current > 0 ? "secondary" : "outline"} className="gap-2">
+          <span aria-hidden="true">🍿</span>
+          {current > 0 ? current.toFixed(1) : "Rate"}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-40">
+        <DropdownMenuLabel>Your score</DropdownMenuLabel>
+        {[...STEPS].reverse().map((v) => (
+          <DropdownMenuItem
+            key={v}
+            onSelect={() => saveMutation.mutate(v)}
+            className="justify-between"
+          >
+            <span>🍿 {v.toFixed(1)}</span>
+            {current === v && <span className="text-xs">✓</span>}
+          </DropdownMenuItem>
+        ))}
+        {current > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => clearMutation.mutate()}>
+              Remove score
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
