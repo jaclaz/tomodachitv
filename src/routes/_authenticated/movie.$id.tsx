@@ -1,3 +1,4 @@
+import { ExpandableText } from "@/components/expandable-text";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMovieDetails, posterUrl, backdropUrl } from "@/lib/tmdb";
@@ -186,9 +187,12 @@ function MovieDetailPage() {
               {movie.title}
             </h1>
 
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-5 sm:text-base">
-              {movie.overview || "No description available."}
-            </p>
+            <ExpandableText
+              text={movie.overview || "No description available."}
+              lines={5}
+              className="text-sm leading-relaxed text-muted-foreground sm:text-base"
+            />
+
 
             <div className="mt-auto flex flex-wrap gap-3">
               {isUnreleased ? (

@@ -62,12 +62,15 @@ function WatchedPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const setType = (v: TypeTab) =>
     navigate({
-      search: (prev: { type: TypeTab; fav?: "1" }) => ({ ...prev, type: v }),
+      search: (prev: { type: TypeTab; fav: "1" | undefined }) => ({
+        ...prev,
+        type: v,
+      }),
       replace: true,
     });
   const toggleFav = () =>
     navigate({
-      search: (prev: { type: TypeTab; fav?: "1" }) => ({
+      search: (prev: { type: TypeTab; fav: "1" | undefined }) => ({
         ...prev,
         fav: favOnly ? undefined : ("1" as const),
       }),

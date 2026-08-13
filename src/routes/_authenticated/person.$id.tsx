@@ -1,3 +1,4 @@
+import { ExpandableText } from "@/components/expandable-text";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -95,9 +96,11 @@ function PersonDetailPage() {
             </p>
           )}
           {person.biography && (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-              {person.biography}
-            </p>
+            <ExpandableText
+              text={person.biography}
+              lines={6}
+              className="text-sm leading-relaxed text-muted-foreground"
+            />
           )}
         </div>
         <div className="clear-both" />
