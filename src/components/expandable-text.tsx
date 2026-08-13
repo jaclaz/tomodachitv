@@ -36,6 +36,7 @@ export function ExpandableText({
     <div className={cn("max-w-2xl", className)}>
       <p
         ref={ref}
+        id={contentId}
         className="whitespace-pre-line"
         style={
           expanded
@@ -54,9 +55,14 @@ export function ExpandableText({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          className="mt-1 rounded-sm text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          {expanded ? lessLabel : `… ${moreLabel}`}
+          <span aria-hidden="true">{expanded ? lessLabel : `… ${moreLabel}`}</span>
+          <span className="sr-only">
+            {expanded ? "Show less description" : "Show full description"}
+          </span>
         </button>
       )}
     </div>
