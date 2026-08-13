@@ -8,6 +8,15 @@ import {
   type UserRating,
 } from "@/lib/ratings.functions";
 import { PopcornIcon, type PopcornFill } from "@/components/popcorn-icon";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 interface RatingInputProps {
