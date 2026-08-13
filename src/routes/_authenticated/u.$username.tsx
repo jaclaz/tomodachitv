@@ -23,6 +23,7 @@ import { Lock, UserPlus, UserMinus, Pencil, Check, X, Loader2, Tv, Film, Star } 
 import { useState } from "react";
 import { toast } from "sonner";
 import { PosterStrip, type PosterItem } from "@/components/poster-strip";
+import { getUserRatings } from "@/lib/ratings.functions";
 import { PosterActions } from "@/components/poster-actions";
 import { UserListsSection } from "@/components/user-lists-section";
 import { ReportProfileButton } from "@/components/report-profile-button";
@@ -63,6 +64,19 @@ function UserProfilePage() {
     queryFn: () => getUserRecentlyWatchedShows({ data: { user_id: profile!.id } }),
     enabled: !!profile && canSeeWatched,
   });
+
+  const { data: userRatings = [] } = useQuery({
+    queryKey: ["user-ratings", profile?.id],
+    queryFn: () => getUserRatings({ data: { user_id: profile!.id } }),
+    enabled: !!profile?.id,
+    staleTime: 60_000,
+  });
+
+  const scoreMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of userRatings) m.set(`${r.media_type}-${r.tmdb_id}`, r.rating);
+    return m;
+  }, [userRatings]);
 
   const { data: favorites = [] } = useQuery({
     queryKey: ["user-favorites", profile?.id],
@@ -274,6 +288,8 @@ function UserProfilePage() {
                   <Tv className="h-4 w-4" /> TV Shows ({watchedTv.length})
                 </h3>
                 <PosterStrip
+              scores={scoreMap}
+                  scores={scoreMap}
                   items={watchedTv}
                   emptyLabel="No series watched yet."
                   max={20}
@@ -287,6 +303,8 @@ function UserProfilePage() {
                   <Film className="h-4 w-4" /> Movies ({watchedMovies.length})
                 </h3>
                 <PosterStrip
+              scores={scoreMap}
+                  scores={scoreMap}
                   items={watchedMovies}
                   emptyLabel="No movies watched yet."
                   max={20}
@@ -305,6 +323,7 @@ function UserProfilePage() {
               <Tv className="h-4 w-4" /> TV Shows ({watchlistTv.length})
             </h3>
             <PosterStrip
+              scores={scoreMap}
               items={watchlistTv}
               emptyLabel="No series in watchlist."
               max={20}
@@ -318,6 +337,7 @@ function UserProfilePage() {
               <Film className="h-4 w-4" /> Movies ({watchlistMovies.length})
             </h3>
             <PosterStrip
+              scores={scoreMap}
               items={watchlistMovies}
               emptyLabel="No movies in watchlist."
               max={20}
@@ -349,6 +369,8 @@ function UserProfilePage() {
                   <Tv className="h-4 w-4" /> Favorite series
                 </h3>
                 <PosterStrip
+              scores={scoreMap}
+                  scores={scoreMap}
                   items={favTv}
                   emptyLabel="No favorite series yet."
                   max={20}
@@ -373,6 +395,8 @@ function UserProfilePage() {
                   <Film className="h-4 w-4" /> Favorite movies
                 </h3>
                 <PosterStrip
+              scores={scoreMap}
+                  scores={scoreMap}
                   items={favMovies}
                   emptyLabel="No favorite movies yet."
                   max={20}
