@@ -22,7 +22,7 @@ import { MovieInfo } from "@/components/movie-info";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 import { SearchBar } from "@/components/search-bar";
 import { RelatedTitles } from "@/components/related-titles";
-import { RatingInput } from "@/components/rating-input";
+import { RatingButton } from "@/components/rating-input";
 
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
@@ -194,12 +194,6 @@ function MovieDetailPage() {
               className="text-sm leading-relaxed text-muted-foreground sm:text-base"
             />
 
-            <RatingInput
-              media_type="movie"
-              tmdb_id={movie.id}
-              title={movie.title}
-              poster_path={movie.poster_path}
-            />
 
 
 
@@ -240,6 +234,12 @@ function MovieDetailPage() {
                 )}
                 {inWatchlist ? "In your library" : "Add to library"}
               </Button>
+              <RatingButton
+                media_type="movie"
+                tmdb_id={movie.id}
+                title={movie.title}
+                poster_path={movie.poster_path}
+              />
               <FavoriteButton
                 media_type="movie"
                 tmdb_id={movie.id}
