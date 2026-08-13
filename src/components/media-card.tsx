@@ -1,6 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { posterUrl, type MediaItem } from "@/lib/tmdb";
 import { Star } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getMyRatings } from "@/lib/ratings.functions";
+import { ScoreBadge } from "@/components/rating-input";
 
 interface MediaCardProps {
   item: MediaItem;
@@ -12,6 +15,15 @@ export function MediaCard({ item }: MediaCardProps) {
     ? new Date(item.release_date).getFullYear()
     : null;
   const to = item.media_type === "tv" ? "/serie/$id" : "/movie/$id";
+
+  const { data: ratings = [] } = useQuery({
+    queryKey: ["my-ratings"],
+    queryFn: () => getMyRatings(),
+    staleTime: 60_000,
+  });
+  const myScore =
+    ratings.find((r) => r.media_type === item.media_type && r.tmdb_id === item.id)?.rating ??
+    null;
 
   return (
     <Link
@@ -51,6 +63,7 @@ export function MediaCard({ item }: MediaCardProps) {
             <Star className="h-3 w-3 fill-rating text-rating" />
             {item.vote_average.toFixed(1)}
           </span>
+          <ScoreBadge value={myScore} />
         </div>
       </div>
     </Link>

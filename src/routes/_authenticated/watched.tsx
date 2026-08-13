@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PosterActions } from "@/components/poster-actions";
+import { getMyRatings } from "@/lib/ratings.functions";
+import { ScoreBadge } from "@/components/rating-input";
 import { Star, X, CheckCircle2, Search, Grid2x2, Grid3x3, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/watched")({
@@ -27,7 +29,15 @@ export const Route = createFileRoute("/_authenticated/watched")({
 
 
 type TypeTab = "tv" | "movie";
-type WatchedSort = "recent.desc" | "recent.asc" | "rating.desc" | "release.desc" | "title.asc";
+type WatchedSort =
+  | "recent.desc"
+  | "recent.asc"
+  | "rating.desc"
+  | "score.desc"
+  | "release.desc"
+  | "title.asc";
+
+const SCORES = [5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5];
 
 const CURRENT_YEAR = new Date().getFullYear();
 const DECADES = [
@@ -45,6 +55,8 @@ interface Filters {
   yearFrom: number | null;
   yearTo: number | null;
   minRating: number | null;
+  minScore: number | null;
+  scoreUnrated: boolean;
   sort: WatchedSort;
 }
 
@@ -53,6 +65,8 @@ const DEFAULTS: Filters = {
   yearFrom: null,
   yearTo: null,
   minRating: null,
+  minScore: null,
+  scoreUnrated: false,
   sort: "recent.desc",
 };
 
@@ -113,6 +127,18 @@ function WatchedPage() {
     staleTime: 60_000,
   });
 
+  const { data: myRatings = [] } = useQuery({
+    queryKey: ["my-ratings"],
+    queryFn: () => getMyRatings(),
+    staleTime: 60_000,
+  });
+
+  const scoreMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of myRatings) m.set(`${r.media_type}-${r.tmdb_id}`, r.rating);
+    return m;
+  }, [myRatings]);
+
   const filtered = useMemo(() => {
     let list = library.slice();
     if (favOnly) {
@@ -157,6 +183,12 @@ function WatchedPage() {
       const r = filters.minRating;
       list = list.filter((i) => (i.vote_average ?? 0) >= r);
     }
+    if (filters.scoreUnrated) {
+      list = list.filter((i) => !scoreMap.has(`${i.media_type}-${i.tmdb_id}`));
+    } else if (filters.minScore != null) {
+      const min = filters.minScore;
+      list = list.filter((i) => (scoreMap.get(`${i.media_type}-${i.tmdb_id}`) ?? 0) >= min);
+    }
     list.sort((a, b) => {
       switch (filters.sort) {
         case "recent.desc":
@@ -165,6 +197,11 @@ function WatchedPage() {
           return a.watched_at.localeCompare(b.watched_at);
         case "rating.desc":
           return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+        case "score.desc":
+          return (
+            (scoreMap.get(`${b.media_type}-${b.tmdb_id}`) ?? 0) -
+            (scoreMap.get(`${a.media_type}-${a.tmdb_id}`) ?? 0)
+          );
         case "release.desc":
           return (b.release_date ?? "").localeCompare(a.release_date ?? "");
         case "title.asc":
@@ -172,7 +209,7 @@ function WatchedPage() {
       }
     });
     return list;
-  }, [library, favorites, favOnly, type, filters, query]);
+  }, [library, favorites, favOnly, type, filters, query, scoreMap]);
 
   const currentDecadeIdx = DECADES.findIndex(
     (d) => d.from === filters.yearFrom && d.to === filters.yearTo,
@@ -182,6 +219,8 @@ function WatchedPage() {
     filters.genreId != null ||
     filters.yearFrom != null ||
     filters.minRating != null ||
+    filters.minScore != null ||
+    filters.scoreUnrated ||
     filters.sort !== "recent.desc";
 
   return (
@@ -334,6 +373,36 @@ function WatchedPage() {
           </Select>
 
           <Select
+            value={
+              filters.scoreUnrated
+                ? "none"
+                : filters.minScore != null
+                  ? String(filters.minScore)
+                  : "all"
+            }
+            onValueChange={(v) =>
+              setFilters((f) => ({
+                ...f,
+                minScore: v === "all" || v === "none" ? null : Number(v),
+                scoreUnrated: v === "none",
+              }))
+            }
+          >
+            <SelectTrigger className="h-9 w-[150px] bg-surface">
+              <SelectValue placeholder="Your score" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any score</SelectItem>
+              {SCORES.map((sv) => (
+                <SelectItem key={sv} value={String(sv)}>
+                  {sv.toFixed(1)}+ popcorn
+                </SelectItem>
+              ))}
+              <SelectItem value="none">Not rated</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
             value={filters.sort}
             onValueChange={(v) => setFilters((f) => ({ ...f, sort: v as WatchedSort }))}
           >
@@ -344,6 +413,7 @@ function WatchedPage() {
               <SelectItem value="recent.desc">Recently watched</SelectItem>
               <SelectItem value="recent.asc">First watched</SelectItem>
               <SelectItem value="rating.desc">Highest rated</SelectItem>
+              <SelectItem value="score.desc">Your score</SelectItem>
               <SelectItem value="release.desc">Newest release</SelectItem>
               <SelectItem value="title.asc">A–Z</SelectItem>
             </SelectContent>
@@ -421,6 +491,7 @@ function WatchedPage() {
                     <Star className="h-3 w-3 fill-rating text-rating" />
                     {item.vote_average?.toFixed(1) ?? "—"}
                   </span>
+                  <ScoreBadge value={scoreMap.get(`${item.media_type}-${item.tmdb_id}`)} />
                   {item.episodes_watched != null && <span>{item.episodes_watched} ep</span>}
                 </div>
                 <div className="mt-2 flex justify-end">

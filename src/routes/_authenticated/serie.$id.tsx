@@ -19,6 +19,7 @@ import { WatchLanguages } from "@/components/watch-languages";
 import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 import { SearchBar } from "@/components/search-bar";
 import { RelatedTitles } from "@/components/related-titles";
+import { RatingInput } from "@/components/rating-input";
 
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
@@ -182,6 +183,13 @@ function SeriesDetailPage() {
               text={series.overview || "No description available."}
               lines={5}
               className="text-sm leading-relaxed text-muted-foreground sm:text-base"
+            />
+
+            <RatingInput
+              media_type="tv"
+              tmdb_id={series.id}
+              title={series.title}
+              poster_path={series.poster_path}
             />
 
 

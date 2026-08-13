@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { posterUrl } from "@/lib/tmdb";
 import { ChevronRight } from "lucide-react";
 import { ReactNode } from "react";
+import { ScoreBadge } from "@/components/rating-input";
 
 
 export type PosterMediaType = "movie" | "tv";
@@ -21,6 +22,7 @@ export function PosterStrip({
   moreHref,
   moreSearch,
   moreLabel = "See all",
+  scores,
 }: {
   items: PosterItem[];
   emptyLabel: string;
@@ -29,6 +31,8 @@ export function PosterStrip({
   moreHref?: string;
   moreSearch?: Record<string, string>;
   moreLabel?: string;
+  /** Optional map of `${media_type}-${tmdb_id}` -> personal popcorn score */
+  scores?: Map<string, number>;
 }) {
 
   if (items.length === 0) {
@@ -64,6 +68,11 @@ export function PosterStrip({
               </div>
             )}
           </Link>
+          {scores?.get(`${item.media_type}-${item.tmdb_id}`) != null && (
+            <div className="absolute left-1 top-1 rounded-md bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur">
+              <ScoreBadge value={scores.get(`${item.media_type}-${item.tmdb_id}`)} />
+            </div>
+          )}
           {actions && (
             <div className="absolute bottom-1 right-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
               {actions(item)}
