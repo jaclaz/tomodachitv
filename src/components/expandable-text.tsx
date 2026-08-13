@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface ExpandableTextProps {
@@ -18,6 +18,7 @@ export function ExpandableText({
   lessLabel = "less",
 }: ExpandableTextProps) {
   const ref = useRef<HTMLParagraphElement>(null);
+  const contentId = useId();
   const [expanded, setExpanded] = useState(false);
   const [truncated, setTruncated] = useState(false);
 
