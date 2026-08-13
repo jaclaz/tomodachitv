@@ -289,7 +289,6 @@ function UserProfilePage() {
                   <Tv className="h-4 w-4" /> TV Shows ({watchedTv.length})
                 </h3>
                 <PosterStrip
-              scores={scoreMap}
                   scores={scoreMap}
                   items={watchedTv}
                   emptyLabel="No series watched yet."
@@ -304,7 +303,6 @@ function UserProfilePage() {
                   <Film className="h-4 w-4" /> Movies ({watchedMovies.length})
                 </h3>
                 <PosterStrip
-              scores={scoreMap}
                   scores={scoreMap}
                   items={watchedMovies}
                   emptyLabel="No movies watched yet."
@@ -370,7 +368,6 @@ function UserProfilePage() {
                   <Tv className="h-4 w-4" /> Favorite series
                 </h3>
                 <PosterStrip
-              scores={scoreMap}
                   scores={scoreMap}
                   items={favTv}
                   emptyLabel="No favorite series yet."
@@ -396,7 +393,6 @@ function UserProfilePage() {
                   <Film className="h-4 w-4" /> Favorite movies
                 </h3>
                 <PosterStrip
-              scores={scoreMap}
                   scores={scoreMap}
                   items={favMovies}
                   emptyLabel="No favorite movies yet."
