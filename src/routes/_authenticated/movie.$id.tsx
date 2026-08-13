@@ -186,9 +186,12 @@ function MovieDetailPage() {
               {movie.title}
             </h1>
 
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-5 sm:text-base">
-              {movie.overview || "No description available."}
-            </p>
+            <ExpandableText
+              text={movie.overview || "No description available."}
+              lines={5}
+              className="text-sm leading-relaxed text-muted-foreground sm:text-base"
+            />
+
 
             <div className="mt-auto flex flex-wrap gap-3">
               {isUnreleased ? (

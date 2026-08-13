@@ -95,9 +95,11 @@ function PersonDetailPage() {
             </p>
           )}
           {person.biography && (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-              {person.biography}
-            </p>
+            <ExpandableText
+              text={person.biography}
+              lines={6}
+              className="text-sm leading-relaxed text-muted-foreground"
+            />
           )}
         </div>
         <div className="clear-both" />
