@@ -633,11 +633,11 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
     const slides: HighlightSlide[] = [];
 
 
-    const [tvPick] = pickRandom(tvTop, 1);
+    const [tvPick] = pickRandom(tvTop.filter(isNew), 1);
     if (tvPick)
       slides.push({ item: tvPick, label: "Trending TV this week" });
 
-    const [moviePick] = pickRandom(movieTop, 1);
+    const [moviePick] = pickRandom(movieTop.filter(isNew), 1);
     if (moviePick)
       slides.push({ item: moviePick, label: "Trending Movie this week" });
 
@@ -649,7 +649,10 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
     if (seedTvId) {
       try {
         const recs = await tmdbFetch(`/tv/${seedTvId}/recommendations`);
-        const list = ((recs.results as RawTv[]) ?? []).filter((r) => r.backdrop_path);
+        const list = ((recs.results as RawTv[]) ?? [])
+          .filter((r) => r.backdrop_path)
+          .map(mapTv)
+          .filter(isNew);
         const [pick] = pickRandom(list, 1);
         if (pick) {
           const { data: seed } = await context.supabase
@@ -659,7 +662,7 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
             .eq("tmdb_id", seedTvId)
             .maybeSingle();
           slides.push({
-            item: mapTv(pick),
+            item: pick,
             label: "Recommended series",
             reason: seed?.title ? `Because you watched ${seed.title}` : undefined,
           });
@@ -678,11 +681,14 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
     if (seedMovie) {
       try {
         const recs = await tmdbFetch(`/movie/${seedMovie.tmdb_id}/recommendations`);
-        const list = ((recs.results as RawMovie[]) ?? []).filter((r) => r.backdrop_path);
+        const list = ((recs.results as RawMovie[]) ?? [])
+          .filter((r) => r.backdrop_path)
+          .map(mapMovie)
+          .filter(isNew);
         const [pick] = pickRandom(list, 1);
         if (pick) {
           slides.push({
-            item: mapMovie(pick),
+            item: pick,
             label: "Recommended movie",
             reason: seedMovie.title ? `Because you watched ${seedMovie.title}` : undefined,
           });
@@ -694,7 +700,11 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
 
     // Fallback: if we have fewer than 3 slides, add more random trending picks
     if (slides.length < 3) {
-      const extras = pickRandom([...tvTop, ...movieTop], 3 - slides.length);
+      const chosen = new Set(slides.map((s) => `${s.item.media_type}-${s.item.id}`));
+      const pool = [...tvTop, ...movieTop].filter(
+        (i) => isNew(i) && !chosen.has(`${i.media_type}-${i.id}`),
+      );
+      const extras = pickRandom(pool, 3 - slides.length);
       for (const item of extras) {
         slides.push({
           item,
@@ -702,6 +712,7 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
         });
       }
     }
+
 
     return { slides };
   });
