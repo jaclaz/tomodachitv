@@ -77,21 +77,18 @@ function HomePage() {
     queryFn: () => getTrendingMovies(),
   });
 
-  const [recSeed, setRecSeed] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRecSeed((s) => s + 1);
-    }, 1000 * 60 * 30);
-    return () => clearInterval(interval);
-  }, []);
+  // Daily rotation: the seed changes every day (Refresh forces a new one now).
+  const [recSeed, setRecSeed] = useState(() =>
+    Math.floor(Date.now() / 86400000)
+  );
 
   const { data: recommendations, isFetching: recLoading } = useQuery({
     queryKey: ["recommendations", recSeed],
     queryFn: () => getUserRecommendations({ data: { seed: recSeed } }),
-    staleTime: 0,
-    gcTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 60,
+    gcTime: 1000 * 60 * 60 * 24,
   });
+
 
   const { data: watchlist = [] } = useQuery({
     queryKey: ["watchlist"],
