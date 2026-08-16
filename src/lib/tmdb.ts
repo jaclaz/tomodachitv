@@ -669,16 +669,7 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
   });
 
 // ============ Personalized recommendations ============
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const copy = [...arr];
-  let rng = Math.abs(seed) + 1;
-  for (let i = copy.length - 1; i > 0; i--) {
-    rng = (rng * 9301 + 49297) % 233280;
-    const j = Math.floor((rng / 233280) * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
+
 
 export const getUserRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
