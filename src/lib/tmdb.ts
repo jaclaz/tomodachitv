@@ -669,143 +669,19 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
   });
 
 // ============ Personalized recommendations ============
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const copy = [...arr];
-  let rng = Math.abs(seed) + 1;
-  for (let i = copy.length - 1; i > 0; i--) {
-    rng = (rng * 9301 + 49297) % 233280;
-    const j = Math.floor((rng / 233280) * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
+
 
 export const getUserRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { seed: number }) => input)
   .handler(
     async ({ data, context }): Promise<{ tv: MediaItem[]; movie: MediaItem[] }> => {
-      const [recentEpisodes, recentMovies] = await Promise.all([
-        context.supabase
-          .from("watched_episodes")
-          .select("tmdb_id, watched_at")
-          .eq("user_id", context.userId)
-          .order("watched_at", { ascending: false })
-          .limit(100),
-        context.supabase
-          .from("watched_movies")
-          .select("tmdb_id, watched_at")
-          .eq("user_id", context.userId)
-          .order("watched_at", { ascending: false })
-          .limit(20),
-      ]);
-
-      // Everything already watched or already in the library must never be recommended.
-      const excludeTv = new Set<number>();
-      const excludeMovie = new Set<number>();
-      {
-        const PAGE = 1000;
-        const collect = async (
-          table: "watched_episodes" | "watched_movies" | "watchlist" | "dropped_shows",
-        ) => {
-          let from = 0;
-          for (;;) {
-            const cols: string =
-              table === "watchlist" ? "tmdb_id, media_type" : "tmdb_id";
-            const { data, error } = await (context.supabase as any)
-              .from(table)
-              .select(cols)
-              .eq("user_id", context.userId)
-              .range(from, from + PAGE - 1);
-            if (error) break;
-            const chunk = (data ?? []) as { tmdb_id: number; media_type?: string }[];
-            for (const r of chunk) {
-              if (table === "watched_movies") excludeMovie.add(r.tmdb_id);
-              else if (table === "watchlist")
-                (r.media_type === "movie" ? excludeMovie : excludeTv).add(r.tmdb_id);
-              else excludeTv.add(r.tmdb_id);
-            }
-            if (chunk.length < PAGE) break;
-            from += PAGE;
-          }
-        };
-        await Promise.all([
-          collect("watched_episodes"),
-          collect("watched_movies"),
-          collect("watchlist"),
-          collect("dropped_shows"),
-        ]);
-      }
-
-      const seed = data.seed ?? 0;
-      const tvSeedIds = seededShuffle(
-        [
-          ...new Set(
-            ((recentEpisodes.data ?? []) as { tmdb_id: number }[]).map(
-              (e) => e.tmdb_id
-            )
-          ),
-        ],
-        seed
-      ).slice(0, 5);
-      const movieSeedIds = seededShuffle(
-        [
-          ...new Set(
-            ((recentMovies.data ?? []) as { tmdb_id: number }[]).map(
-              (m) => m.tmdb_id
-            )
-          ),
-        ],
-        seed + 1
-      ).slice(0, 5);
-
-
-      async function aggregate<T>(
-        seedIds: number[],
-        kind: "tv" | "movie",
-        map: (r: T) => MediaItem
-      ): Promise<MediaItem[]> {
-        const seen = new Set<number>([
-          ...seedIds,
-          ...(kind === "tv" ? excludeTv : excludeMovie),
-        ]);
-        const scored = new Map<number, { item: MediaItem; score: number }>();
-        const responses = await Promise.all(
-          seedIds.map((id) =>
-            tmdbFetch(`/${kind}/${id}/recommendations`).catch(() => null)
-          )
-        );
-        for (const res of responses) {
-          const list = ((res?.results ?? []) as T[]).slice(0, 20);
-          for (const raw of list) {
-            const item = map(raw);
-            if (seen.has(item.id)) continue;
-            if (!item.poster_path) continue;
-            const cur = scored.get(item.id);
-            if (cur) cur.score += 1;
-            else scored.set(item.id, { item, score: 1 });
-          }
-        }
-        return [...scored.values()]
-          .sort(
-            (a, b) =>
-              b.score - a.score ||
-              (b.item.vote_average ?? 0) - (a.item.vote_average ?? 0)
-          )
-          .slice(0, 20)
-          .map((s) => s.item);
-      }
-
-      const [tv, movie] = await Promise.all([
-        tvSeedIds.length
-          ? aggregate<RawTv>(tvSeedIds, "tv", mapTv)
-          : Promise.resolve([] as MediaItem[]),
-        movieSeedIds.length
-          ? aggregate<RawMovie>(movieSeedIds, "movie", mapMovie)
-          : Promise.resolve([] as MediaItem[]),
-      ]);
-
-      return { tv, movie };
+      const { buildRecommendations } = await import("./recommendations.server");
+      return buildRecommendations(
+        context.supabase,
+        context.userId,
+        data.seed ?? 0,
+      );
     }
   );
 
