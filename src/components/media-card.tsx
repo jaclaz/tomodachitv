@@ -1,15 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import { posterUrl, type MediaItem } from "@/lib/tmdb";
-import { Star } from "lucide-react";
+import { Star, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getMyRatings } from "@/lib/ratings.functions";
 import { ScoreBadge } from "@/components/rating-input";
 
 interface MediaCardProps {
   item: MediaItem;
+  /** When provided, shows a small button to stop recommending this title. */
+  onDismiss?: (item: MediaItem) => void;
+  dismissLabel?: string;
 }
 
-export function MediaCard({ item }: MediaCardProps) {
+export function MediaCard({ item, onDismiss, dismissLabel }: MediaCardProps) {
   const image = posterUrl(item.poster_path);
   const year = item.release_date
     ? new Date(item.release_date).getFullYear()
@@ -47,6 +50,21 @@ export function MediaCard({ item }: MediaCardProps) {
           </div>
         )}
       </div>
+      {onDismiss && (
+        <button
+          type="button"
+          aria-label={dismissLabel ?? `Non consigliarmi più ${item.title}`}
+          title={dismissLabel ?? "Non consigliarmi più questo titolo"}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDismiss(item);
+          }}
+          className="absolute left-2 top-2 z-10 rounded-full bg-background/80 p-1.5 text-foreground opacity-0 backdrop-blur transition-opacity hover:bg-background focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 sm:opacity-0 max-sm:opacity-100"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
       <div className="absolute right-2 top-2">
         <span className="rounded-md bg-background/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
           {item.media_type === "tv" ? "TV" : "Movie"}

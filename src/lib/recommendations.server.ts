@@ -128,14 +128,16 @@ export async function buildRecommendations(
   userId: string,
   seed: number,
 ): Promise<{ tv: MediaItem[]; movie: MediaItem[] }> {
-  const [ratings, favorites, episodes, movies, watchlist, dropped] = await Promise.all([
-    collectAll(supabase, "user_ratings", userId, "media_type, tmdb_id, rating, updated_at"),
-    collectAll(supabase, "favorites", userId, "media_type, tmdb_id, added_at"),
-    collectAll(supabase, "watched_episodes", userId, "tmdb_id, watched_at"),
-    collectAll(supabase, "watched_movies", userId, "tmdb_id, watched_at"),
-    collectAll(supabase, "watchlist", userId, "tmdb_id, media_type"),
-    collectAll(supabase, "dropped_shows", userId, "tmdb_id"),
-  ]);
+  const [ratings, favorites, episodes, movies, watchlist, dropped, dismissed] =
+    await Promise.all([
+      collectAll(supabase, "user_ratings", userId, "media_type, tmdb_id, rating, updated_at"),
+      collectAll(supabase, "favorites", userId, "media_type, tmdb_id, added_at"),
+      collectAll(supabase, "watched_episodes", userId, "tmdb_id, watched_at"),
+      collectAll(supabase, "watched_movies", userId, "tmdb_id, watched_at"),
+      collectAll(supabase, "watchlist", userId, "tmdb_id, media_type"),
+      collectAll(supabase, "dropped_shows", userId, "tmdb_id"),
+      collectAll(supabase, "recommendation_dismissals", userId, "tmdb_id, media_type"),
+    ]);
 
   // ---- exclusions ----
   const excludeTv = new Set<number>();
@@ -145,6 +147,9 @@ export async function buildRecommendations(
   for (const m of movies) excludeMovie.add(m.tmdb_id);
   for (const w of watchlist)
     (w.media_type === "movie" ? excludeMovie : excludeTv).add(w.tmdb_id);
+  for (const d of dismissed)
+    (d.media_type === "movie" ? excludeMovie : excludeTv).add(d.tmdb_id);
+
 
   // ---- taste profile from ratings + favorites + recency ----
   const now = Date.now();

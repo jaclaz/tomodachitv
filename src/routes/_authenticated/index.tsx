@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Shuffle } from "lucide-react";
 import {
@@ -8,6 +8,8 @@ import {
   getUserRecommendations,
   type MediaItem,
 } from "@/lib/tmdb";
+import { dismissRecommendation, undoDismissRecommendation } from "@/lib/recommendations.functions";
+import { toast } from "sonner";
 import { getWatchlist } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
 import { HeroCarousel } from "@/components/hero-carousel";
@@ -27,11 +29,13 @@ function MediaRow({
   items,
   loading,
   emptyLabel,
+  onDismiss,
 }: {
   title: string;
   items: MediaItem[];
   loading: boolean;
   emptyLabel?: string;
+  onDismiss?: (item: MediaItem) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -58,7 +62,7 @@ function MediaRow({
               key={`${item.media_type}-${item.id}`}
               className="w-[140px] flex-shrink-0 snap-start sm:w-[160px]"
             >
-              <MediaCard item={item} />
+              <MediaCard item={item} onDismiss={onDismiss} />
             </div>
           ))}
         </div>
@@ -89,6 +93,39 @@ function HomePage() {
     gcTime: 1000 * 60 * 60 * 24,
   });
 
+
+  const queryClient = useQueryClient();
+  const handleDismiss = async (item: MediaItem) => {
+    const payload = {
+      media_type: item.media_type === "movie" ? ("movie" as const) : ("tv" as const),
+      tmdb_id: item.id,
+    };
+    queryClient.setQueryData(
+      ["recommendations", recSeed],
+      (old: { tv: MediaItem[]; movie: MediaItem[] } | undefined) =>
+        old
+          ? {
+              tv: old.tv.filter((i) => i.id !== item.id),
+              movie: old.movie.filter((i) => i.id !== item.id),
+            }
+          : old,
+    );
+    try {
+      await dismissRecommendation({ data: payload });
+      toast.success(`"${item.title}" non verrà più consigliato`, {
+        action: {
+          label: "Annulla",
+          onClick: async () => {
+            await undoDismissRecommendation({ data: payload });
+            queryClient.invalidateQueries({ queryKey: ["recommendations"] });
+          },
+        },
+      });
+    } catch {
+      toast.error("Non è stato possibile salvare la preferenza");
+      queryClient.invalidateQueries({ queryKey: ["recommendations"] });
+    }
+  };
 
   const { data: watchlist = [] } = useQuery({
     queryKey: ["watchlist"],
@@ -167,12 +204,14 @@ function HomePage() {
           title="TV Shows"
           items={recTv}
           loading={recLoading}
+          onDismiss={handleDismiss}
           emptyLabel="Watch some episodes to get TV recommendations."
         />
         <MediaRow
           title="Movies"
           items={recMovies}
           loading={recLoading}
+          onDismiss={handleDismiss}
           emptyLabel="Mark some movies as watched to get recommendations."
         />
       </section>

@@ -361,6 +361,30 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_dismissals: {
+        Row: {
+          created_at: string
+          id: string
+          media_type: string
+          tmdb_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_type: string
+          tmdb_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_type?: string
+          tmdb_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_list_items: {
         Row: {
           added_at: string
