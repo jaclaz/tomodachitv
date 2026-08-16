@@ -566,8 +566,16 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 export const getHomeHighlights = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ slides: HighlightSlide[] }> => {
-    const [trendingTv, trendingMovie, recentEpisodes, recentMovies] =
-      await Promise.all([
+    const [
+      trendingTv,
+      trendingMovie,
+      recentEpisodes,
+      recentMovies,
+      watchlistRows,
+      allWatchedMovies,
+      allWatchedEpisodes,
+      dismissals,
+    ] = await Promise.all([
         tmdbFetch("/trending/tv/week"),
         tmdbFetch("/trending/movie/week"),
         context.supabase
@@ -582,7 +590,36 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
           .eq("user_id", context.userId)
           .order("watched_at", { ascending: false })
           .limit(20),
+        context.supabase
+          .from("watchlist")
+          .select("tmdb_id, media_type")
+          .eq("user_id", context.userId),
+        context.supabase
+          .from("watched_movies")
+          .select("tmdb_id")
+          .eq("user_id", context.userId),
+        context.supabase
+          .from("watched_episodes")
+          .select("tmdb_id")
+          .eq("user_id", context.userId),
+        context.supabase
+          .from("recommendation_dismissals")
+          .select("tmdb_id, media_type")
+          .eq("user_id", context.userId),
       ]);
+
+    // Everything already in the user's library (or dismissed) must never be suggested.
+    const excluded = new Set<string>();
+    for (const r of (watchlistRows.data ?? []) as { tmdb_id: number; media_type: string }[])
+      excluded.add(`${r.media_type}-${r.tmdb_id}`);
+    for (const r of (dismissals.data ?? []) as { tmdb_id: number; media_type: string }[])
+      excluded.add(`${r.media_type}-${r.tmdb_id}`);
+    for (const r of (allWatchedMovies.data ?? []) as { tmdb_id: number }[])
+      excluded.add(`movie-${r.tmdb_id}`);
+    for (const r of (allWatchedEpisodes.data ?? []) as { tmdb_id: number }[])
+      excluded.add(`tv-${r.tmdb_id}`);
+    const isNew = (item: MediaItem) =>
+      !excluded.has(`${item.media_type}-${item.id}`);
 
     const tvTop = ((trendingTv.results as RawTv[]) ?? [])
       .filter((r) => r.backdrop_path)
@@ -595,11 +632,12 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
 
     const slides: HighlightSlide[] = [];
 
-    const [tvPick] = pickRandom(tvTop, 1);
+
+    const [tvPick] = pickRandom(tvTop.filter(isNew), 1);
     if (tvPick)
       slides.push({ item: tvPick, label: "Trending TV this week" });
 
-    const [moviePick] = pickRandom(movieTop, 1);
+    const [moviePick] = pickRandom(movieTop.filter(isNew), 1);
     if (moviePick)
       slides.push({ item: moviePick, label: "Trending Movie this week" });
 
@@ -611,7 +649,10 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
     if (seedTvId) {
       try {
         const recs = await tmdbFetch(`/tv/${seedTvId}/recommendations`);
-        const list = ((recs.results as RawTv[]) ?? []).filter((r) => r.backdrop_path);
+        const list = ((recs.results as RawTv[]) ?? [])
+          .filter((r) => r.backdrop_path)
+          .map(mapTv)
+          .filter(isNew);
         const [pick] = pickRandom(list, 1);
         if (pick) {
           const { data: seed } = await context.supabase
@@ -621,7 +662,7 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
             .eq("tmdb_id", seedTvId)
             .maybeSingle();
           slides.push({
-            item: mapTv(pick),
+            item: pick,
             label: "Recommended series",
             reason: seed?.title ? `Because you watched ${seed.title}` : undefined,
           });
@@ -640,11 +681,14 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
     if (seedMovie) {
       try {
         const recs = await tmdbFetch(`/movie/${seedMovie.tmdb_id}/recommendations`);
-        const list = ((recs.results as RawMovie[]) ?? []).filter((r) => r.backdrop_path);
+        const list = ((recs.results as RawMovie[]) ?? [])
+          .filter((r) => r.backdrop_path)
+          .map(mapMovie)
+          .filter(isNew);
         const [pick] = pickRandom(list, 1);
         if (pick) {
           slides.push({
-            item: mapMovie(pick),
+            item: pick,
             label: "Recommended movie",
             reason: seedMovie.title ? `Because you watched ${seedMovie.title}` : undefined,
           });
@@ -656,7 +700,11 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
 
     // Fallback: if we have fewer than 3 slides, add more random trending picks
     if (slides.length < 3) {
-      const extras = pickRandom([...tvTop, ...movieTop], 3 - slides.length);
+      const chosen = new Set(slides.map((s) => `${s.item.media_type}-${s.item.id}`));
+      const pool = [...tvTop, ...movieTop].filter(
+        (i) => isNew(i) && !chosen.has(`${i.media_type}-${i.id}`),
+      );
+      const extras = pickRandom(pool, 3 - slides.length);
       for (const item of extras) {
         slides.push({
           item,
@@ -664,6 +712,7 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
         });
       }
     }
+
 
     return { slides };
   });
