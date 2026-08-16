@@ -566,8 +566,16 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 export const getHomeHighlights = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ slides: HighlightSlide[] }> => {
-    const [trendingTv, trendingMovie, recentEpisodes, recentMovies] =
-      await Promise.all([
+    const [
+      trendingTv,
+      trendingMovie,
+      recentEpisodes,
+      recentMovies,
+      watchlistRows,
+      allWatchedMovies,
+      allWatchedEpisodes,
+      dismissals,
+    ] = await Promise.all([
         tmdbFetch("/trending/tv/week"),
         tmdbFetch("/trending/movie/week"),
         context.supabase
@@ -582,7 +590,36 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
           .eq("user_id", context.userId)
           .order("watched_at", { ascending: false })
           .limit(20),
+        context.supabase
+          .from("watchlist")
+          .select("tmdb_id, media_type")
+          .eq("user_id", context.userId),
+        context.supabase
+          .from("watched_movies")
+          .select("tmdb_id")
+          .eq("user_id", context.userId),
+        context.supabase
+          .from("watched_episodes")
+          .select("tmdb_id")
+          .eq("user_id", context.userId),
+        context.supabase
+          .from("recommendation_dismissals")
+          .select("tmdb_id, media_type")
+          .eq("user_id", context.userId),
       ]);
+
+    // Everything already in the user's library (or dismissed) must never be suggested.
+    const excluded = new Set<string>();
+    for (const r of (watchlistRows.data ?? []) as { tmdb_id: number; media_type: string }[])
+      excluded.add(`${r.media_type}-${r.tmdb_id}`);
+    for (const r of (dismissals.data ?? []) as { tmdb_id: number; media_type: string }[])
+      excluded.add(`${r.media_type}-${r.tmdb_id}`);
+    for (const r of (allWatchedMovies.data ?? []) as { tmdb_id: number }[])
+      excluded.add(`movie-${r.tmdb_id}`);
+    for (const r of (allWatchedEpisodes.data ?? []) as { tmdb_id: number }[])
+      excluded.add(`tv-${r.tmdb_id}`);
+    const isNew = (item: MediaItem) =>
+      !excluded.has(`${item.media_type}-${item.id}`);
 
     const tvTop = ((trendingTv.results as RawTv[]) ?? [])
       .filter((r) => r.backdrop_path)
@@ -594,6 +631,7 @@ export const getHomeHighlights = createServerFn({ method: "POST" })
       .map(mapMovie);
 
     const slides: HighlightSlide[] = [];
+
 
     const [tvPick] = pickRandom(tvTop, 1);
     if (tvPick)
