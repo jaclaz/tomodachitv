@@ -40,7 +40,7 @@ import {
   type AppNotification,
 } from "@/lib/notifications.functions";
 import { toast } from "sonner";
-import logoUrl from "@/assets/logo.png";
+import logoUrl from "@/assets/onigiri-logo.svg";
 import {
   Compass,
   Flame,

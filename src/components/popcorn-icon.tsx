@@ -3,52 +3,53 @@ import { cn } from "@/lib/utils";
 
 export type PopcornFill = "empty" | "half" | "full";
 
-interface PopcornIconProps {
+interface OnigiriIconProps {
   fill?: PopcornFill;
   className?: string;
 }
 
-const PATH_BOX = "M6.2 10h11.6l-1.15 10.2A2 2 0 0 1 14.66 22H9.34a2 2 0 0 1-1.99-1.8L6.2 10Z";
-const PATH_STRIPES = "M10.2 10.6 9.3 21.6M13.8 10.6l.9 11";
-const PATH_CORN =
-  "M7.1 10a2.1 2.1 0 0 1-.2-4.2 2.4 2.4 0 0 1 3.2-2.5 2.3 2.3 0 0 1 3.8 0 2.4 2.4 0 0 1 3.2 2.5 2.1 2.1 0 0 1-.2 4.2";
+const PATH_BODY = "M20 15c6 0 12 9 13 14 1 4-5 6-13 6S6 33 7 29c1-5 7-14 13-14Z";
+const PATH_NORI = "M11 27h13v3c0 3-3 4-6 4s-7-1-7-4v-3Z";
 
-/** Popcorn tub used for personal user scores (distinct from TMDB stars). */
-export function PopcornIcon({ fill = "empty", className }: PopcornIconProps) {
+/** Onigiri mark used for personal user scores (distinct from TMDB stars). */
+export function PopcornIcon({ fill = "empty", className }: OnigiriIconProps) {
   const id = useId();
-  const clipId = `popcorn-clip-${id}`;
+  const clipId = `onigiri-clip-${id}`;
 
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="4 13 32 27"
       aria-hidden="true"
       focusable="false"
       className={cn("h-5 w-5", className)}
     >
       <defs>
         <clipPath id={clipId}>
-          <rect x="0" y="0" width={fill === "half" ? 12 : 24} height="24" />
+          <rect x="0" y="0" width={fill === "half" ? 20 : 40} height="40" />
         </clipPath>
       </defs>
 
       {fill !== "empty" && (
-        <g clipPath={`url(#${clipId})`}>
-          <path d={PATH_BOX} fill="currentColor" opacity="0.9" />
-          <path d={PATH_CORN} fill="currentColor" opacity="0.55" />
+        <g clipPath={`url(#${clipId})`} fill="currentColor">
+          <path d={PATH_BODY} opacity="0.9" />
+          <path d={PATH_NORI} opacity="0.55" />
+          <circle cx="7" cy="37" r="1.8" />
+          <circle cx="33" cy="36" r="1.4" />
         </g>
       )}
 
       <g
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d={PATH_BOX} />
-        <path d={PATH_STRIPES} />
-        <path d={PATH_CORN} />
+        <path d={PATH_BODY} />
+        <path d={PATH_NORI} />
       </g>
     </svg>
   );
 }
+
+export { PopcornIcon as OnigiriIcon };

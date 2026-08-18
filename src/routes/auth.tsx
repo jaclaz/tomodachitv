@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import logoUrl from "@/assets/logo.png";
+import logoUrl from "@/assets/onigiri-logo.svg";
 import { checkNameSafety, nameSafetyMessage } from "@/lib/profanity";
 
 export const Route = createFileRoute("/auth")({

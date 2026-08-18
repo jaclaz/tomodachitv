@@ -395,7 +395,7 @@ function WatchedPage() {
               <SelectItem value="all">Any score</SelectItem>
               {SCORES.map((sv) => (
                 <SelectItem key={sv} value={String(sv)}>
-                  {sv.toFixed(1)}+ popcorn
+                  {sv.toFixed(1)}+ 🍙
                 </SelectItem>
               ))}
               <SelectItem value="none">Not rated</SelectItem>

@@ -137,7 +137,7 @@ export function RatingInput({
         aria-valuemax={5}
         aria-valuenow={current}
         aria-valuetext={
-          current > 0 ? `${current} out of 5 popcorn` : "Not rated"
+          current > 0 ? `${current} out of 5 onigiri` : "Not rated"
         }
         onKeyDown={onKeyDown}
         onMouseLeave={() => setHover(null)}
@@ -248,7 +248,7 @@ export function RatingButton({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant={current > 0 ? "secondary" : "outline"} className="gap-2">
-          <span aria-hidden="true">🍿</span>
+          <span aria-hidden="true">🍙</span>
           {current > 0 ? current.toFixed(1) : "Rate"}
         </Button>
       </DropdownMenuTrigger>
@@ -260,7 +260,7 @@ export function RatingButton({
             onSelect={() => saveMutation.mutate(v)}
             className="justify-between"
           >
-            <span>🍿 {v.toFixed(1)}</span>
+            <span>🍙 {v.toFixed(1)}</span>
             {current === v && <span className="text-xs">✓</span>}
           </DropdownMenuItem>
         ))}
