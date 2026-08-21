@@ -6,6 +6,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Repeat } from "lucide-react";
@@ -22,6 +25,8 @@ interface RewatchButtonProps {
   title?: string | null;
   poster_path?: string | null;
   runtime_minutes?: number | null;
+  /** Series seasons, used to log a rewatch of a single season. */
+  seasons?: { season_number: number; name?: string | null }[];
 }
 
 export function RewatchButton({
@@ -30,6 +35,7 @@ export function RewatchButton({
   title,
   poster_path,
   runtime_minutes,
+  seasons,
 }: RewatchButtonProps) {
   const queryClient = useQueryClient();
   const queryKey = ["rewatches", media_type, tmdb_id];
@@ -46,15 +52,24 @@ export function RewatchButton({
   };
 
   const addMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (season: number | null) =>
       addRewatch({
-        data: { media_type, tmdb_id, title, poster_path, runtime_minutes },
+        data: {
+          media_type,
+          tmdb_id,
+          season_number: season,
+          title,
+          poster_path,
+          runtime_minutes,
+        },
       }),
-    onSuccess: (res) => {
+    onSuccess: (res, season) => {
       invalidate();
       toast.success(
         media_type === "tv"
-          ? `Rewatch logged: +${res.episodes} episodes`
+          ? season == null
+            ? `Rewatch logged: +${res.episodes} episodes`
+            : `Season ${season} rewatch logged: +${res.episodes} episodes`
           : "Rewatch logged",
       );
     },
@@ -63,7 +78,8 @@ export function RewatchButton({
   });
 
   const removeMutation = useMutation({
-    mutationFn: () => removeLastRewatch({ data: { media_type, tmdb_id } }),
+    mutationFn: (season: number | null) =>
+      removeLastRewatch({ data: { media_type, tmdb_id, season_number: season } }),
     onSuccess: () => {
       invalidate();
       toast.success("Last rewatch removed");
@@ -71,7 +87,12 @@ export function RewatchButton({
   });
 
   const count = rewatches.length;
+  const fullCount = rewatches.filter((r) => r.season_number == null).length;
   const totalMinutes = rewatches.reduce((t, r) => t + (r.minutes ?? 0), 0);
+  const seasonCount = (season: number) =>
+    rewatches.filter((r) => r.season_number === season).length;
+
+  const tvSeasons = (seasons ?? []).filter((s) => s.season_number > 0);
 
   return (
     <DropdownMenu>
@@ -85,34 +106,87 @@ export function RewatchButton({
         <DropdownMenuLabel>
           {count > 0
             ? `${count} rewatch${count === 1 ? "" : "es"} · ${Math.round(totalMinutes / 60)}h counted`
-            : "Log a full rewatch"}
+            : "Log a rewatch"}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={(e) => {
             e.preventDefault();
-            addMutation.mutate();
+            addMutation.mutate(null);
           }}
           disabled={addMutation.isPending}
         >
-          I watched it again
+          {media_type === "tv"
+            ? `I watched the whole show again${fullCount > 0 ? ` (×${fullCount})` : ""}`
+            : "I watched it again"}
         </DropdownMenuItem>
-        {count > 0 && (
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              removeMutation.mutate();
-            }}
-            disabled={removeMutation.isPending}
-            className="text-destructive focus:text-destructive"
-          >
-            Remove last rewatch
-          </DropdownMenuItem>
+
+        {media_type === "tv" && tvSeasons.length > 0 && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              I rewatched one season
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+              {tvSeasons.map((s) => {
+                const n = seasonCount(s.season_number);
+                return (
+                  <DropdownMenuItem
+                    key={s.season_number}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      addMutation.mutate(s.season_number);
+                    }}
+                    disabled={addMutation.isPending}
+                  >
+                    Season {s.season_number}
+                    {n > 0 ? ` · ×${n}` : ""}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         )}
+
+        {count > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            {fullCount > 0 && (
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  removeMutation.mutate(null);
+                }}
+                disabled={removeMutation.isPending}
+                className="text-destructive focus:text-destructive"
+              >
+                {media_type === "tv"
+                  ? "Remove last full rewatch"
+                  : "Remove last rewatch"}
+              </DropdownMenuItem>
+            )}
+            {media_type === "tv" &&
+              tvSeasons
+                .filter((s) => seasonCount(s.season_number) > 0)
+                .map((s) => (
+                  <DropdownMenuItem
+                    key={`rm-${s.season_number}`}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      removeMutation.mutate(s.season_number);
+                    }}
+                    disabled={removeMutation.isPending}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Remove last season {s.season_number} rewatch
+                  </DropdownMenuItem>
+                ))}
+          </>
+        )}
+
         <DropdownMenuSeparator />
         <p className="px-2 py-1.5 text-xs text-muted-foreground">
           {media_type === "tv"
-            ? "Adds every episode you've marked as watched to your totals again."
+            ? "Counts again the episodes you've marked as watched, for the whole show or just one season."
             : "Adds the movie's runtime to your totals again."}
         </p>
       </DropdownMenuContent>
