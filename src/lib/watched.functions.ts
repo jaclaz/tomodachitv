@@ -415,7 +415,7 @@ export const unmarkMovieWatched = createServerFn({ method: "POST" })
 export const getAllWatchedStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [episodesRes, moviesRes] = await Promise.all([
+    const [episodesRes, moviesRes, rewatchRes] = await Promise.all([
       context.supabase
         .from("watched_episodes")
         .select("runtime_minutes", { count: "exact" })
@@ -424,26 +424,49 @@ export const getAllWatchedStats = createServerFn({ method: "POST" })
         .from("watched_movies")
         .select("runtime_minutes", { count: "exact" })
         .eq("user_id", context.userId),
+      context.supabase
+        .from("rewatches")
+        .select("media_type, episodes_count, minutes")
+        .eq("user_id", context.userId),
     ]);
     if (episodesRes.error) throw episodesRes.error;
     if (moviesRes.error) throw moviesRes.error;
 
-    const totalEpisodes = episodesRes.count ?? 0;
-    const totalMovies = moviesRes.count ?? 0;
-    const epMinutes = (episodesRes.data ?? []).reduce(
-      (total, row) => total + (row.runtime_minutes ?? 0),
+    const rewatchRows = rewatchRes.error ? [] : rewatchRes.data ?? [];
+    const rewatchEpisodes = rewatchRows.reduce(
+      (t, r) => t + (r.episodes_count ?? 0),
       0,
     );
-    const movieMinutes = (moviesRes.data ?? []).reduce(
-      (total, row) => total + (row.runtime_minutes ?? 0),
-      0,
-    );
+    const rewatchMovies = rewatchRows.filter((r) => r.media_type === "movie").length;
+    const rewatchEpisodeMinutes = rewatchRows
+      .filter((r) => r.media_type === "tv")
+      .reduce((t, r) => t + (r.minutes ?? 0), 0);
+    const rewatchMovieMinutes = rewatchRows
+      .filter((r) => r.media_type === "movie")
+      .reduce((t, r) => t + (r.minutes ?? 0), 0);
+
+    const totalEpisodes = (episodesRes.count ?? 0) + rewatchEpisodes;
+    const totalMovies = (moviesRes.count ?? 0) + rewatchMovies;
+    const epMinutes =
+      (episodesRes.data ?? []).reduce(
+        (total, row) => total + (row.runtime_minutes ?? 0),
+        0,
+      ) + rewatchEpisodeMinutes;
+    const movieMinutes =
+      (moviesRes.data ?? []).reduce(
+        (total, row) => total + (row.runtime_minutes ?? 0),
+        0,
+      ) + rewatchMovieMinutes;
     return {
       totalEpisodes,
       totalMovies,
       totalMinutes: epMinutes + movieMinutes,
       episodeMinutes: epMinutes,
       movieMinutes,
+      rewatchCount: rewatchRows.length,
+      rewatchEpisodes,
+      rewatchMovies,
+      rewatchMinutes: rewatchEpisodeMinutes + rewatchMovieMinutes,
     };
   });
 

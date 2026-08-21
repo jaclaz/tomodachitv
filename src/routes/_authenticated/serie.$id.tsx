@@ -20,6 +20,7 @@ import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 import { SearchBar } from "@/components/search-bar";
 import { RelatedTitles } from "@/components/related-titles";
 import { RatingButton } from "@/components/rating-input";
+import { RewatchButton } from "@/components/rewatch-button";
 
 
 export const Route = createFileRoute("/_authenticated/serie/$id")({
@@ -220,6 +221,12 @@ function SeriesDetailPage() {
                   )}
                 </Button>
               )}
+              <RewatchButton
+                media_type="tv"
+                tmdb_id={series.id}
+                title={series.title}
+                poster_path={series.poster_path}
+              />
               <RatingButton
                 media_type="tv"
                 tmdb_id={series.id}

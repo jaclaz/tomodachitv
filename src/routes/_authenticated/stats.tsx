@@ -136,6 +136,15 @@ function StatsPage() {
           </p>
         </div>
 
+        <div className="rounded-xl border border-border bg-surface p-6">
+          <h3 className="font-display text-lg font-semibold">Rewatches</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {(stats?.rewatchCount ?? 0) === 0
+              ? "No rewatches logged yet. Use the Rewatch button on a title you've seen again."
+              : `${stats?.rewatchCount} rewatch${stats?.rewatchCount === 1 ? "" : "es"} logged · +${stats?.rewatchEpisodes ?? 0} episodes, +${stats?.rewatchMovies ?? 0} movies, +${Math.round((stats?.rewatchMinutes ?? 0) / 60)}h counted in your totals.`}
+          </p>
+        </div>
+
       </div>
 
       {/* ============ Habits ============ */}

@@ -23,6 +23,7 @@ import { FavoriteButton, AddToListButton } from "@/components/list-actions";
 import { SearchBar } from "@/components/search-bar";
 import { RelatedTitles } from "@/components/related-titles";
 import { RatingButton } from "@/components/rating-input";
+import { RewatchButton } from "@/components/rewatch-button";
 
 
 export const Route = createFileRoute("/_authenticated/movie/$id")({
@@ -234,6 +235,13 @@ function MovieDetailPage() {
                 )}
                 {inWatchlist ? "In your library" : "Add to library"}
               </Button>
+              <RewatchButton
+                media_type="movie"
+                tmdb_id={movie.id}
+                title={movie.title}
+                poster_path={movie.poster_path}
+                runtime_minutes={movie.runtime ?? null}
+              />
               <RatingButton
                 media_type="movie"
                 tmdb_id={movie.id}
