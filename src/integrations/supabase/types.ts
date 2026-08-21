@@ -385,6 +385,42 @@ export type Database = {
         }
         Relationships: []
       }
+      rewatches: {
+        Row: {
+          created_at: string
+          episodes_count: number
+          id: string
+          media_type: string
+          minutes: number
+          poster_path: string | null
+          title: string | null
+          tmdb_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          episodes_count?: number
+          id?: string
+          media_type: string
+          minutes?: number
+          poster_path?: string | null
+          title?: string | null
+          tmdb_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          episodes_count?: number
+          id?: string
+          media_type?: string
+          minutes?: number
+          poster_path?: string | null
+          title?: string | null
+          tmdb_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_list_items: {
         Row: {
           added_at: string
