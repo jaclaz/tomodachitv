@@ -393,6 +393,7 @@ export type Database = {
           media_type: string
           minutes: number
           poster_path: string | null
+          season_number: number | null
           title: string | null
           tmdb_id: number
           user_id: string
@@ -404,6 +405,7 @@ export type Database = {
           media_type: string
           minutes?: number
           poster_path?: string | null
+          season_number?: number | null
           title?: string | null
           tmdb_id: number
           user_id: string
@@ -415,6 +417,7 @@ export type Database = {
           media_type?: string
           minutes?: number
           poster_path?: string | null
+          season_number?: number | null
           title?: string | null
           tmdb_id?: number
           user_id?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.rewatches ADD COLUMN IF NOT EXISTS season_number integer;
