@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getWatchlist } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
 import { getAdvancedStats } from "@/lib/stats.functions";
+import { getRewatchStats } from "@/lib/rewatch.functions";
 import { StatsStrip } from "@/components/stats-strip";
 
 export const Route = createFileRoute("/_authenticated/stats")({
@@ -17,6 +18,26 @@ function formatHours(minutes: number) {
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
+}
+
+/** Breaks a minute total into months / days / hours for a human-readable span. */
+function breakdown(minutes: number) {
+  const totalHours = minutes / 60;
+  const totalDays = totalHours / 24;
+  const months = Math.floor(totalDays / 30);
+  const days = Math.floor(totalDays - months * 30);
+  const hours = Math.floor(totalHours - (months * 30 + days) * 24);
+  return { months, days, hours, totalDays, totalHours };
+}
+
+function formatSpan(minutes: number) {
+  const { months, days, hours } = breakdown(minutes);
+  const parts: string[] = [];
+  if (months > 0) parts.push(`${months} month${months === 1 ? "" : "s"}`);
+  if (days > 0) parts.push(`${days} day${days === 1 ? "" : "s"}`);
+  if (hours > 0 || parts.length === 0)
+    parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
+  return parts.join(", ");
 }
 
 function Card({
@@ -87,6 +108,14 @@ function StatsPage() {
     queryFn: () => getAdvancedStats(),
   });
 
+  const { data: rw } = useQuery({
+    queryKey: ["rewatch-stats"],
+    queryFn: () => getRewatchStats(),
+  });
+
+  const totalMinutes = stats?.totalMinutes ?? 0;
+  const timeSpan = breakdown(totalMinutes);
+
   const tvCount = watchlist.filter((w) => w.media_type === "tv").length;
   const movieCount = watchlist.filter((w) => w.media_type === "movie").length;
 
@@ -145,6 +174,19 @@ function StatsPage() {
           </p>
         </div>
 
+        <div className="rounded-xl border border-border bg-surface p-6">
+          <h3 className="font-display text-lg font-semibold">
+            Total watch time
+          </h3>
+          <p className="mt-2 font-display text-2xl font-bold text-foreground">
+            {formatSpan(totalMinutes)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {Math.round(totalMinutes / 60).toLocaleString()} hours ·{" "}
+            {timeSpan.totalDays.toFixed(1)} full days of non-stop watching
+          </p>
+        </div>
+
       </div>
 
       {/* ============ Habits ============ */}
@@ -156,15 +198,30 @@ function StatsPage() {
             <p className="font-display text-3xl font-bold">
               {advLoading ? "…" : formatHours(adv?.minutesLast7 ?? 0)}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {advLoading
+                ? ""
+                : `${((adv?.minutesLast7 ?? 0) / 1440).toFixed(1)} days of screen time`}
+            </p>
           </Card>
           <Card title="Last 30 days">
             <p className="font-display text-3xl font-bold">
               {advLoading ? "…" : formatHours(adv?.minutesLast30 ?? 0)}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {advLoading
+                ? ""
+                : `${((adv?.minutesLast30 ?? 0) / 1440).toFixed(1)} days of screen time`}
+            </p>
           </Card>
           <Card title="Last 90 days">
             <p className="font-display text-3xl font-bold">
               {advLoading ? "…" : formatHours(adv?.minutesLast90 ?? 0)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {advLoading
+                ? ""
+                : `${((adv?.minutesLast90 ?? 0) / 1440).toFixed(1)} days of screen time`}
             </p>
           </Card>
 
@@ -309,6 +366,73 @@ function StatsPage() {
                   </span>
                 </div>
               </div>
+            )}
+          </Card>
+        </div>
+      </section>
+
+      {/* ============ Rewatches ============ */}
+      <section className="space-y-4">
+        <h2 className="font-display text-xl font-semibold">Your rewatches</h2>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card
+            title="Rewatch time"
+            subtitle="How much of your total is stuff you'd already seen"
+          >
+            {(rw?.totalRewatches ?? 0) === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No rewatches logged yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="font-display text-3xl font-bold">
+                  {formatSpan(rw?.totalMinutes ?? 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {rw?.totalRewatches} rewatch
+                  {rw?.totalRewatches === 1 ? "" : "es"} across{" "}
+                  {rw?.distinctTitles} title
+                  {rw?.distinctTitles === 1 ? "" : "s"} ·{" "}
+                  {rw?.seasonRewatches} single-season rewatch
+                  {rw?.seasonRewatches === 1 ? "" : "es"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {totalMinutes > 0
+                    ? `${Math.round(((rw?.totalMinutes ?? 0) / totalMinutes) * 100)}% of your total watch time`
+                    : ""}
+                </p>
+              </div>
+            )}
+          </Card>
+
+          <Card
+            title="Most rewatched"
+            subtitle="Titles you keep coming back to"
+          >
+            {!rw?.topTitles.length ? (
+              <p className="text-sm text-muted-foreground">No data yet.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {rw.topTitles.map((t, i) => (
+                  <li
+                    key={`${t.media_type}-${t.tmdb_id}`}
+                    className="flex items-center gap-3"
+                  >
+                    <span className="w-4 text-muted-foreground">{i + 1}.</span>
+                    <Link
+                      to={t.media_type === "tv" ? "/serie/$id" : "/movie/$id"}
+                      params={{ id: String(t.tmdb_id) }}
+                      className="flex-1 truncate hover:underline"
+                    >
+                      {t.title ?? `#${t.tmdb_id}`}
+                    </Link>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      ×{t.times} · {formatHours(t.minutes)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
         </div>
