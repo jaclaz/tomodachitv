@@ -166,3 +166,78 @@ export const getRewatchTotals = createServerFn({ method: "POST" })
       minutes: rows.reduce((t, r) => t + (r.minutes ?? 0), 0),
     };
   });
+
+export interface RewatchedTitle {
+  media_type: string;
+  tmdb_id: number;
+  title: string | null;
+  poster_path: string | null;
+  times: number;
+  minutes: number;
+  episodes: number;
+  seasonTimes: number;
+  fullTimes: number;
+}
+
+export interface RewatchStats {
+  totalRewatches: number;
+  totalMinutes: number;
+  distinctTitles: number;
+  seasonRewatches: number;
+  topTitles: RewatchedTitle[];
+  mostRewatched: RewatchedTitle | null;
+}
+
+/** Aggregated view of what the user rewatches the most. */
+export const getRewatchStats = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<RewatchStats> => {
+    const { data, error } = await context.supabase
+      .from("rewatches")
+      .select(
+        "media_type, tmdb_id, season_number, title, poster_path, episodes_count, minutes",
+      )
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    const rows = data ?? [];
+
+    const map = new Map<string, RewatchedTitle>();
+    for (const r of rows) {
+      const key = `${r.media_type}-${r.tmdb_id}`;
+      let entry = map.get(key);
+      if (!entry) {
+        entry = {
+          media_type: r.media_type,
+          tmdb_id: r.tmdb_id,
+          title: r.title ?? null,
+          poster_path: r.poster_path ?? null,
+          times: 0,
+          minutes: 0,
+          episodes: 0,
+          seasonTimes: 0,
+          fullTimes: 0,
+        };
+        map.set(key, entry);
+      }
+      entry.times += 1;
+      entry.minutes += r.minutes ?? 0;
+      entry.episodes += r.episodes_count ?? 0;
+      if (r.season_number == null) entry.fullTimes += 1;
+      else entry.seasonTimes += 1;
+      if (!entry.title && r.title) entry.title = r.title;
+      if (!entry.poster_path && r.poster_path) entry.poster_path = r.poster_path;
+    }
+
+    const topTitles = [...map.values()].sort(
+      (a, b) => b.times - a.times || b.minutes - a.minutes,
+    );
+
+    return {
+      totalRewatches: rows.length,
+      totalMinutes: rows.reduce((t, r) => t + (r.minutes ?? 0), 0),
+      distinctTitles: map.size,
+      seasonRewatches: rows.filter((r) => r.season_number != null).length,
+      topTitles: topTitles.slice(0, 8),
+      mostRewatched: topTitles[0] ?? null,
+    };
+  });
