@@ -5,6 +5,7 @@ export interface Rewatch {
   id: string;
   media_type: string;
   tmdb_id: number;
+  season_number: number | null;
   title: string | null;
   poster_path: string | null;
   episodes_count: number;
@@ -18,7 +19,7 @@ export const getRewatches = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<Rewatch[]> => {
     const { data: rows, error } = await context.supabase
       .from("rewatches")
-      .select("id, media_type, tmdb_id, title, poster_path, episodes_count, minutes, created_at")
+      .select("id, media_type, tmdb_id, season_number, title, poster_path, episodes_count, minutes, created_at")
       .eq("user_id", context.userId)
       .eq("media_type", data.media_type)
       .eq("tmdb_id", data.tmdb_id)
@@ -38,6 +39,7 @@ export const addRewatch = createServerFn({ method: "POST" })
     (input: {
       media_type: "tv" | "movie";
       tmdb_id: number;
+      season_number?: number | null;
       title?: string | null;
       poster_path?: string | null;
       runtime_minutes?: number | null;
@@ -51,12 +53,15 @@ export const addRewatch = createServerFn({ method: "POST" })
       const pageSize = 1000;
       const seen = new Set<string>();
       for (let from = 0; ; from += pageSize) {
-        const { data: rows, error } = await context.supabase
+        let query = context.supabase
           .from("watched_episodes")
           .select("season_number, episode_number, runtime_minutes")
           .eq("user_id", context.userId)
-          .eq("tmdb_id", data.tmdb_id)
-          .range(from, from + pageSize - 1);
+          .eq("tmdb_id", data.tmdb_id);
+        if (data.season_number != null) {
+          query = query.eq("season_number", data.season_number);
+        }
+        const { data: rows, error } = await query.range(from, from + pageSize - 1);
         if (error) throw error;
         for (const r of rows ?? []) {
           const key = `${r.season_number}-${r.episode_number}`;
@@ -68,7 +73,11 @@ export const addRewatch = createServerFn({ method: "POST" })
         if (!rows || rows.length < pageSize) break;
       }
       if (episodes === 0) {
-        throw new Error("Mark at least one episode as watched before logging a rewatch.");
+        throw new Error(
+          data.season_number != null
+            ? "Mark at least one episode of this season as watched before logging a rewatch."
+            : "Mark at least one episode as watched before logging a rewatch.",
+        );
       }
     } else {
       const { data: row, error } = await context.supabase
@@ -88,6 +97,7 @@ export const addRewatch = createServerFn({ method: "POST" })
       user_id: context.userId,
       media_type: data.media_type,
       tmdb_id: data.tmdb_id,
+      season_number: data.media_type === "tv" ? data.season_number ?? null : null,
       title: data.title ?? null,
       poster_path: data.poster_path ?? null,
       episodes_count: episodes,
@@ -100,14 +110,25 @@ export const addRewatch = createServerFn({ method: "POST" })
 
 export const removeLastRewatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { media_type: "tv" | "movie"; tmdb_id: number }) => input)
+  .validator(
+    (input: {
+      media_type: "tv" | "movie";
+      tmdb_id: number;
+      season_number?: number | null;
+    }) => input,
+  )
   .handler(async ({ context, data }) => {
-    const { data: rows, error } = await context.supabase
+    let sel = context.supabase
       .from("rewatches")
       .select("id")
       .eq("user_id", context.userId)
       .eq("media_type", data.media_type)
-      .eq("tmdb_id", data.tmdb_id)
+      .eq("tmdb_id", data.tmdb_id);
+    sel =
+      data.season_number == null
+        ? sel.is("season_number", null)
+        : sel.eq("season_number", data.season_number);
+    const { data: rows, error } = await sel
       .order("created_at", { ascending: false })
       .limit(1);
     if (error) throw error;
