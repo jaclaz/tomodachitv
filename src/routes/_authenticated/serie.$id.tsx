@@ -226,6 +226,7 @@ function SeriesDetailPage() {
                 tmdb_id={series.id}
                 title={series.title}
                 poster_path={series.poster_path}
+                seasons={series.seasons}
               />
               <RatingButton
                 media_type="tv"
