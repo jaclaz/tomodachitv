@@ -3,9 +3,11 @@ import {
   addFavorite,
   addListItem,
   createList,
+  getListMembership,
   getMyFavorites,
   getUserLists,
   removeFavorite,
+  removeListItem,
 } from "@/lib/lists.functions";
 import { getMyProfile } from "@/lib/social.functions";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Check, Heart, ListPlus, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
 import {
   Dialog,
   DialogContent,
