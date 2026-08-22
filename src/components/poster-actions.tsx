@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Heart, ListPlus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,11 +24,14 @@ import {
   addFavorite,
   addListItem,
   createList,
+  getListMembership,
   getMyFavorites,
   getUserLists,
   removeFavorite,
+  removeListItem,
 } from "@/lib/lists.functions";
 import { getMyProfile } from "@/lib/social.functions";
+
 
 interface PosterActionsProps {
   media_type: "movie" | "tv";
