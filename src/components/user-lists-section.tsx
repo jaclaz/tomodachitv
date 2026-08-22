@@ -47,6 +47,16 @@ export function UserListsSection({
     queryKey: ["user-lists", userId],
     queryFn: () => getUserLists({ data: { user_id: userId } }),
   });
+  const { data: saved = [] } = useQuery({
+    queryKey: ["saved-lists"],
+    queryFn: () => getSavedLists(),
+    enabled: isSelf,
+  });
+
+  const allLists = [
+    ...lists.map((l) => ({ list: l as TrendingList, saved: false })),
+    ...(isSelf ? saved.map((l) => ({ list: l, saved: true })) : []),
+  ].sort((a, b) => (b.list.updated_at > a.list.updated_at ? 1 : -1));
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<UserList | null>(null);
@@ -62,6 +72,16 @@ export function UserListsSection({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const unsaveMut = useMutation({
+    mutationFn: (id: string) => unsaveList({ data: { list_id: id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saved-lists"] });
+      qc.invalidateQueries({ queryKey: ["trending-lists"] });
+      toast.success("Removed from saved lists");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
@@ -69,7 +89,7 @@ export function UserListsSection({
           <h2 className="font-display text-lg font-semibold">Lists</h2>
           <p className="text-xs text-muted-foreground">
             {isSelf
-              ? "Curate your own collections. Toggle public to share them."
+              ? "Your collections and the ones you saved from other people."
               : "Public collections curated by this user."}
           </p>
         </div>
@@ -82,23 +102,26 @@ export function UserListsSection({
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : lists.length === 0 ? (
+      ) : allLists.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {isSelf ? "No lists yet. Create your first one." : "No public lists yet."}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {lists.map((l) => (
+          {allLists.map(({ list: l, saved: isSaved }) => (
             <ListCard
               key={l.id}
               list={l}
-              isSelf={isSelf}
+              isSelf={isSelf && !isSaved}
+              isSaved={isSaved}
               onEdit={() => setEditing(l)}
               onDelete={() => setDeleting(l)}
+              onUnsave={() => unsaveMut.mutate(l.id)}
             />
           ))}
         </div>
       )}
+
 
       {isSelf && (
         <ListFormDialog
