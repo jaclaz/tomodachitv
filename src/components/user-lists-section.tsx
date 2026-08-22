@@ -4,10 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createList,
   deleteList,
+  getSavedLists,
   getUserLists,
+  unsaveList,
   updateList,
+  type TrendingList,
   type UserList,
 } from "@/lib/lists.functions";
+
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import {
