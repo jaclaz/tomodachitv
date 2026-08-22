@@ -111,7 +111,11 @@ function TrendingListsSection() {
   const saveMut = useMutation({
     mutationFn: ({ id, save }: { id: string; save: boolean }) =>
       save ? saveList({ data: { list_id: id } }) : unsaveList({ data: { list_id: id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["trending-lists"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["trending-lists"] });
+      qc.invalidateQueries({ queryKey: ["saved-lists"] });
+    },
+
     onError: (e: Error) => toast.error(e.message),
   });
 
