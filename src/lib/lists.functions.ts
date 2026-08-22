@@ -379,6 +379,39 @@ export const removeListItem = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export interface ListMembership {
+  list_id: string;
+  list_title: string;
+}
+
+export const getListMembership = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { media_type: MediaKind; tmdb_id: number }) => input)
+  .handler(async ({ context, data }): Promise<ListMembership[]> => {
+    const { data: lists, error: listErr } = await context.supabase
+      .from("user_lists")
+      .select("id, title")
+      .eq("user_id", context.userId);
+    if (listErr) throw listErr;
+    if (!lists || lists.length === 0) return [];
+    const { data: items, error } = await context.supabase
+      .from("user_list_items")
+      .select("list_id")
+      .in(
+        "list_id",
+        lists.map((l) => l.id),
+      )
+      .eq("media_type", data.media_type)
+      .eq("tmdb_id", data.tmdb_id);
+    if (error) throw error;
+    const set = new Set((items ?? []).map((i) => i.list_id));
+    return lists
+      .filter((l) => set.has(l.id))
+      .map((l) => ({ list_id: l.id, list_title: l.title }));
+  });
+
+
+
 // Recent watched with posters (via media_cache lookup)
 export interface RecentWatchedMedia {
   tmdb_id: number;
