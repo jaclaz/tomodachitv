@@ -164,15 +164,21 @@ export function UserListsSection({
 function ListCard({
   list,
   isSelf,
+  isSaved,
   onEdit,
   onDelete,
+  onUnsave,
 }: {
-  list: UserList;
+  list: TrendingList | UserList;
   isSelf: boolean;
+  isSaved?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onUnsave?: () => void;
 }) {
   const posters = list.preview_posters ?? [];
+  const owner = (list as TrendingList).owner ?? null;
+
   return (
     <div className="group relative overflow-hidden rounded-xl border border-border bg-card">
       <Link
