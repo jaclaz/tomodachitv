@@ -210,17 +210,23 @@ function ListCard({
         <div className="space-y-1 p-3">
           <div className="flex items-center gap-2">
             <h3 className="line-clamp-1 flex-1 font-semibold">{list.title}</h3>
-            <Badge variant="outline" className="gap-1 border-border text-[10px]">
-              {list.is_public ? (
-                <>
-                  <Globe className="h-3 w-3" /> Public
-                </>
-              ) : (
-                <>
-                  <Lock className="h-3 w-3" /> Private
-                </>
-              )}
-            </Badge>
+            {isSaved ? (
+              <Badge variant="outline" className="gap-1 border-border text-[10px]">
+                <Bookmark className="h-3 w-3" /> Saved
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 border-border text-[10px]">
+                {list.is_public ? (
+                  <>
+                    <Globe className="h-3 w-3" /> Public
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-3 w-3" /> Private
+                  </>
+                )}
+              </Badge>
+            )}
           </div>
           {list.description && (
             <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -229,9 +235,41 @@ function ListCard({
           )}
           <p className="text-[11px] text-muted-foreground">
             {list.item_count ?? 0} item{(list.item_count ?? 0) === 1 ? "" : "s"}
+            {isSaved && owner ? ` · by @${owner.username}` : ""}
           </p>
         </div>
       </Link>
+      {isSaved && owner && (
+        <Link
+          to="/u/$username"
+          params={{ username: owner.username }}
+          className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-background/90 py-1 pl-1 pr-2.5 shadow-sm backdrop-blur transition-colors hover:bg-background"
+          title={`Saved from ${owner.display_name ?? owner.username}`}
+        >
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={owner.avatar_url ?? undefined} />
+            <AvatarFallback className="text-[9px]">
+              {(owner.display_name ?? owner.username).slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="max-w-[8rem] truncate text-[11px] font-medium">
+            @{owner.username}
+          </span>
+        </Link>
+      )}
+      {isSaved && onUnsave && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            onUnsave();
+          }}
+          className="absolute right-2 top-2 rounded-md bg-background/90 p-1.5 text-foreground shadow-sm transition-opacity hover:bg-background sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label="Unsave list"
+        >
+          <BookmarkX className="h-3.5 w-3.5" />
+        </button>
+      )}
       {isSelf && (
         <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <button
@@ -258,6 +296,7 @@ function ListCard({
           </button>
         </div>
       )}
+
     </div>
   );
 }
