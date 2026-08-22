@@ -4,10 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createList,
   deleteList,
+  getSavedLists,
   getUserLists,
+  unsaveList,
   updateList,
+  type TrendingList,
   type UserList,
 } from "@/lib/lists.functions";
+
 import { posterUrl } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +36,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Bookmark, BookmarkX, Globe, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+
 import { toast } from "sonner";
 
 export function UserListsSection({
@@ -47,6 +53,16 @@ export function UserListsSection({
     queryKey: ["user-lists", userId],
     queryFn: () => getUserLists({ data: { user_id: userId } }),
   });
+  const { data: saved = [] } = useQuery({
+    queryKey: ["saved-lists"],
+    queryFn: () => getSavedLists(),
+    enabled: isSelf,
+  });
+
+  const allLists = [
+    ...lists.map((l) => ({ list: l as TrendingList, saved: false })),
+    ...(isSelf ? saved.map((l) => ({ list: l, saved: true })) : []),
+  ].sort((a, b) => (b.list.updated_at > a.list.updated_at ? 1 : -1));
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<UserList | null>(null);
@@ -62,6 +78,16 @@ export function UserListsSection({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const unsaveMut = useMutation({
+    mutationFn: (id: string) => unsaveList({ data: { list_id: id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saved-lists"] });
+      qc.invalidateQueries({ queryKey: ["trending-lists"] });
+      toast.success("Removed from saved lists");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
@@ -69,7 +95,7 @@ export function UserListsSection({
           <h2 className="font-display text-lg font-semibold">Lists</h2>
           <p className="text-xs text-muted-foreground">
             {isSelf
-              ? "Curate your own collections. Toggle public to share them."
+              ? "Your collections and the ones you saved from other people."
               : "Public collections curated by this user."}
           </p>
         </div>
@@ -82,23 +108,26 @@ export function UserListsSection({
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : lists.length === 0 ? (
+      ) : allLists.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {isSelf ? "No lists yet. Create your first one." : "No public lists yet."}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {lists.map((l) => (
+          {allLists.map(({ list: l, saved: isSaved }) => (
             <ListCard
               key={l.id}
               list={l}
-              isSelf={isSelf}
+              isSelf={isSelf && !isSaved}
+              isSaved={isSaved}
               onEdit={() => setEditing(l)}
               onDelete={() => setDeleting(l)}
+              onUnsave={() => unsaveMut.mutate(l.id)}
             />
           ))}
         </div>
       )}
+
 
       {isSelf && (
         <ListFormDialog
@@ -141,15 +170,21 @@ export function UserListsSection({
 function ListCard({
   list,
   isSelf,
+  isSaved,
   onEdit,
   onDelete,
+  onUnsave,
 }: {
-  list: UserList;
+  list: TrendingList | UserList;
   isSelf: boolean;
+  isSaved?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onUnsave?: () => void;
 }) {
   const posters = list.preview_posters ?? [];
+  const owner = (list as TrendingList).owner ?? null;
+
   return (
     <div className="group relative overflow-hidden rounded-xl border border-border bg-card">
       <Link
@@ -181,17 +216,23 @@ function ListCard({
         <div className="space-y-1 p-3">
           <div className="flex items-center gap-2">
             <h3 className="line-clamp-1 flex-1 font-semibold">{list.title}</h3>
-            <Badge variant="outline" className="gap-1 border-border text-[10px]">
-              {list.is_public ? (
-                <>
-                  <Globe className="h-3 w-3" /> Public
-                </>
-              ) : (
-                <>
-                  <Lock className="h-3 w-3" /> Private
-                </>
-              )}
-            </Badge>
+            {isSaved ? (
+              <Badge variant="outline" className="gap-1 border-border text-[10px]">
+                <Bookmark className="h-3 w-3" /> Saved
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 border-border text-[10px]">
+                {list.is_public ? (
+                  <>
+                    <Globe className="h-3 w-3" /> Public
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-3 w-3" /> Private
+                  </>
+                )}
+              </Badge>
+            )}
           </div>
           {list.description && (
             <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -200,9 +241,41 @@ function ListCard({
           )}
           <p className="text-[11px] text-muted-foreground">
             {list.item_count ?? 0} item{(list.item_count ?? 0) === 1 ? "" : "s"}
+            {isSaved && owner ? ` · by @${owner.username}` : ""}
           </p>
         </div>
       </Link>
+      {isSaved && owner && (
+        <Link
+          to="/u/$username"
+          params={{ username: owner.username }}
+          className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-background/90 py-1 pl-1 pr-2.5 shadow-sm backdrop-blur transition-colors hover:bg-background"
+          title={`Saved from ${owner.display_name ?? owner.username}`}
+        >
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={owner.avatar_url ?? undefined} />
+            <AvatarFallback className="text-[9px]">
+              {(owner.display_name ?? owner.username).slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="max-w-[8rem] truncate text-[11px] font-medium">
+            @{owner.username}
+          </span>
+        </Link>
+      )}
+      {isSaved && onUnsave && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            onUnsave();
+          }}
+          className="absolute right-2 top-2 rounded-md bg-background/90 p-1.5 text-foreground shadow-sm transition-opacity hover:bg-background sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label="Unsave list"
+        >
+          <BookmarkX className="h-3.5 w-3.5" />
+        </button>
+      )}
       {isSelf && (
         <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <button
@@ -229,6 +302,7 @@ function ListCard({
           </button>
         </div>
       )}
+
     </div>
   );
 }
