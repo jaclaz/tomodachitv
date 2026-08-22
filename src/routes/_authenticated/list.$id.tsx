@@ -50,6 +50,8 @@ function ListDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["list", id] });
       qc.invalidateQueries({ queryKey: ["trending-lists"] });
+      qc.invalidateQueries({ queryKey: ["saved-lists"] });
+
     },
     onError: (e: Error) => toast.error(e.message),
   });
