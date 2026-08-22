@@ -36,7 +36,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Bookmark, BookmarkX, Globe, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+
 import { toast } from "sonner";
 
 export function UserListsSection({
