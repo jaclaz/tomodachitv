@@ -139,25 +139,38 @@ function AddToListIconButton({
     queryFn: () => getUserLists({ data: { user_id: me!.id } }),
     enabled: !!me,
   });
+  const { data: membership = [] } = useQuery({
+    queryKey: ["list-membership", media_type, tmdb_id],
+    queryFn: () => getListMembership({ data: { media_type, tmdb_id } }),
+  });
+  const memberIds = new Set(membership.map((m) => m.list_id));
+  const isAdded = membership.length > 0;
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
-  const [justAdded, setJustAdded] = useState(false);
 
-  useEffect(() => {
-    setJustAdded(false);
-  }, [media_type, tmdb_id]);
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["list-membership", media_type, tmdb_id] });
+    qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
+    qc.invalidateQueries({ queryKey: ["list"] });
+  };
 
-  const addMut = useMutation({
-    mutationFn: (list_id: string) =>
-      addListItem({
-        data: { list_id, media_type, tmdb_id, title, poster_path },
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
-      qc.invalidateQueries({ queryKey: ["list"] });
-      setJustAdded(true);
-      toast.success("Added to list");
+  const toggleMut = useMutation({
+    mutationFn: async (list: { id: string; title: string }) => {
+      if (memberIds.has(list.id)) {
+        await removeListItem({ data: { list_id: list.id, media_type, tmdb_id } });
+        return { removed: true, title: list.title };
+      }
+      await addListItem({
+        data: { list_id: list.id, media_type, tmdb_id, title, poster_path },
+      });
+      return { removed: false, title: list.title };
+    },
+    onSuccess: (r) => {
+      invalidate();
+      toast.success(
+        r.removed ? `Removed from ${r.title}` : `Added to ${r.title}`,
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -178,9 +191,7 @@ function AddToListIconButton({
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["user-lists", me?.id] });
-      qc.invalidateQueries({ queryKey: ["list"] });
-      setJustAdded(true);
+      invalidate();
       toast.success("List created");
       setCreating(false);
       setNewTitle("");
@@ -194,11 +205,16 @@ function AddToListIconButton({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant={justAdded ? "secondary" : "ghost"}
+            variant={isAdded ? "secondary" : "ghost"}
             size="icon"
             className={size === "sm" ? "h-7 w-7" : "h-8 w-8"}
+            title={
+              isAdded
+                ? `In: ${membership.map((m) => m.list_title).join(", ")}`
+                : "Add to list"
+            }
           >
-            {justAdded ? (
+            {isAdded ? (
               <Check
                 className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
               />
@@ -208,7 +224,7 @@ function AddToListIconButton({
               />
             )}
             <span className="sr-only">
-              {justAdded ? "Added to list" : "Add to list"}
+              {isAdded ? "Added to list" : "Add to list"}
             </span>
           </Button>
         </DropdownMenuTrigger>
@@ -222,9 +238,16 @@ function AddToListIconButton({
           {lists.map((l) => (
             <DropdownMenuItem
               key={l.id}
-              onSelect={() => addMut.mutate(l.id)}
+              onSelect={(e) => {
+                e.preventDefault();
+                toggleMut.mutate({ id: l.id, title: l.title });
+              }}
+              className="justify-between gap-2"
             >
-              {l.title}
+              <span className="truncate">{l.title}</span>
+              {memberIds.has(l.id) && (
+                <Check className="h-4 w-4 shrink-0 text-primary" />
+              )}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
@@ -233,6 +256,7 @@ function AddToListIconButton({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
 
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent>
