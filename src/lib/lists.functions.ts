@@ -266,6 +266,64 @@ export const unsaveList = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export const getSavedLists = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<TrendingList[]> => {
+    const { data: saves } = await context.supabase
+      .from("list_saves")
+      .select("list_id")
+      .eq("user_id", context.userId);
+    const ids = [...new Set((saves ?? []).map((s) => s.list_id))];
+    if (ids.length === 0) return [];
+    const { data: lists } = await context.supabase
+      .from("user_lists")
+      .select("*")
+      .in("id", ids)
+      .neq("user_id", context.userId)
+      .eq("is_public", true);
+    if (!lists || lists.length === 0) return [];
+    const ownerIds = [...new Set(lists.map((l) => l.user_id))];
+    const [{ data: owners }, { data: items }] = await Promise.all([
+      context.supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .in("id", ownerIds),
+      context.supabase
+        .from("user_list_items")
+        .select("list_id, poster_path, added_at")
+        .in(
+          "list_id",
+          lists.map((l) => l.id),
+        )
+        .order("added_at", { ascending: false }),
+    ]);
+    const ownerMap = new Map((owners ?? []).map((o) => [o.id, o]));
+    const grouped = new Map<string, { count: number; posters: (string | null)[] }>();
+    for (const it of items ?? []) {
+      const g = grouped.get(it.list_id) ?? { count: 0, posters: [] };
+      g.count += 1;
+      if (g.posters.length < 4) g.posters.push(it.poster_path);
+      grouped.set(it.list_id, g);
+    }
+    return lists
+      .map((l): TrendingList => {
+        const g = grouped.get(l.id);
+        const o = ownerMap.get(l.user_id);
+        return {
+          ...(l as UserList),
+          item_count: g?.count ?? 0,
+          preview_posters: g?.posters ?? [],
+          is_saved_by_me: true,
+          owner:
+            o && o.username
+              ? { username: o.username, display_name: o.display_name, avatar_url: o.avatar_url }
+              : null,
+        };
+      })
+      .sort((a, b) => (b.updated_at > a.updated_at ? 1 : -1));
+  });
+
+
 export const getTrendingLists = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<TrendingList[]> => {
