@@ -151,6 +151,27 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       if (!data || data.length < PAGE) break;
     }
 
+    // Rewatches count again toward totals, habits and most-watched shows.
+    interface RewatchRow {
+      media_type: string;
+      tmdb_id: number;
+      episodes_count: number | null;
+      minutes: number | null;
+      created_at: string | null;
+    }
+    const rewatches: RewatchRow[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await context.supabase
+        .from("rewatches")
+        .select("media_type, tmdb_id, episodes_count, minutes, created_at")
+        .eq("user_id", context.userId)
+        .range(from, from + PAGE - 1);
+      if (error) break;
+      rewatches.push(...((data ?? []) as RewatchRow[]));
+      if (!data || data.length < PAGE) break;
+    }
+
+
     // Dedupe episodes by (series, season, episode) and movies by tmdb_id.
     const epSeen = new Set<string>();
     const eps = rawEps.filter((e) => {
