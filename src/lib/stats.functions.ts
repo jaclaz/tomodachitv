@@ -509,12 +509,20 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       }
     }
 
-    // ---- TV vs Movie minutes ----
+    // ---- TV vs Movie minutes (rewatch time included) ----
+    const rewatchTvMinutes = rewatches
+      .filter((r) => r.media_type === "tv")
+      .reduce((s, r) => s + (r.minutes ?? 0), 0);
+    const rewatchMovieMinutes = rewatches
+      .filter((r) => r.media_type === "movie")
+      .reduce((s, r) => s + (r.minutes ?? 0), 0);
     const tvMinutes = Math.round(
-      eps.reduce((s, e) => s + epRuntime(e.tmdb_id, e.runtime_minutes), 0)
+      eps.reduce((s, e) => s + epRuntime(e.tmdb_id, e.runtime_minutes), 0) +
+        rewatchTvMinutes
     );
     const movieMinutes = Math.round(
-      movies.reduce((s, m) => s + mvRuntime(m.tmdb_id, m.runtime_minutes), 0)
+      movies.reduce((s, m) => s + mvRuntime(m.tmdb_id, m.runtime_minutes), 0) +
+        rewatchMovieMinutes
     );
 
     return {
