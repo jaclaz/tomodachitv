@@ -397,6 +397,7 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
 
     for (const e of eps) addWatched(e.watched_at, epRuntime(e.tmdb_id, e.runtime_minutes));
     for (const m of movies) addWatched(m.watched_at, mvRuntime(m.tmdb_id, m.runtime_minutes));
+    for (const r of rewatches) addWatched(r.created_at, r.minutes ?? 0);
 
     const weekdayMinutes = weekday.map((minutes, i) => ({
       day: WEEKDAYS[i],
@@ -405,12 +406,27 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
     const busiestIdx = weekday.reduce((best, v, i) => (v > weekday[best] ? i : best), 0);
     const busiestWeekday = weekday[busiestIdx] > 0 ? WEEKDAYS[busiestIdx] : null;
 
-    // ---- Top series by episodes watched ----
-    const topSeriesByEpisodes = Array.from(epsBySeries.entries())
-      .map(([tmdb_id, arr]) => ({
+    // ---- Top series by episodes watched (rewatched episodes count again) ----
+    const rewatchEpsBySeries = new Map<number, number>();
+    for (const r of rewatches) {
+      if (r.media_type !== "tv") continue;
+      rewatchEpsBySeries.set(
+        r.tmdb_id,
+        (rewatchEpsBySeries.get(r.tmdb_id) ?? 0) + (r.episodes_count ?? 0)
+      );
+    }
+    const seriesEpisodeCounts = new Map<number, number>();
+    for (const [tmdb_id, arr] of epsBySeries.entries()) {
+      seriesEpisodeCounts.set(tmdb_id, arr.length);
+    }
+    for (const [tmdb_id, extra] of rewatchEpsBySeries.entries()) {
+      seriesEpisodeCounts.set(tmdb_id, (seriesEpisodeCounts.get(tmdb_id) ?? 0) + extra);
+    }
+    const topSeriesByEpisodes = Array.from(seriesEpisodeCounts.entries())
+      .map(([tmdb_id, episodes]) => ({
         tmdb_id,
         title: tvTitle(tmdb_id) ?? `TV #${tmdb_id}`,
-        episodes: arr.length,
+        episodes,
       }))
       .sort((a, b) => b.episodes - a.episodes)
       .slice(0, 5);
