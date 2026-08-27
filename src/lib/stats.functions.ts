@@ -151,6 +151,27 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       if (!data || data.length < PAGE) break;
     }
 
+    // Rewatches count again toward totals, habits and most-watched shows.
+    interface RewatchRow {
+      media_type: string;
+      tmdb_id: number;
+      episodes_count: number | null;
+      minutes: number | null;
+      created_at: string | null;
+    }
+    const rewatches: RewatchRow[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await context.supabase
+        .from("rewatches")
+        .select("media_type, tmdb_id, episodes_count, minutes, created_at")
+        .eq("user_id", context.userId)
+        .range(from, from + PAGE - 1);
+      if (error) break;
+      rewatches.push(...((data ?? []) as RewatchRow[]));
+      if (!data || data.length < PAGE) break;
+    }
+
+
     // Dedupe episodes by (series, season, episode) and movies by tmdb_id.
     const epSeen = new Set<string>();
     const eps = rawEps.filter((e) => {
@@ -376,6 +397,7 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
 
     for (const e of eps) addWatched(e.watched_at, epRuntime(e.tmdb_id, e.runtime_minutes));
     for (const m of movies) addWatched(m.watched_at, mvRuntime(m.tmdb_id, m.runtime_minutes));
+    for (const r of rewatches) addWatched(r.created_at, r.minutes ?? 0);
 
     const weekdayMinutes = weekday.map((minutes, i) => ({
       day: WEEKDAYS[i],
@@ -384,12 +406,27 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
     const busiestIdx = weekday.reduce((best, v, i) => (v > weekday[best] ? i : best), 0);
     const busiestWeekday = weekday[busiestIdx] > 0 ? WEEKDAYS[busiestIdx] : null;
 
-    // ---- Top series by episodes watched ----
-    const topSeriesByEpisodes = Array.from(epsBySeries.entries())
-      .map(([tmdb_id, arr]) => ({
+    // ---- Top series by episodes watched (rewatched episodes count again) ----
+    const rewatchEpsBySeries = new Map<number, number>();
+    for (const r of rewatches) {
+      if (r.media_type !== "tv") continue;
+      rewatchEpsBySeries.set(
+        r.tmdb_id,
+        (rewatchEpsBySeries.get(r.tmdb_id) ?? 0) + (r.episodes_count ?? 0)
+      );
+    }
+    const seriesEpisodeCounts = new Map<number, number>();
+    for (const [tmdb_id, arr] of epsBySeries.entries()) {
+      seriesEpisodeCounts.set(tmdb_id, arr.length);
+    }
+    for (const [tmdb_id, extra] of rewatchEpsBySeries.entries()) {
+      seriesEpisodeCounts.set(tmdb_id, (seriesEpisodeCounts.get(tmdb_id) ?? 0) + extra);
+    }
+    const topSeriesByEpisodes = Array.from(seriesEpisodeCounts.entries())
+      .map(([tmdb_id, episodes]) => ({
         tmdb_id,
         title: tvTitle(tmdb_id) ?? `TV #${tmdb_id}`,
-        episodes: arr.length,
+        episodes,
       }))
       .sort((a, b) => b.episodes - a.episodes)
       .slice(0, 5);
@@ -472,12 +509,20 @@ export const getAdvancedStats = createServerFn({ method: "POST" })
       }
     }
 
-    // ---- TV vs Movie minutes ----
+    // ---- TV vs Movie minutes (rewatch time included) ----
+    const rewatchTvMinutes = rewatches
+      .filter((r) => r.media_type === "tv")
+      .reduce((s, r) => s + (r.minutes ?? 0), 0);
+    const rewatchMovieMinutes = rewatches
+      .filter((r) => r.media_type === "movie")
+      .reduce((s, r) => s + (r.minutes ?? 0), 0);
     const tvMinutes = Math.round(
-      eps.reduce((s, e) => s + epRuntime(e.tmdb_id, e.runtime_minutes), 0)
+      eps.reduce((s, e) => s + epRuntime(e.tmdb_id, e.runtime_minutes), 0) +
+        rewatchTvMinutes
     );
     const movieMinutes = Math.round(
-      movies.reduce((s, m) => s + mvRuntime(m.tmdb_id, m.runtime_minutes), 0)
+      movies.reduce((s, m) => s + mvRuntime(m.tmdb_id, m.runtime_minutes), 0) +
+        rewatchMovieMinutes
     );
 
     return {
