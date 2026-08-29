@@ -40,7 +40,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             "Track the movies and TV shows you watch, discover trending titles, and build your personal watchlist.",
         },
         { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: "https://tomodachitv.lovable.app" },
+        {
+          property: "og:image",
+          content: "https://tomodachitv.lovable.app/app-icon-512.png",
+        },
+        { property: "og:image:width", content: "512" },
+        { property: "og:image:height", content: "512" },
+        { name: "twitter:card", content: "summary" },
+        {
+          name: "twitter:image",
+          content: "https://tomodachitv.lovable.app/app-icon-512.png",
+        },
         { name: "twitter:title", content: "TomodachiTV — Movie & TV Tracker" },
         {
           name: "twitter:description",
