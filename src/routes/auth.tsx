@@ -287,8 +287,19 @@ function AuthPage() {
               {message && <p className="text-sm text-primary">{message}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Sign in
+                 Sign in
               </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("forgot");
+                  setError("");
+                  setMessage("");
+                }}
+                className="w-full text-sm text-muted-foreground hover:text-foreground"
+              >
+                Forgot your password?
+              </button>
             </form>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4">
