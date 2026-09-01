@@ -251,6 +251,21 @@ export function AppSidebar() {
                 <DropdownMenuItem onClick={() => setEditOpen(true)} className="cursor-pointer">
                   <Pencil className="mr-2 h-4 w-4" /> Edit profile
                 </DropdownMenuItem>
+                {googleLinked ? (
+                  <DropdownMenuItem disabled className="opacity-70">
+                    <GoogleIcon className="mr-2 h-4 w-4" /> Google connected
+                    <Check className="ml-auto h-4 w-4 text-primary" />
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={handleConnectGoogle}
+                    disabled={linkingGoogle}
+                    className="cursor-pointer"
+                  >
+                    <GoogleIcon className="mr-2 h-4 w-4" />
+                    {linkingGoogle ? "Connecting..." : "Connect Google"}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setConfirmLogout(true)} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
