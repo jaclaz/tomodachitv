@@ -28,6 +28,44 @@ function AuthPage() {
 
   const redirectTo = search.redirect || "/";
 
+  const handleGoogle = async () => {
+    setError("");
+    setMessage("");
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        setError(result.error.message || "Google sign-in failed");
+        setLoading(false);
+        return;
+      }
+      if (result.redirected) return;
+      await navigate({ to: redirectTo });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Google sign-in failed");
+      setLoading(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+    setMessage("If that email exists, we sent you a reset link. Check your inbox.");
+  };
+
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
