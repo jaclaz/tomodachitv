@@ -119,6 +119,37 @@ export function AppSidebar() {
   });
   const isAdmin = adminInfo?.admin ?? false;
 
+  const { data: googleLinked, refetch: refetchIdentities } = useQuery({
+    queryKey: ["google-identity"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      return (
+        data.user?.identities?.some((i) => i.provider === "google") ?? false
+      );
+    },
+    staleTime: 60_000,
+  });
+
+  const [linkingGoogle, setLinkingGoogle] = useState(false);
+  const handleConnectGoogle = async () => {
+    setLinkingGoogle(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error(result.error.message);
+        return;
+      }
+      if (result.redirected) return;
+      // Same email → identity linked automatically
+      await refetchIdentities();
+      toast.success("Google account connected");
+    } finally {
+      setLinkingGoogle(false);
+    }
+  };
+
   const handleLogout = async () => {
     await qc.cancelQueries();
     qc.clear();
