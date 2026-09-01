@@ -213,7 +213,41 @@ function AuthPage() {
             </button>
           </div>
 
-          {mode === "login" ? (
+          {mode === "forgot" ? (
+            <form onSubmit={handleForgot} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter your email and we&apos;ll send you a link to set a new password.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="email-forgot">Email</Label>
+                <Input
+                  id="email-forgot"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              {error && <p className="text-sm text-accent">{error}</p>}
+              {message && <p className="text-sm text-primary">{message}</p>}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Send reset link
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("login");
+                  setError("");
+                  setMessage("");
+                }}
+                className="w-full text-sm text-muted-foreground hover:text-foreground"
+              >
+                Back to sign in
+              </button>
+            </form>
+          ) : mode === "login" ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
