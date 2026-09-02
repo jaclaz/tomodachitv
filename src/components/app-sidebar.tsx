@@ -134,6 +134,10 @@ export function AppSidebar() {
   const handleConnectGoogle = async () => {
     setLinkingGoogle(true);
     try {
+      const { data: before } = await supabase.auth.getSession();
+      const previousSession = before.session;
+      const previousUserId = previousSession?.user.id ?? null;
+
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
@@ -142,13 +146,35 @@ export function AppSidebar() {
         return;
       }
       if (result.redirected) return;
-      // Same email → identity linked automatically
+
+      const { data: after } = await supabase.auth.getUser();
+      const newUserId = after.user?.id ?? null;
+
+      if (previousUserId && newUserId && newUserId !== previousUserId) {
+        // Different Google email → Supabase signed us into another account.
+        // Restore the original session instead of silently switching users.
+        if (previousSession) {
+          await supabase.auth.setSession({
+            access_token: previousSession.access_token,
+            refresh_token: previousSession.refresh_token,
+          });
+        } else {
+          await supabase.auth.signOut();
+        }
+        toast.error(
+          "That Google account uses a different email. Sign in with the Google account that matches your TomodachiTV email to link it.",
+        );
+        return;
+      }
+
       await refetchIdentities();
+      await qc.invalidateQueries();
       toast.success("Google account connected");
     } finally {
       setLinkingGoogle(false);
     }
   };
+
 
   const handleLogout = async () => {
     await qc.cancelQueries();
