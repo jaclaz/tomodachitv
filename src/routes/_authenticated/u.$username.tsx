@@ -95,7 +95,7 @@ function UserProfilePage() {
   });
 
   if (isLoading) {
-    return <div className="pt-12 text-sm text-muted-foreground">Loading...</div>;
+    return <div className="text-sm text-muted-foreground">Loading...</div>;
   }
   if (!profile) throw notFound();
 

@@ -54,7 +54,7 @@ function TrendingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 pt-12 sm:pt-0 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">
             Discover

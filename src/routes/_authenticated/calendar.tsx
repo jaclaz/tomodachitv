@@ -71,7 +71,7 @@ function CalendarPage() {
   const grouped = groupByDate(items);
 
   return (
-    <div className="space-y-6 pt-12 sm:pt-0">
+    <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">Calendar</h1>
         <p className="text-sm text-muted-foreground">
