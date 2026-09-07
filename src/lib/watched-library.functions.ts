@@ -211,10 +211,15 @@ async function buildWatchedLibrary(
 
 export const getWatchedLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(
-    ({ context }): Promise<WatchedLibraryItem[]> =>
-      buildWatchedLibrary(context.supabase, context.userId),
-  );
+  .handler(async ({ context }): Promise<WatchedLibraryItem[]> => {
+    try {
+      const { reconcileTvStatuses } = await import("@/lib/watched.functions");
+      await reconcileTvStatuses(context.supabase, context.userId);
+    } catch {
+      // best-effort: never block the library on a repair pass
+    }
+    return buildWatchedLibrary(context.supabase, context.userId);
+  });
 
 export const getUserWatchedLibrary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

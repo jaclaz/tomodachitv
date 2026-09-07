@@ -187,6 +187,104 @@ async function syncTvLibrary(
   }
 }
 
+/**
+ * Repairs TV rows still flagged as "watching" even though every released
+ * episode is already marked as watched (can happen when a status sync was
+ * skipped, raced, or ran while TMDB metadata was missing).
+ */
+export async function reconcileTvStatuses(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const { data: rows } = await supabase
+    .from("watchlist")
+    .select("id, tmdb_id")
+    .eq("user_id", userId)
+    .eq("media_type", "tv")
+    .eq("status", "watching");
+  if (!rows?.length) return;
+
+  // Count watched episodes per show (paginated: Supabase caps rows at 1000).
+  const counts = new Map<number, number>();
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("watched_episodes")
+      .select("tmdb_id")
+      .eq("user_id", userId)
+      .range(from, from + PAGE - 1);
+    if (error) break;
+    const page = data ?? [];
+    for (const r of page) counts.set(r.tmdb_id, (counts.get(r.tmdb_id) ?? 0) + 1);
+    if (page.length < PAGE) break;
+  }
+
+  const candidates = rows.filter((r) => (counts.get(r.tmdb_id) ?? 0) > 0);
+  if (!candidates.length) return;
+
+  const { data: cacheRows } = await supabase
+    .from("media_cache")
+    .select("tmdb_id, episode_count_aired")
+    .eq("media_type", "tv")
+    .in(
+      "tmdb_id",
+      candidates.map((c) => c.tmdb_id),
+    );
+  const aired = new Map<number, number | null>();
+  for (const c of cacheRows ?? []) aired.set(c.tmdb_id, c.episode_count_aired);
+
+  // Fill missing aired counts from TMDB (bounded concurrency) and cache them.
+  const missing = candidates.filter((c) => aired.get(c.tmdb_id) == null);
+  if (missing.length) {
+    const fetched: any[] = [];
+    let i = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(5, missing.length) }, async () => {
+        while (true) {
+          const idx = i++;
+          if (idx >= missing.length) return;
+          const id = missing[idx].tmdb_id;
+          const t = await fetchTmdbSummary("tv", id);
+          if (!t) continue;
+          aired.set(id, t.episode_count_aired);
+          fetched.push({
+            media_type: "tv",
+            tmdb_id: id,
+            title: t.title,
+            poster_path: t.poster_path,
+            backdrop_path: t.backdrop_path,
+            release_date: t.release_date,
+            vote_average: t.vote_average,
+            episode_count_aired: t.episode_count_aired,
+            series_status: t.series_status,
+          });
+        }
+      }),
+    );
+    if (fetched.length) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin
+          .from("media_cache")
+          .upsert(fetched, { onConflict: "media_type, tmdb_id" });
+      } catch {
+        // best-effort
+      }
+    }
+  }
+
+  const done = candidates
+    .filter((c) => {
+      const total = aired.get(c.tmdb_id);
+      return !!total && total > 0 && (counts.get(c.tmdb_id) ?? 0) >= total;
+    })
+    .map((c) => c.id);
+
+  if (done.length) {
+    await supabase.from("watchlist").update({ status: "completed" }).in("id", done);
+  }
+}
+
 async function syncMovieLibrary(
   supabase: SupabaseClient,
   userId: string,
