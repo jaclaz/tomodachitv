@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Tv, Film, Clock, ListChecks } from "lucide-react";
 
 interface StatsStripProps {
@@ -25,9 +26,11 @@ export function StatsStrip({
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
       {stats.map((stat) => (
-        <div
+        <Link
           key={stat.label}
-          className="rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary/30"
+          to="/stats"
+          aria-label={`${stat.label} — open stats`}
+          className="rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary/30 hover:bg-card"
         >
           <div className="flex items-center gap-2 text-muted-foreground">
             <stat.icon className="h-4 w-4" />
@@ -39,7 +42,7 @@ export function StatsStrip({
             {stat.value}
             <span className="text-lg text-muted-foreground">{stat.suffix}</span>
           </p>
-        </div>
+        </Link>
       ))}
     </div>
   );
