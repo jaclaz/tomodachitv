@@ -99,14 +99,6 @@ const navItems = [
 ] as const;
 
 export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
-  const [confirmLogout, setConfirmLogout] = useState(false);
-
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-
-  const router = useRouter();
-  const qc = useQueryClient();
-
   const { data: profile } = useQuery({
     queryKey: ["me"],
     queryFn: () => getMyProfile(),
@@ -119,81 +111,6 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
   });
   const isAdmin = adminInfo?.admin ?? false;
 
-  const { data: googleLinked, refetch: refetchIdentities } = useQuery({
-    queryKey: ["google-identity"],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getUser();
-      return (
-        data.user?.identities?.some((i) => i.provider === "google") ?? false
-      );
-    },
-    staleTime: 60_000,
-  });
-
-  const [linkingGoogle, setLinkingGoogle] = useState(false);
-  const handleConnectGoogle = async () => {
-    setLinkingGoogle(true);
-    try {
-      const { data: before } = await supabase.auth.getSession();
-      const previousSession = before.session;
-      const previousUserId = previousSession?.user.id ?? null;
-
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
-      if (result.error) {
-        toast.error(result.error.message);
-        return;
-      }
-      if (result.redirected) return;
-
-      const { data: after } = await supabase.auth.getUser();
-      const newUserId = after.user?.id ?? null;
-
-      if (previousUserId && newUserId && newUserId !== previousUserId) {
-        // Different Google email → Supabase signed us into another account.
-        // Restore the original session instead of silently switching users.
-        if (previousSession) {
-          await supabase.auth.setSession({
-            access_token: previousSession.access_token,
-            refresh_token: previousSession.refresh_token,
-          });
-        } else {
-          await supabase.auth.signOut();
-        }
-        toast.error(
-          "That Google account uses a different email. Sign in with the Google account that matches your TomodachiTV email to link it.",
-        );
-        return;
-      }
-
-      await refetchIdentities();
-      await qc.invalidateQueries();
-      toast.success("Google account connected");
-    } finally {
-      setLinkingGoogle(false);
-    }
-  };
-
-
-  const handleLogout = async () => {
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    await router.navigate({ to: "/auth", replace: true });
-  };
-
-  const deleteMut = useMutation({
-    mutationFn: () => deleteMyAccount(),
-    onSuccess: async () => {
-      toast.success("Account deleted");
-      await qc.cancelQueries();
-      qc.clear();
-      await supabase.auth.signOut();
-      await router.navigate({ to: "/auth", replace: true });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-canvas">
