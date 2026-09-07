@@ -215,7 +215,8 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
               key={item.to}
               to={item.to}
               activeOptions={{ exact: item.to === "/" }}
-              onClick={() => setOpen(false)}
+              onClick={() => onNavigate?.()}
+
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface hover:text-foreground [&[data-status=active]]:bg-primary/10 [&[data-status=active]]:text-primary"
             >
               <item.icon className="h-5 w-5" />
@@ -225,7 +226,8 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
           {isAdmin && (
             <Link
               to="/admin/reports"
-              onClick={() => setOpen(false)}
+              onClick={() => onNavigate?.()}
+
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface hover:text-foreground [&[data-status=active]]:bg-primary/10 [&[data-status=active]]:text-primary"
             >
               <ShieldAlert className="h-5 w-5" />
@@ -241,7 +243,8 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
             <Link
               to="/u/$username"
               params={{ username: profile.username }}
-              onClick={() => setOpen(false)}
+              onClick={() => onNavigate?.()}
+
               className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 transition-colors hover:bg-card"
             >
               <Avatar className="h-10 w-10">
@@ -313,25 +316,8 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      {/* Mobile trigger */}
-      <div className="fixed left-4 top-4 z-50 lg:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="bg-surface">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 border-r border-border p-0">
-            {sidebarContent}
-          </SheetContent>
-        </Sheet>
-      </div>
+      {sidebarContent}
 
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-canvas lg:block">
-        {sidebarContent}
-      </aside>
 
       <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
         <AlertDialogContent>
