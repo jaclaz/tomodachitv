@@ -265,7 +265,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
           <div className="relative flex min-w-0 flex-1 items-center">
             <TabsList
               ref={tabsListRef}
-              className="scrollbar-hide flex min-w-0 flex-1 flex-nowrap items-center justify-start overflow-x-auto bg-transparent p-0"
+              className="scrollbar-hide flex h-auto min-h-0 min-w-0 flex-1 flex-nowrap items-center justify-start overflow-x-auto overflow-y-hidden bg-transparent p-0"
             >
               {seasons.map((seasonInfo) => (
                 <TabsTrigger
