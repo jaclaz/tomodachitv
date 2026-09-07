@@ -98,9 +98,9 @@ const navItems = [
   { to: "/import", icon: Download, label: "Import" },
 ] as const;
 
-export function AppSidebar() {
-  const [open, setOpen] = useState(false);
+export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
