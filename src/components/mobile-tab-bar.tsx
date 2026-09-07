@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 const itemClass =
-  "flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors";
+  "flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium text-muted-foreground select-none transition-all duration-150 active:scale-95 active:text-primary/80 touch-manipulation";
 
 const moreItems = [
   { to: "/watched", icon: CheckCircle2, label: "Watched" },
