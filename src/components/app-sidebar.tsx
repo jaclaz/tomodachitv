@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -367,6 +367,16 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
     </>
   );
 }
+
+export function AppSidebar() {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-canvas lg:block">
+      <SidebarPanel />
+    </aside>
+  );
+}
+
+
 
 function NotificationBell() {
   const [open, setOpen] = useState(false);
