@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,7 +24,7 @@ import {
   markEpisodesBulk,
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
-import { Clock, CheckCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, CheckCheck } from "lucide-react";
 
 interface EpisodeListProps {
   series: SeriesDetails;
