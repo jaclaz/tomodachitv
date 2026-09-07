@@ -196,7 +196,7 @@ interface ScoreBadgeProps {
 export function ScoreBadge({ value, className }: ScoreBadgeProps) {
   if (!value) return null;
   return (
-    <span className={cn("flex items-center gap-1 text-score", className)}>
+    <span className={cn("flex items-center gap-1 text-primary", className)}>
       <PopcornIcon fill="full" className="h-3.5 w-3.5" />
       {value.toFixed(1)}
     </span>
