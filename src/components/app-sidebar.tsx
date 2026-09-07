@@ -314,59 +314,9 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
     </div>
   );
 
-  return (
-    <>
-      {sidebarContent}
-
-
-      <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Sign out?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to sign out of your account?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout}>Sign out</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes your profile, lists, watch history, follows and
-              everything else tied to your account. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteMut.mutate()}
-              disabled={deleteMut.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMut.isPending ? "Deleting..." : "Delete account"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {profile && (
-        <EditProfileDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          currentDisplayName={profile.display_name}
-          currentUsername={profile.username}
-        />
-      )}
-    </>
-  );
+  return sidebarContent;
 }
+
 
 export function AppSidebar() {
   return (
