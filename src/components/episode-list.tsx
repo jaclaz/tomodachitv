@@ -227,6 +227,37 @@ export function EpisodeList({ series }: EpisodeListProps) {
   const allSeasonWatched =
     releasedInSeason.length > 0 && releasedInSeason.every(isWatched);
 
+  const tabsListRef = useRef<HTMLDivElement>(null);
+  const [canScroll, setCanScroll] = useState({ left: false, right: false });
+
+  const updateScroll = () => {
+    const el = tabsListRef.current;
+    if (!el) return;
+    setCanScroll({
+      left: el.scrollLeft > 0,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    });
+  };
+
+  useEffect(() => {
+    const el = tabsListRef.current;
+    if (!el) return;
+    updateScroll();
+    el.addEventListener("scroll", updateScroll);
+    const ro = new ResizeObserver(updateScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScroll);
+      ro.disconnect();
+    };
+  }, [seasons.length]);
+
+  const scrollTabs = (direction: "left" | "right") => {
+    const el = tabsListRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction === "left" ? -200 : 200, behavior: "smooth" });
+  };
+
   return (
     <div className="rounded-xl border border-border bg-surface">
       <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
