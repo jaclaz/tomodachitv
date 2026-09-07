@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -98,9 +98,9 @@ const navItems = [
   { to: "/import", icon: Download, label: "Import" },
 ] as const;
 
-export function AppSidebar() {
-  const [open, setOpen] = useState(false);
+export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -215,7 +215,8 @@ export function AppSidebar() {
               key={item.to}
               to={item.to}
               activeOptions={{ exact: item.to === "/" }}
-              onClick={() => setOpen(false)}
+              onClick={() => onNavigate?.()}
+
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface hover:text-foreground [&[data-status=active]]:bg-primary/10 [&[data-status=active]]:text-primary"
             >
               <item.icon className="h-5 w-5" />
@@ -225,7 +226,8 @@ export function AppSidebar() {
           {isAdmin && (
             <Link
               to="/admin/reports"
-              onClick={() => setOpen(false)}
+              onClick={() => onNavigate?.()}
+
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface hover:text-foreground [&[data-status=active]]:bg-primary/10 [&[data-status=active]]:text-primary"
             >
               <ShieldAlert className="h-5 w-5" />
@@ -241,7 +243,8 @@ export function AppSidebar() {
             <Link
               to="/u/$username"
               params={{ username: profile.username }}
-              onClick={() => setOpen(false)}
+              onClick={() => onNavigate?.()}
+
               className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 transition-colors hover:bg-card"
             >
               <Avatar className="h-10 w-10">
@@ -313,25 +316,8 @@ export function AppSidebar() {
 
   return (
     <>
-      {/* Mobile trigger */}
-      <div className="fixed left-4 top-4 z-50 lg:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="bg-surface">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 border-r border-border p-0">
-            {sidebarContent}
-          </SheetContent>
-        </Sheet>
-      </div>
+      {sidebarContent}
 
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-canvas lg:block">
-        {sidebarContent}
-      </aside>
 
       <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
         <AlertDialogContent>
@@ -381,6 +367,16 @@ export function AppSidebar() {
     </>
   );
 }
+
+export function AppSidebar() {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-canvas lg:block">
+      <SidebarPanel />
+    </aside>
+  );
+}
+
+
 
 function NotificationBell() {
   const [open, setOpen] = useState(false);
