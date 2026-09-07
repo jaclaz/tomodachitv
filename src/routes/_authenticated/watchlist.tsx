@@ -180,7 +180,7 @@ function WatchlistPage() {
 
   return (
     <div className="space-y-8">
-      <div className="pt-12 sm:pt-0">
+      <div className="sm:pt-0">
         <h1 className="font-display text-2xl font-bold text-foreground">My watchlist</h1>
         <p className="text-sm text-muted-foreground">
           Movies and shows you want to watch or are currently watching.

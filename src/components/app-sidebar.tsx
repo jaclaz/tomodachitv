@@ -154,7 +154,7 @@ export function AppSidebar() {
 
 
 
-function NotificationBell() {
+export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();

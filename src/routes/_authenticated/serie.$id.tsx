@@ -93,7 +93,7 @@ function SeriesDetailPage() {
 
   if (seriesLoading || !series) {
     return (
-      <div className="space-y-6 pt-12 sm:pt-0">
+      <div className="space-y-6">
         <div className="h-64 animate-pulse rounded-2xl bg-muted" />
         <div className="h-96 animate-pulse rounded-2xl bg-muted" />
       </div>
@@ -107,7 +107,7 @@ function SeriesDetailPage() {
     : null;
 
   return (
-    <div className="space-y-6 pt-12 sm:pt-0">
+    <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Button
           variant="ghost"

@@ -225,7 +225,7 @@ function WatchedPage() {
 
   return (
     <div className="space-y-6">
-      <div className="pt-12 sm:pt-0">
+      <div className="sm:pt-0">
         <h1 className="font-display text-2xl font-bold text-foreground">Watched</h1>
         <p className="text-sm text-muted-foreground">
           {favOnly

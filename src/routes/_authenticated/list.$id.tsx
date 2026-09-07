@@ -56,7 +56,7 @@ function ListDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <p className="pt-12 text-sm text-muted-foreground">Loading...</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading...</p>;
   if (!data) throw notFound();
 
   const { list, items } = data;

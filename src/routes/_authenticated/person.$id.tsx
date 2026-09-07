@@ -36,7 +36,7 @@ function PersonDetailPage() {
 
   if (isLoading || !person) {
     return (
-      <div className="space-y-6 pt-12 sm:pt-0">
+      <div className="space-y-6">
         <div className="h-40 animate-pulse rounded-2xl bg-muted" />
         <div className="h-96 animate-pulse rounded-2xl bg-muted" />
       </div>
@@ -63,7 +63,7 @@ function PersonDetailPage() {
   const profile = profileUrl(person.profile_path, "h632");
 
   return (
-    <div className="space-y-8 pt-12 sm:pt-0">
+    <div className="space-y-8">
       <Button variant="ghost" asChild className="-ml-2 gap-2 text-muted-foreground">
         <Link to="/">
           <ArrowLeft className="h-4 w-4" />

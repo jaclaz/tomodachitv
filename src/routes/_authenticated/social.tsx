@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/social")({
 function TomodachiPage() {
   return (
     <div className="space-y-8">
-      <div className="pt-12 sm:pt-0">
+      <div className="sm:pt-0">
         <h1 className="font-display text-2xl font-bold">Tomodachi</h1>
         <p className="text-sm text-muted-foreground">
           Find new people to follow and keep up with what your friends watch.
