@@ -230,13 +230,13 @@ export function EpisodeList({ series }: EpisodeListProps) {
   return (
     <div className="rounded-xl border border-border bg-surface">
       <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 pt-4">
-          <TabsList className="bg-transparent p-0">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-4 pt-4">
+          <TabsList className="scrollbar-hide flex flex-nowrap items-center overflow-x-auto bg-transparent p-0">
             {seasons.map((seasonInfo) => (
               <TabsTrigger
                 key={seasonInfo.season_number}
                 value={String(seasonInfo.season_number)}
-                className="rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
+                className="shrink-0 rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
               >
                 Season {seasonInfo.season_number}
               </TabsTrigger>
