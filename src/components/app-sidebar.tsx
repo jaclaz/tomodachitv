@@ -263,51 +263,8 @@ export function SidebarPanel({ onNavigate }: { onNavigate?: () => void }) {
               </div>
             </Link>
             <NotificationBell />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  aria-label="Account menu"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setEditOpen(true)} className="cursor-pointer">
-                  <Pencil className="mr-2 h-4 w-4" /> Edit profile
-                </DropdownMenuItem>
-                {googleLinked ? (
-                  <DropdownMenuItem disabled className="opacity-70">
-                    <GoogleIcon className="mr-2 h-4 w-4" /> Google connected
-                    <Check className="ml-auto h-4 w-4 text-primary" />
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={handleConnectGoogle}
-                    disabled={linkingGoogle}
-                    className="cursor-pointer"
-                  >
-                    <GoogleIcon className="mr-2 h-4 w-4" />
-                    {linkingGoogle ? "Connecting..." : "Connect Google"}
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setConfirmLogout(true)} className="cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" /> Sign out
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setConfirmDelete(true)}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete account
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AccountMenu />
+
           </div>
         </div>
       )}
