@@ -51,6 +51,8 @@ export function MobileTabBar() {
 
         <Link
           to="/watchlist"
+          search={{ type: "tv" as const }}
+
           className={`${itemClass} ${libraryActive ? "text-primary" : ""}`}
         >
           <ListVideo className="h-5 w-5" />
