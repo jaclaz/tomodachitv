@@ -104,6 +104,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 z-[60] bg-gradient-to-b from-background/90 via-background/40 to-transparent lg:hidden"
+        style={{ height: "calc(env(safe-area-inset-top) + 2rem)" }}
+        aria-hidden="true"
+      />
       <Outlet />
     </QueryClientProvider>
   );
