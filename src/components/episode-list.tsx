@@ -262,17 +262,42 @@ export function EpisodeList({ series }: EpisodeListProps) {
     <div className="rounded-xl border border-border bg-surface">
       <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 pt-4">
-          <TabsList className="scrollbar-hide flex flex-nowrap items-center overflow-x-auto bg-transparent p-0">
-            {seasons.map((seasonInfo) => (
-              <TabsTrigger
-                key={seasonInfo.season_number}
-                value={String(seasonInfo.season_number)}
-                className="shrink-0 rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
+          <div className="relative flex min-w-0 flex-1 items-center">
+            <TabsList
+              ref={tabsListRef}
+              className="scrollbar-hide flex min-w-0 flex-1 flex-nowrap items-center justify-start overflow-x-auto bg-transparent p-0"
+            >
+              {seasons.map((seasonInfo) => (
+                <TabsTrigger
+                  key={seasonInfo.season_number}
+                  value={String(seasonInfo.season_number)}
+                  className="shrink-0 rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
+                >
+                  Season {seasonInfo.season_number}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {canScroll.left && (
+              <button
+                type="button"
+                onClick={() => scrollTabs("left")}
+                className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-1 shadow-md backdrop-blur-sm"
+                aria-label="Scroll seasons left"
               >
-                Season {seasonInfo.season_number}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            {canScroll.right && (
+              <button
+                type="button"
+                onClick={() => scrollTabs("right")}
+                className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-1 shadow-md backdrop-blur-sm"
+                aria-label="Scroll seasons right"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -283,7 +308,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
               bulkMutation.isPending ||
               releasedInSeason.length === 0
             }
-            className="mb-2"
+            className="mb-2 shrink-0"
           >
             <CheckCheck className="mr-1.5 h-4 w-4" />
             {allSeasonWatched ? "Season watched" : "Mark season as watched"}
