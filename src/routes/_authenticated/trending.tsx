@@ -82,17 +82,43 @@ function TrendingPage() {
 
 
       <div className="flex flex-col gap-3">
-        <Tabs value={type} onValueChange={(v) => setType(v as MediaType)}>
-          <TabsList>
-            <TabsTrigger value="tv">TV Shows</TabsTrigger>
-            <TabsTrigger value="movie">Movies</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center justify-between gap-3">
+          <Tabs value={type} onValueChange={(v) => setType(v as MediaType)}>
+            <TabsList>
+              <TabsTrigger value="tv">TV Shows</TabsTrigger>
+              <TabsTrigger value="movie">Movies</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant={gridSize === "normal" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setGrid("normal")}
+              aria-label="Large grid"
+              title="Large grid"
+              className="h-9 w-9 flex-shrink-0"
+            >
+              <Grid2x2 className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={gridSize === "small" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setGrid("small")}
+              aria-label="Small grid"
+              title="Small grid"
+              className="h-9 w-9 flex-shrink-0"
+            >
+              <Grid3x3 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
         <FilterBar type={type} value={filters} onChange={setFilters} />
       </div>
 
       {isFetching && results.length === 0 ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className={gridClass}>
           {Array.from({ length: 15 }).map((_, i) => (
             <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-muted" />
           ))}
@@ -102,7 +128,7 @@ function TrendingPage() {
           No results match these filters.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className={gridClass}>
           {results.map((item) => (
             <MediaCard key={`${item.media_type}-${item.id}`} item={item} />
           ))}
