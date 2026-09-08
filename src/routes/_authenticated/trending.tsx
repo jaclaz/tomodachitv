@@ -9,7 +9,7 @@ import { SearchBar } from "@/components/search-bar";
 import { FilterBar, DEFAULT_FILTERS, type FilterState } from "@/components/filter-bar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Bookmark, BookmarkCheck, Flame } from "lucide-react";
+import { Bookmark, BookmarkCheck, Flame, Grid2x2, Grid3x3 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/trending")({
