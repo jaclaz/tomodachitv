@@ -341,12 +341,11 @@ function pickTrailer(videos: RawVideo[]): Trailer | null {
   if (!yt.length) return null;
   const en = yt.filter((v) => !v.iso_639_1 || v.iso_639_1 === "en");
   const pool = en.length ? en : yt;
-  return (
+  const pick =
     pool.find((v) => v.type === "Trailer") ??
     pool.find((v) => v.type === "Teaser") ??
-    pool[0] ??
-    null
-  ) && { key: (pool.find((v) => v.type === "Trailer") ?? pool.find((v) => v.type === "Teaser") ?? pool[0]).key, name: (pool.find((v) => v.type === "Trailer") ?? pool.find((v) => v.type === "Teaser") ?? pool[0]).name };
+    pool[0];
+  return pick ? { key: pick.key, name: pick.name } : null;
 }
 
 export const getTrailer = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
