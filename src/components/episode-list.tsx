@@ -298,6 +298,12 @@ export function EpisodeList({ series }: EpisodeListProps) {
               </button>
             )}
           </div>
+          <TrailerButton
+            mediaType="tv"
+            tmdbId={series.id}
+            season={activeSeason}
+            variant="icon"
+          />
           <Button
             variant="outline"
             size="sm"
