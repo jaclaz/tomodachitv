@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExternalLink, Tv2 } from "lucide-react";
+import { TrailerButton } from "@/components/trailer-button";
 
 const STORAGE_KEY = "watch-providers-country";
 const DEFAULT_COUNTRY = "IT";
@@ -80,6 +81,7 @@ export function WatchProviders({ tmdbId, type }: Props) {
         <div className="flex items-center gap-2">
           <Tv2 className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-display text-lg font-semibold">Where to watch</h2>
+          <TrailerButton mediaType={type} tmdbId={tmdbId} />
         </div>
         <Select value={country} onValueChange={onCountryChange}>
           <SelectTrigger className="h-9 w-[180px]">

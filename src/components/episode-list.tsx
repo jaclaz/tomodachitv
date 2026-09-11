@@ -25,6 +25,7 @@ import {
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
 import { ChevronLeft, ChevronRight, Clock, CheckCheck } from "lucide-react";
+import { TrailerButton } from "@/components/trailer-button";
 
 interface EpisodeListProps {
   series: SeriesDetails;
@@ -298,6 +299,12 @@ export function EpisodeList({ series }: EpisodeListProps) {
               </button>
             )}
           </div>
+          <TrailerButton
+            mediaType="tv"
+            tmdbId={series.id}
+            season={activeSeason}
+            variant="icon"
+          />
           <Button
             variant="outline"
             size="sm"
