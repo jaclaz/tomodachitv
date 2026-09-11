@@ -323,6 +323,47 @@ export const getSeasonDetails = createServerFn({ method: "POST" }).middleware([r
     return tmdbFetch(`/tv/${data.id}/season/${data.season}`);
   });
 
+export interface Trailer {
+  key: string;
+  name: string;
+}
+
+interface RawVideo {
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  iso_639_1?: string;
+}
+
+function pickTrailer(videos: RawVideo[]): Trailer | null {
+  const yt = videos.filter((v) => v.site === "YouTube");
+  if (!yt.length) return null;
+  const en = yt.filter((v) => !v.iso_639_1 || v.iso_639_1 === "en");
+  const pool = en.length ? en : yt;
+  return (
+    pool.find((v) => v.type === "Trailer") ??
+    pool.find((v) => v.type === "Teaser") ??
+    pool[0] ??
+    null
+  ) && { key: (pool.find((v) => v.type === "Trailer") ?? pool.find((v) => v.type === "Teaser") ?? pool[0]).key, name: (pool.find((v) => v.type === "Trailer") ?? pool.find((v) => v.type === "Teaser") ?? pool[0]).name };
+}
+
+export const getTrailer = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .validator((input: { type: MediaType; id: number; season?: number }) => input)
+  .handler(async ({ data }): Promise<Trailer | null> => {
+    try {
+      const path =
+        data.type === "tv" && data.season != null
+          ? `/tv/${data.id}/season/${data.season}/videos`
+          : `/${data.type}/${data.id}/videos`;
+      const res = await tmdbFetch(path);
+      return pickTrailer((res.results ?? []) as RawVideo[]);
+    } catch {
+      return null;
+    }
+  });
+
 // ============ Genres ============
 export interface Genre { id: number; name: string }
 
