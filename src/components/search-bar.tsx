@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { searchMulti, profileUrl, type SearchResultItem, type MediaItem } from "@/lib/tmdb";
 import {
   addToWatchlist,
+  getWatchlist,
   removeFromWatchlist,
   type WatchlistItem,
 } from "@/lib/watchlist.functions";
@@ -16,7 +17,7 @@ function QuickAddButton({ item }: { item: MediaItem }) {
   const queryClient = useQueryClient();
   const { data: watchlist = [] } = useQuery({
     queryKey: ["watchlist"],
-    queryFn: () => getWatchlistSafe(),
+    queryFn: () => getWatchlist(),
   });
   const inLibrary = watchlist.some(
     (w) => w.media_type === item.media_type && w.tmdb_id === item.id,
@@ -109,10 +110,6 @@ function QuickAddButton({ item }: { item: MediaItem }) {
   );
 }
 
-async function getWatchlistSafe() {
-  const { getWatchlist } = await import("@/lib/watchlist.functions");
-  return getWatchlist();
-}
 
 export function SearchBar() {
   const [query, setQuery] = useState("");
@@ -182,10 +179,13 @@ export function SearchBar() {
           ) : (
             <ul className="space-y-1">
               {results.map((item) => (
-                <li key={`${item.media_type}-${item.id}`}>
+                <li
+                  key={`${item.media_type}-${item.id}`}
+                  className="flex items-center gap-1 rounded-lg pr-1 transition-colors hover:bg-surface"
+                >
                   <button
                     onClick={() => handleSelect(item)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface"
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left text-sm"
                   >
                     {item.media_type === "person" ? (
                       <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-bold text-muted-foreground">
@@ -239,6 +239,9 @@ export function SearchBar() {
                       </p>
                     </div>
                   </button>
+                  {item.media_type !== "person" && (
+                    <QuickAddButton item={item} />
+                  )}
                 </li>
               ))}
             </ul>
