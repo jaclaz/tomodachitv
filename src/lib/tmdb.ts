@@ -223,37 +223,118 @@ interface RawPerson {
   known_for?: Array<{ title?: string; name?: string }>;
 }
 
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(
+        prev[j] + 1,
+        cur[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+function similarity(query: string, title: string): number {
+  const q = query.toLowerCase().trim();
+  const t = title.toLowerCase().trim();
+  if (!q || !t) return 0;
+  if (t.includes(q)) return 1;
+  // Compare against the best-matching window of the title.
+  const words = t.split(/\s+/);
+  let best = 1 - levenshtein(q, t) / Math.max(q.length, t.length);
+  for (const w of words) {
+    const s = 1 - levenshtein(q, w) / Math.max(q.length, w.length);
+    if (s > best) best = s;
+  }
+  return best;
+}
+
+function mapMultiResults(
+  raw: (RawMulti | (RawPerson & { media_type: "person" }))[],
+): SearchResultItem[] {
+  const results: SearchResultItem[] = [];
+  for (const item of raw) {
+    if (item.media_type === "tv") {
+      results.push(mapTv(item as RawTv));
+    } else if (item.media_type === "movie") {
+      results.push(mapMovie(item as RawMovie));
+    } else if (item.media_type === "person") {
+      const p = item as RawPerson;
+      results.push({
+        id: p.id,
+        media_type: "person",
+        title: p.name,
+        profile_path: p.profile_path,
+        known_for_department: p.known_for_department ?? null,
+        known_for_titles: (p.known_for ?? [])
+          .map((k) => k.title ?? k.name ?? "")
+          .filter(Boolean)
+          .slice(0, 3),
+      });
+    }
+  }
+  return results;
+}
+
 export const searchMulti = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { query: string }) => input)
   .handler(async ({ data }): Promise<{ results: SearchResultItem[] }> => {
-    if (!data.query.trim()) return { results: [] };
+    const query = data.query.trim();
+    if (!query) return { results: [] };
+
     const res = await tmdbFetch("/search/multi", {
-      query: data.query,
+      query,
       include_adult: "false",
     });
-    const results: SearchResultItem[] = [];
-    for (const raw of res.results as (RawMulti | (RawPerson & { media_type: "person" }))[]) {
-      if (raw.media_type === "tv") {
-        results.push(mapTv(raw as RawTv));
-      } else if (raw.media_type === "movie") {
-        results.push(mapMovie(raw as RawMovie));
-      } else if (raw.media_type === "person") {
-        const p = raw as RawPerson;
-        results.push({
-          id: p.id,
-          media_type: "person",
-          title: p.name,
-          profile_path: p.profile_path,
-          known_for_department: p.known_for_department ?? null,
-          known_for_titles: (p.known_for ?? [])
-            .map((k) => k.title ?? k.name ?? "")
-            .filter(Boolean)
-            .slice(0, 3),
-        });
+    let results = mapMultiResults(res.results ?? []);
+
+    // Typo tolerance: when TMDB returns little or nothing, retry with
+    // shortened/word-level variants and rank by string similarity.
+    if (results.length < 3 && query.length >= 4) {
+      const variants = new Set<string>();
+      variants.add(query.slice(0, Math.max(4, Math.ceil(query.length * 0.7))));
+      const words = query.split(/\s+/).filter((w) => w.length >= 4);
+      for (const w of words.slice(0, 2)) {
+        variants.add(w);
+        variants.add(w.slice(0, Math.max(4, Math.ceil(w.length * 0.7))));
       }
+
+      const seen = new Set(results.map((r) => `${r.media_type}-${r.id}`));
+      const fuzzy: SearchResultItem[] = [];
+      for (const v of variants) {
+        if (v === query) continue;
+        try {
+          const alt = await tmdbFetch("/search/multi", {
+            query: v,
+            include_adult: "false",
+          });
+          for (const item of mapMultiResults(alt.results ?? [])) {
+            const key = `${item.media_type}-${item.id}`;
+            if (seen.has(key)) continue;
+            if (similarity(query, item.title) < 0.55) continue;
+            seen.add(key);
+            fuzzy.push(item);
+          }
+        } catch {
+          // ignore variant failures
+        }
+      }
+      fuzzy.sort((a, b) => similarity(query, b.title) - similarity(query, a.title));
+      results = [...results, ...fuzzy];
     }
+
     return { results };
   });
+
 
 export const getSeriesDetails = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .validator((input: { id: number }) => input)
