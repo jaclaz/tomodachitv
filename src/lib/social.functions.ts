@@ -51,12 +51,11 @@ export const getFollowers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { user_id: string }) => input)
   .handler(async ({ context, data }): Promise<FollowUserItem[]> => {
-    const { data: rows, error } = await context.supabase
-      .from("follows")
-      .select("follower_id")
-      .eq("following_id", data.user_id);
+    const { data: rows, error } = await context.supabase.rpc("get_follower_ids", {
+      _user_id: data.user_id,
+    });
     if (error) throw error;
-    const ids = (rows ?? []).map((r) => r.follower_id);
+    const ids = ((rows ?? []) as { user_id: string }[]).map((r) => r.user_id);
     return fetchFollowList(context.supabase, ids, context.userId);
   });
 
@@ -64,12 +63,11 @@ export const getFollowing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { user_id: string }) => input)
   .handler(async ({ context, data }): Promise<FollowUserItem[]> => {
-    const { data: rows, error } = await context.supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", data.user_id);
+    const { data: rows, error } = await context.supabase.rpc("get_following_ids", {
+      _user_id: data.user_id,
+    });
     if (error) throw error;
-    const ids = (rows ?? []).map((r) => r.following_id);
+    const ids = ((rows ?? []) as { user_id: string }[]).map((r) => r.user_id);
     return fetchFollowList(context.supabase, ids, context.userId);
   });
 
