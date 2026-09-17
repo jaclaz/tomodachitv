@@ -99,15 +99,8 @@ export const getProfileByUsername = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!profile) return null;
-    const [{ count: followers }, { count: following }, { data: rel }] = await Promise.all([
-      context.supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("following_id", profile.id),
-      context.supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("follower_id", profile.id),
+    const [{ data: counts }, { data: rel }] = await Promise.all([
+      context.supabase.rpc("get_follow_counts", { _user_id: profile.id }),
       context.supabase
         .from("follows")
         .select("id")
@@ -115,10 +108,11 @@ export const getProfileByUsername = createServerFn({ method: "POST" })
         .eq("following_id", profile.id)
         .maybeSingle(),
     ]);
+    const countRow = (counts as { followers_count: number; following_count: number }[] | null)?.[0];
     return {
       ...(profile as PublicProfile),
-      followers_count: followers ?? 0,
-      following_count: following ?? 0,
+      followers_count: Number(countRow?.followers_count ?? 0),
+      following_count: Number(countRow?.following_count ?? 0),
       is_following: !!rel,
       is_self: profile.id === context.userId,
     };
