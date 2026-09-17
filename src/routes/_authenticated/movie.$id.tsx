@@ -79,27 +79,44 @@ function MovieDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
+  const invalidateWatched = () => {
+    queryClient.invalidateQueries({ queryKey: ["watchedMovies"] });
+    queryClient.invalidateQueries({ queryKey: ["stats"] });
+    queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    queryClient.invalidateQueries({ queryKey: ["watched-library"] });
+    queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
+  };
+
   const markMutation = useMutation({
-    mutationFn: () =>
-      markMovieWatched({
+    mutationFn: async () => {
+      // Shortcut: make sure the movie is in the library before marking it watched
+      if (!inWatchlist) {
+        await addToWatchlist({
+          data: {
+            tmdb_id: movie!.id,
+            media_type: "movie",
+            series_name: movie!.title,
+            poster_path: movie!.poster_path,
+            backdrop_path: movie!.backdrop_path,
+            first_air_date: movie!.release_date,
+            vote_average: movie!.vote_average,
+          },
+        });
+      }
+      return markMovieWatched({
         data: {
           tmdb_id: movie!.id,
           title: movie!.title,
           runtime_minutes: movie!.runtime,
         },
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["watchedMovies"] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
+      });
     },
+    onSuccess: invalidateWatched,
   });
 
   const unmarkMutation = useMutation({
     mutationFn: () => unmarkMovieWatched({ data: { tmdb_id: tmdbId } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["watchedMovies"] });
-      queryClient.invalidateQueries({ queryKey: ["stats"] });
-    },
+    onSuccess: invalidateWatched,
   });
 
   if (isLoading || !movie) {
