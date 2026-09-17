@@ -24,6 +24,7 @@ import {
   markEpisodesBulk,
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
+import { addToWatchlist } from "@/lib/watchlist.functions";
 import { ChevronLeft, ChevronRight, Clock, CheckCheck } from "lucide-react";
 import { TrailerButton } from "@/components/trailer-button";
 
