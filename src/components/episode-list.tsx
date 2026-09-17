@@ -24,6 +24,7 @@ import {
   markEpisodesBulk,
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
+import { addToWatchlist } from "@/lib/watchlist.functions";
 import { ChevronLeft, ChevronRight, Clock, CheckCheck } from "lucide-react";
 import { TrailerButton } from "@/components/trailer-button";
 
@@ -98,19 +99,42 @@ export function EpisodeList({ series }: EpisodeListProps) {
     queryClient.invalidateQueries({ queryKey: ["currently-watching"] });
   };
 
+  // Shortcut: marking an episode also puts the show in the library
+  const ensureInLibrary = async () => {
+    try {
+      await addToWatchlist({
+        data: {
+          tmdb_id: series.id,
+          media_type: "tv",
+          series_name: series.title,
+          poster_path: series.poster_path,
+          backdrop_path: series.backdrop_path,
+          first_air_date: series.release_date,
+          vote_average: series.vote_average,
+          status: "watching",
+        },
+      });
+    } catch {
+      // best-effort
+    }
+  };
+
   const markMutation = useMutation({
-    mutationFn: (vars: {
+    mutationFn: async (vars: {
       tmdb_id: number;
       season_number: number;
       episode_number: number;
       episode_name?: string;
       runtime_minutes?: number | null;
-    }) => markEpisodeWatched({ data: vars }),
+    }) => {
+      await ensureInLibrary();
+      return markEpisodeWatched({ data: vars });
+    },
     onSuccess: invalidateWatched,
   });
 
   const bulkMutation = useMutation({
-    mutationFn: (vars: {
+    mutationFn: async (vars: {
       tmdb_id: number;
       episodes: {
         season_number: number;
@@ -118,7 +142,10 @@ export function EpisodeList({ series }: EpisodeListProps) {
         episode_name?: string;
         runtime_minutes?: number | null;
       }[];
-    }) => markEpisodesBulk({ data: vars }),
+    }) => {
+      await ensureInLibrary();
+      return markEpisodesBulk({ data: vars });
+    },
     onSuccess: invalidateWatched,
   });
 
