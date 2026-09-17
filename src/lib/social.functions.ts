@@ -51,12 +51,11 @@ export const getFollowers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { user_id: string }) => input)
   .handler(async ({ context, data }): Promise<FollowUserItem[]> => {
-    const { data: rows, error } = await context.supabase
-      .from("follows")
-      .select("follower_id")
-      .eq("following_id", data.user_id);
+    const { data: rows, error } = await context.supabase.rpc("get_follower_ids", {
+      _user_id: data.user_id,
+    });
     if (error) throw error;
-    const ids = (rows ?? []).map((r) => r.follower_id);
+    const ids = ((rows ?? []) as { user_id: string }[]).map((r) => r.user_id);
     return fetchFollowList(context.supabase, ids, context.userId);
   });
 
@@ -64,12 +63,11 @@ export const getFollowing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { user_id: string }) => input)
   .handler(async ({ context, data }): Promise<FollowUserItem[]> => {
-    const { data: rows, error } = await context.supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", data.user_id);
+    const { data: rows, error } = await context.supabase.rpc("get_following_ids", {
+      _user_id: data.user_id,
+    });
     if (error) throw error;
-    const ids = (rows ?? []).map((r) => r.following_id);
+    const ids = ((rows ?? []) as { user_id: string }[]).map((r) => r.user_id);
     return fetchFollowList(context.supabase, ids, context.userId);
   });
 
@@ -101,15 +99,8 @@ export const getProfileByUsername = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw error;
     if (!profile) return null;
-    const [{ count: followers }, { count: following }, { data: rel }] = await Promise.all([
-      context.supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("following_id", profile.id),
-      context.supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("follower_id", profile.id),
+    const [{ data: counts }, { data: rel }] = await Promise.all([
+      context.supabase.rpc("get_follow_counts", { _user_id: profile.id }),
       context.supabase
         .from("follows")
         .select("id")
@@ -117,10 +108,11 @@ export const getProfileByUsername = createServerFn({ method: "POST" })
         .eq("following_id", profile.id)
         .maybeSingle(),
     ]);
+    const countRow = (counts as { followers_count: number; following_count: number }[] | null)?.[0];
     return {
       ...(profile as PublicProfile),
-      followers_count: followers ?? 0,
-      following_count: following ?? 0,
+      followers_count: Number(countRow?.followers_count ?? 0),
+      following_count: Number(countRow?.following_count ?? 0),
       is_following: !!rel,
       is_self: profile.id === context.userId,
     };

@@ -656,6 +656,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_follow_counts: {
+        Args: { _user_id: string }
+        Returns: {
+          followers_count: number
+          following_count: number
+        }[]
+      }
+      get_follower_ids: {
+        Args: { _user_id: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
+      get_following_ids: {
+        Args: { _user_id: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
       get_user_watch_totals: {
         Args: { _user_id: string }
         Returns: {
