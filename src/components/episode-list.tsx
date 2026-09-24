@@ -301,7 +301,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
                   value={String(seasonInfo.season_number)}
                   className="shrink-0 rounded-none border-b-2 border-transparent px-4 py-3 text-sm data-[state=active]:border-primary data-[state=active]:text-primary"
                 >
-                  Season {seasonInfo.season_number}
+                  Season {seasonInfo.season_number} ({seasonInfo.episode_count})
                 </TabsTrigger>
               ))}
             </TabsList>
