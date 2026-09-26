@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Shuffle } from "lucide-react";
 import {
   getTrendingSeries,
@@ -12,6 +12,7 @@ import { dismissRecommendation, undoDismissRecommendation } from "@/lib/recommen
 import { toast } from "sonner";
 import { getWatchlist } from "@/lib/watchlist.functions";
 import { getAllWatchedStats } from "@/lib/watched.functions";
+import { syncMediaNotifications } from "@/lib/notifications.functions";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { StatsStrip } from "@/components/stats-strip";
 import { MediaCard } from "@/components/media-card";
@@ -72,6 +73,16 @@ function MediaRow({
 }
 
 function HomePage() {
+  // Check for newly aired episodes / releases from the library at most once every 6 hours.
+  useEffect(() => {
+    const key = "tomodachi:last-notif-sync";
+    const last = Number(localStorage.getItem(key) ?? 0);
+    if (Date.now() - last > 6 * 60 * 60 * 1000) {
+      localStorage.setItem(key, String(Date.now()));
+      syncMediaNotifications().catch(() => {});
+    }
+  }, []);
+
   const { data: tvTrending, isFetching: tvLoading } = useQuery({
     queryKey: ["trending", "tv"],
     queryFn: () => getTrendingSeries(),
