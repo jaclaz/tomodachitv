@@ -99,6 +99,11 @@
   h6 {
     font-family: var(--font-display);
   }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {
