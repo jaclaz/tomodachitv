@@ -62,6 +62,34 @@ const yearOf = (v: string | undefined | null) => {
   return m ? parseInt(m[1], 10) : null;
 };
 
+// Netflix dates look like "9/30/26" (M/D/YY) or "30/09/2026" depending on locale.
+const netflixDate = (v: string | undefined | null): string | null => {
+  if (!v) return null;
+  const m = v.trim().match(/^(\d{1,4})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+  if (!m) {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  let a = parseInt(m[1], 10);
+  let b = parseInt(m[2], 10);
+  let y = parseInt(m[3], 10);
+  if (m[1].length === 4) {
+    // YYYY-MM-DD
+    const d = new Date(Date.UTC(a, b - 1, y));
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (y < 100) y += 2000;
+  // Default to US order (M/D/YY); swap when the first number can't be a month.
+  let month = a;
+  let day = b;
+  if (a > 12 && b <= 12) {
+    month = b;
+    day = a;
+  }
+  const d = new Date(Date.UTC(y, month - 1, day));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
+
 interface Parsed {
   // shows to follow: mix of tvdb and tmdb ids
   followShowsTvdb: Map<number, { title?: string | null }>;
