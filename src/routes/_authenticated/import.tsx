@@ -1035,12 +1035,12 @@ function ImportPage() {
         <label className="flex cursor-pointer flex-col items-center justify-center gap-4 text-center">
           <input
             type="file"
-            accept=".zip,application/zip,application/x-zip-compressed"
+            accept=".zip,.csv,text/csv,application/zip,application/x-zip-compressed"
             className="hidden"
             disabled={busy}
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) handleFile(f);
+              if (f) void handleUpload(f);
               e.target.value = "";
             }}
           />
