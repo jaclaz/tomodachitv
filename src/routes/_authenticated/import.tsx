@@ -24,6 +24,7 @@ import {
 import {
   resolveShowsBatch,
   resolveMoviesBatch,
+  resolveNetflixBatch,
   bulkInsertEpisodes,
   bulkInsertWatchedMovies,
   bulkInsertWatchlist,
@@ -59,6 +60,34 @@ const yearOf = (v: string | undefined | null) => {
   if (!v) return null;
   const m = v.match(/(\d{4})/);
   return m ? parseInt(m[1], 10) : null;
+};
+
+// Netflix dates look like "9/30/26" (M/D/YY) or "30/09/2026" depending on locale.
+const netflixDate = (v: string | undefined | null): string | null => {
+  if (!v) return null;
+  const m = v.trim().match(/^(\d{1,4})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+  if (!m) {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  let a = parseInt(m[1], 10);
+  let b = parseInt(m[2], 10);
+  let y = parseInt(m[3], 10);
+  if (m[1].length === 4) {
+    // YYYY-MM-DD
+    const d = new Date(Date.UTC(a, b - 1, y));
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (y < 100) y += 2000;
+  // Default to US order (M/D/YY); swap when the first number can't be a month.
+  let month = a;
+  let day = b;
+  if (a > 12 && b <= 12) {
+    month = b;
+    day = a;
+  }
+  const d = new Date(Date.UTC(y, month - 1, day));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 
 interface Parsed {
@@ -373,6 +402,176 @@ function ImportPage() {
       setProgress(totalSteps > 0 ? Math.min(100, Math.round((nd / totalSteps) * 100)) : 0);
       return nd;
     });
+  };
+
+  // ---------- Netflix viewing history (plain CSV: Title,Date) ----------
+  const handleNetflixRows = async (rows: Row[]) => {
+    setBusy(true);
+    setCounts(null);
+    setProgress(0);
+    setDoneSteps(0);
+    let running: Counts = {
+      showsFollowed: 0,
+      moviesFollowed: 0,
+      episodesWatched: 0,
+      moviesWatched: 0,
+      unresolved: 0,
+    };
+    const setLive = (patch: Partial<Counts>) => {
+      running = { ...running, ...patch };
+      setCounts({ ...running });
+    };
+
+    try {
+      const entries = new Map<string, { title: string; watched_at: string | null }>();
+      for (const r of rows) {
+        const title = (r.Title ?? r.title ?? "").trim();
+        if (!title) continue;
+        const watched_at = netflixDate(r.Date ?? r.date ?? null);
+        const key = `${title}|${watched_at ?? ""}`;
+        if (!entries.has(key)) entries.set(key, { title, watched_at });
+      }
+      const items = [...entries.values()].sort((a, b) => a.title.localeCompare(b.title));
+      if (!items.length) throw new Error("No rows found in this Netflix CSV.");
+
+      const CHUNK = 20;
+      setTotalSteps(Math.ceil(items.length / CHUNK) + 4);
+      setPhase("Matching your Netflix history…");
+
+      const episodeRows: Parameters<typeof bulkInsertEpisodes>[0]["data"]["rows"] = [];
+      const movieRows: Parameters<typeof bulkInsertWatchedMovies>[0]["data"]["rows"] = [];
+      const libRows = new Map<string, Parameters<typeof bulkInsertWatchlist>[0]["data"]["rows"][number]>();
+      const pending: Parameters<typeof savePendingImports>[0]["data"]["rows"] = [];
+
+      for (const c of chunk(items, CHUNK)) {
+        const { results } = await resolveNetflixBatch({ data: { titles: c.map((x) => x.title) } });
+        results.forEach((res, i) => {
+          const src = c[i];
+          if (!src) return;
+          if (!res) {
+            pending.push({
+              kind: "watched_movie",
+              source: "name",
+              source_id: src.title.slice(0, 180),
+              title: src.title,
+              watched_at: src.watched_at ?? null,
+            });
+            return;
+          }
+          if (res.kind === "episode") {
+            episodeRows.push({
+              tmdb_id: res.tmdb_id,
+              season_number: res.season_number!,
+              episode_number: res.episode_number!,
+              runtime_minutes: res.runtime ?? null,
+              watched_at: src.watched_at,
+            });
+            libRows.set(`tv:${res.tmdb_id}`, {
+              tmdb_id: res.tmdb_id,
+              media_type: "tv",
+              series_name: res.title,
+              poster_path: res.poster_path,
+              backdrop_path: res.backdrop_path,
+              first_air_date: res.release_date,
+              vote_average: res.vote_average,
+            });
+          } else {
+            movieRows.push({
+              tmdb_id: res.tmdb_id,
+              title: res.title,
+              runtime_minutes: res.runtime ?? null,
+              watched_at: src.watched_at,
+            });
+            libRows.set(`movie:${res.tmdb_id}`, {
+              tmdb_id: res.tmdb_id,
+              media_type: "movie",
+              series_name: res.title,
+              poster_path: res.poster_path,
+              backdrop_path: res.backdrop_path,
+              first_air_date: res.release_date,
+              vote_average: res.vote_average,
+              status: "completed",
+            });
+          }
+        });
+        setLive({
+          episodesWatched: episodeRows.length,
+          moviesWatched: movieRows.length,
+          unresolved: pending.length,
+        });
+        bump();
+      }
+
+      setPhase("Adding titles to your library…");
+      let shows = 0;
+      for (const c of chunk([...libRows.values()], 500)) {
+        const r = await bulkInsertWatchlist({ data: { rows: c } });
+        shows += r.inserted;
+      }
+      setLive({ showsFollowed: shows });
+      bump();
+
+      setPhase("Saving watched episodes…");
+      let eps = 0;
+      for (const c of chunk(episodeRows, 500)) {
+        const r = await bulkInsertEpisodes({ data: { rows: c } });
+        eps += r.inserted;
+      }
+      setLive({ episodesWatched: eps });
+      bump();
+
+      setPhase("Saving watched movies…");
+      let mv = 0;
+      for (const c of chunk(movieRows, 500)) {
+        const r = await bulkInsertWatchedMovies({ data: { rows: c } });
+        mv += r.inserted;
+      }
+      setLive({ moviesWatched: mv });
+      bump();
+
+      if (pending.length) {
+        setPhase("Queuing unmatched titles…");
+        for (const c of chunk(dedupePendingRows(pending), 500)) {
+          await savePendingImports({ data: { rows: c } });
+        }
+        setLive({ unresolved: pending.length });
+      }
+
+      setPhase("Cleaning up library…");
+      try {
+        await cleanupWatchedFromWatchlist();
+      } catch (e) {
+        console.error("cleanup failed", e);
+      }
+      bump();
+
+      setPhase("Done");
+      setProgress(100);
+      toast.success("Netflix history imported");
+      void refreshPendingCounts();
+      qc.invalidateQueries();
+    } catch (err) {
+      console.error(err);
+      toast.error("Import failed: " + (err instanceof Error ? err.message : "unknown error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".csv")) {
+      const text = await file.text();
+      const parsed = Papa.parse<Row>(text, { header: true, skipEmptyLines: true });
+      const cols = Object.keys(parsed.data[0] ?? {}).map((c) => c.toLowerCase());
+      if (cols.includes("title") && cols.includes("date")) {
+        await handleNetflixRows(parsed.data);
+        return;
+      }
+      toast.error("This CSV isn't a Netflix viewing history. Upload a ZIP export instead.");
+      return;
+    }
+    await handleFile(file);
   };
 
   const handleFile = async (file: File) => {
@@ -791,8 +990,8 @@ function ImportPage() {
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">Import &amp; Export</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Import your TV Time archive, or export your Tomodachi library as a ZIP you can re-import
-          later.
+          Import your TV Time archive or your Netflix viewing history, or export your Tomodachi
+          library as a ZIP you can re-import later.
         </p>
       </div>
 
@@ -802,7 +1001,7 @@ function ImportPage() {
           <div>
             <p className="font-display text-base font-semibold">How it works</p>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-              <li>Drop your TV Time export (or Tomodachi backup ZIP) into the box.</li>
+              <li>Drop your TV Time export, Netflix CSV, or Tomodachi backup ZIP into the box.</li>
               <li>We try to match every series, episode and movie to a TMDB entry.</li>
               <li>
                 Items that don't match appear under "Couldn't be imported" — you can search TMDB and
@@ -812,21 +1011,36 @@ function ImportPage() {
               <li>If something looks off, click "Sync library statuses" again to fix it.</li>
               <li>You can also export your library as a ZIP, or reset TV, movies, or everything.</li>
             </ul>
+
+            <p className="mt-4 font-display text-sm font-semibold text-foreground">
+              How to get your Netflix history
+            </p>
+            <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
+              <li>
+                Go to Account &gt; Manage profiles &gt; [your profile] &gt; Viewing activity.
+              </li>
+              <li>
+                Scroll to the bottom of the page and click "Download all" — you'll get a CSV with
+                the title and date of every episode or movie you watched.
+              </li>
+              <li>Upload that CSV here; titles are matched automatically, even in Italian.</li>
+            </ol>
           </div>
         </div>
       </div>
+
 
 
       <div className="rounded-2xl border border-border bg-surface p-8">
         <label className="flex cursor-pointer flex-col items-center justify-center gap-4 text-center">
           <input
             type="file"
-            accept=".zip,application/zip,application/x-zip-compressed"
+            accept=".zip,.csv,text/csv,application/zip,application/x-zip-compressed"
             className="hidden"
             disabled={busy}
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) handleFile(f);
+              if (f) void handleUpload(f);
               e.target.value = "";
             }}
           />
@@ -867,9 +1081,11 @@ function ImportPage() {
             <>
               <FileArchive className="h-10 w-10 text-primary" />
               <div>
-                <p className="font-display text-base font-semibold">Drop your TV Time ZIP here</p>
+                <p className="font-display text-base font-semibold">
+                  Drop your TV Time ZIP or Netflix CSV here
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Parsed in your browser · large archives may take a few minutes.
+                  Large histories may take a few minutes to match.
                 </p>
               </div>
               <Button type="button" variant="secondary">

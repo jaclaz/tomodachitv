@@ -1265,3 +1265,220 @@ export const listImportedLibrary = createServerFn({ method: "POST" })
       watchedMovies: watchedMovies.sort(byTitle),
     };
   });
+
+// ============================================================
+// Netflix viewing-history import
+// The Netflix CSV only gives a localized title string and a date, e.g.
+//   "Serie: Stagione 2: Episodio 7" / "Serie: Nome episodio" / "Film"
+// We resolve each row against TMDB (Italian first, then English).
+// ============================================================
+
+const normTitle = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+function similarity(a: string, b: string): number {
+  const x = normTitle(a);
+  const y = normTitle(b);
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+  if (x.includes(y) || y.includes(x)) return 0.85;
+  const xs = new Set(x.split(" "));
+  const ys = y.split(" ");
+  let hit = 0;
+  for (const t of ys) if (xs.has(t)) hit++;
+  return hit / Math.max(xs.size, ys.length);
+}
+
+const SEASON_RE = /^(?:stagione|season|temporada|saison|staffel)\s+(\d+)/i;
+const EPISODE_RE = /^(?:episodio|episode|ep\.?)\s*(\d+)$/i;
+
+export interface NetflixResolved {
+  kind: "episode" | "movie";
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  release_date: string | null;
+  vote_average: number | null;
+  runtime: number | null;
+  season_number?: number;
+  episode_number?: number;
+}
+
+export const resolveNetflixBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: { titles: string[] }) => i)
+  .handler(async ({ data }) => {
+    const showCache = new Map<string, any>();
+    const indexCache = new Map<number, Map<string, { s: number; e: number }>>();
+    const movieCache = new Map<string, NetflixResolved | null>();
+
+    async function findShow(name: string) {
+      const key = normTitle(name);
+      if (!key) return null;
+      if (showCache.has(key)) return showCache.get(key);
+      let best: any = null;
+      for (const lang of ["it-IT", "en-US"]) {
+        const d = await tmdbFetch("/search/tv", { query: name, language: lang });
+        for (const r of (d?.results ?? []).slice(0, 5)) {
+          const score = Math.max(
+            similarity(r.name ?? "", name),
+            similarity(r.original_name ?? "", name),
+          );
+          if (score >= 0.6 && (!best || score > best.score)) best = { ...r, score };
+        }
+        if (best) break;
+      }
+      let show = null;
+      if (best) {
+        const details = await tmdbFetch(`/tv/${best.id}`, { language: "it-IT" });
+        show = {
+          tmdb_id: best.id,
+          name: details?.name ?? best.name,
+          poster_path: best.poster_path ?? null,
+          backdrop_path: best.backdrop_path ?? null,
+          first_air_date: best.first_air_date ?? null,
+          vote_average: best.vote_average ?? null,
+          runtime: details?.episode_run_time?.[0] ?? null,
+          seasons: (details?.seasons ?? [])
+            .map((s: any) => s.season_number)
+            .filter((n: number) => n > 0),
+        };
+      }
+      showCache.set(key, show);
+      return show;
+    }
+
+    async function episodeIndex(show: any) {
+      if (indexCache.has(show.tmdb_id)) return indexCache.get(show.tmdb_id)!;
+      const idx = new Map<string, { s: number; e: number }>();
+      for (const n of (show.seasons as number[]).slice(0, 30)) {
+        for (const lang of ["it-IT", "en-US"]) {
+          const d = await tmdbFetch(`/tv/${show.tmdb_id}/season/${n}`, { language: lang });
+          for (const ep of d?.episodes ?? []) {
+            const k = normTitle(ep.name ?? "");
+            if (k && !idx.has(k)) idx.set(k, { s: n, e: ep.episode_number });
+          }
+        }
+      }
+      indexCache.set(show.tmdb_id, idx);
+      return idx;
+    }
+
+    async function findMovie(title: string): Promise<NetflixResolved | null> {
+      const key = normTitle(title);
+      if (movieCache.has(key)) return movieCache.get(key)!;
+      let found: NetflixResolved | null = null;
+      for (const lang of ["it-IT", "en-US"]) {
+        const d = await tmdbFetch("/search/movie", { query: title, language: lang });
+        const mv = (d?.results ?? []).find(
+          (r: any) =>
+            Math.max(similarity(r.title ?? "", title), similarity(r.original_title ?? "", title)) >=
+            0.6,
+        );
+        if (mv) {
+          const det = await tmdbFetch(`/movie/${mv.id}`, { language: "it-IT" });
+          found = {
+            kind: "movie",
+            tmdb_id: mv.id,
+            title: det?.title ?? mv.title,
+            poster_path: mv.poster_path ?? null,
+            backdrop_path: mv.backdrop_path ?? null,
+            release_date: mv.release_date ?? null,
+            vote_average: mv.vote_average ?? null,
+            runtime: det?.runtime ?? null,
+          };
+          break;
+        }
+      }
+      movieCache.set(key, found);
+      return found;
+    }
+
+    const results: (NetflixResolved | null)[] = [];
+    for (const raw of data.titles) {
+      const title = (raw ?? "").trim();
+      if (!title) {
+        results.push(null);
+        continue;
+      }
+      const segments = title.split(/\s*:\s+/).filter(Boolean);
+
+      if (segments.length === 1) {
+        results.push(await findMovie(title));
+        continue;
+      }
+
+      // Try the longest plausible series-name prefix first.
+      let show: any = null;
+      let rest: string[] = [];
+      for (let len = segments.length - 1; len >= 1; len--) {
+        const candidate = segments.slice(0, len).join(": ");
+        if (SEASON_RE.test(candidate) || EPISODE_RE.test(candidate)) continue;
+        // eslint-disable-next-line no-await-in-loop
+        const s = await findShow(candidate);
+        if (s) {
+          show = s;
+          rest = segments.slice(len);
+          break;
+        }
+      }
+
+      if (!show) {
+        results.push(await findMovie(title));
+        continue;
+      }
+
+      let season: number | null = null;
+      let episode: number | null = null;
+      const nameParts: string[] = [];
+      for (const seg of rest) {
+        const sm = seg.match(SEASON_RE);
+        const em = seg.match(EPISODE_RE);
+        if (sm) season = parseInt(sm[1], 10);
+        else if (em) episode = parseInt(em[1], 10);
+        else nameParts.push(seg);
+      }
+
+      if (episode === null && nameParts.length) {
+        const idx = await episodeIndex(show);
+        for (const cand of [nameParts.join(": "), nameParts[nameParts.length - 1]]) {
+          const hit = idx.get(normTitle(cand));
+          if (hit && (season === null || hit.s === season)) {
+            season = hit.s;
+            episode = hit.e;
+            break;
+          }
+        }
+      }
+
+      if (episode !== null && season === null) {
+        season = show.seasons.length === 1 ? show.seasons[0] : 1;
+      }
+
+      if (episode === null || season === null) {
+        results.push(null);
+        continue;
+      }
+
+      results.push({
+        kind: "episode",
+        tmdb_id: show.tmdb_id,
+        title: show.name,
+        poster_path: show.poster_path,
+        backdrop_path: show.backdrop_path,
+        release_date: show.first_air_date,
+        vote_average: show.vote_average,
+        runtime: show.runtime,
+        season_number: season,
+        episode_number: episode,
+      });
+    }
+
+    return { results };
+  });
