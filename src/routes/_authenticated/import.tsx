@@ -1081,9 +1081,11 @@ function ImportPage() {
             <>
               <FileArchive className="h-10 w-10 text-primary" />
               <div>
-                <p className="font-display text-base font-semibold">Drop your TV Time ZIP here</p>
+                <p className="font-display text-base font-semibold">
+                  Drop your TV Time ZIP or Netflix CSV here
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Parsed in your browser · large archives may take a few minutes.
+                  Large histories may take a few minutes to match.
                 </p>
               </div>
               <Button type="button" variant="secondary">
