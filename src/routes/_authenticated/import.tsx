@@ -24,6 +24,7 @@ import {
 import {
   resolveShowsBatch,
   resolveMoviesBatch,
+  resolveNetflixBatch,
   bulkInsertEpisodes,
   bulkInsertWatchedMovies,
   bulkInsertWatchlist,
