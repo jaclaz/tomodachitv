@@ -25,7 +25,13 @@ import {
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
 import { addToWatchlist } from "@/lib/watchlist.functions";
-import { ChevronLeft, ChevronRight, Clock, CheckCheck } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, ChevronLeft, ChevronRight, Clock, CheckCheck } from "lucide-react";
 import { TrailerButton } from "@/components/trailer-button";
 
 interface EpisodeListProps {
@@ -246,6 +252,36 @@ export function EpisodeList({ series }: EpisodeListProps) {
       tmdb_id: tmdbId,
       episodes: toMark.map(toEpisodePayload),
     });
+  };
+
+  // "Mark all seasons" flow: fetch every season, count released unwatched
+  // episodes, ask for confirmation, then bulk-mark.
+  const [confirmAll, setConfirmAll] = useState<{
+    episodes: ReturnType<typeof toEpisodePayload>[];
+  } | null>(null);
+
+  const allSeasonsMutation = useMutation({
+    mutationFn: async () => {
+      const all: ReturnType<typeof toEpisodePayload>[] = [];
+      for (const s of series.seasons.filter((sn) => sn.season_number > 0)) {
+        const details = await getSeasonDetails({
+          data: { id: tmdbId, season: s.season_number },
+        });
+        for (const ep of details.episodes ?? []) {
+          if (isReleased(ep) && !isWatched(ep)) all.push(toEpisodePayload(ep));
+        }
+      }
+      return all;
+    },
+    onSuccess: (episodes) => {
+      if (episodes.length > 0) setConfirmAll({ episodes });
+    },
+  });
+
+  const confirmMarkAllSeasons = () => {
+    if (!confirmAll) return;
+    bulkMutation.mutate({ tmdb_id: tmdbId, episodes: confirmAll.episodes });
+    setConfirmAll(null);
   };
 
   const seasons = series.seasons.filter((s) => s.season_number > 0);
