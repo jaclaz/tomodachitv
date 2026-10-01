@@ -404,6 +404,176 @@ function ImportPage() {
     });
   };
 
+  // ---------- Netflix viewing history (plain CSV: Title,Date) ----------
+  const handleNetflixRows = async (rows: Row[]) => {
+    setBusy(true);
+    setCounts(null);
+    setProgress(0);
+    setDoneSteps(0);
+    let running: Counts = {
+      showsFollowed: 0,
+      moviesFollowed: 0,
+      episodesWatched: 0,
+      moviesWatched: 0,
+      unresolved: 0,
+    };
+    const setLive = (patch: Partial<Counts>) => {
+      running = { ...running, ...patch };
+      setCounts({ ...running });
+    };
+
+    try {
+      const entries = new Map<string, { title: string; watched_at: string | null }>();
+      for (const r of rows) {
+        const title = (r.Title ?? r.title ?? "").trim();
+        if (!title) continue;
+        const watched_at = netflixDate(r.Date ?? r.date ?? null);
+        const key = `${title}|${watched_at ?? ""}`;
+        if (!entries.has(key)) entries.set(key, { title, watched_at });
+      }
+      const items = [...entries.values()].sort((a, b) => a.title.localeCompare(b.title));
+      if (!items.length) throw new Error("No rows found in this Netflix CSV.");
+
+      const CHUNK = 20;
+      setTotalSteps(Math.ceil(items.length / CHUNK) + 4);
+      setPhase("Matching your Netflix history…");
+
+      const episodeRows: Parameters<typeof bulkInsertEpisodes>[0]["data"]["rows"] = [];
+      const movieRows: Parameters<typeof bulkInsertWatchedMovies>[0]["data"]["rows"] = [];
+      const libRows = new Map<string, Parameters<typeof bulkInsertWatchlist>[0]["data"]["rows"][number]>();
+      const pending: Parameters<typeof savePendingImports>[0]["data"]["rows"] = [];
+
+      for (const c of chunk(items, CHUNK)) {
+        const { results } = await resolveNetflixBatch({ data: { titles: c.map((x) => x.title) } });
+        results.forEach((res, i) => {
+          const src = c[i];
+          if (!src) return;
+          if (!res) {
+            pending.push({
+              kind: "watched_movie",
+              source: "name",
+              source_id: src.title.slice(0, 180),
+              title: src.title,
+              watched_at: src.watched_at ?? null,
+            });
+            return;
+          }
+          if (res.kind === "episode") {
+            episodeRows.push({
+              tmdb_id: res.tmdb_id,
+              season_number: res.season_number!,
+              episode_number: res.episode_number!,
+              runtime_minutes: res.runtime ?? null,
+              watched_at: src.watched_at,
+            });
+            libRows.set(`tv:${res.tmdb_id}`, {
+              tmdb_id: res.tmdb_id,
+              media_type: "tv",
+              series_name: res.title,
+              poster_path: res.poster_path,
+              backdrop_path: res.backdrop_path,
+              first_air_date: res.release_date,
+              vote_average: res.vote_average,
+            });
+          } else {
+            movieRows.push({
+              tmdb_id: res.tmdb_id,
+              title: res.title,
+              runtime_minutes: res.runtime ?? null,
+              watched_at: src.watched_at,
+            });
+            libRows.set(`movie:${res.tmdb_id}`, {
+              tmdb_id: res.tmdb_id,
+              media_type: "movie",
+              series_name: res.title,
+              poster_path: res.poster_path,
+              backdrop_path: res.backdrop_path,
+              first_air_date: res.release_date,
+              vote_average: res.vote_average,
+              status: "completed",
+            });
+          }
+        });
+        setLive({
+          episodesWatched: episodeRows.length,
+          moviesWatched: movieRows.length,
+          unresolved: pending.length,
+        });
+        bump();
+      }
+
+      setPhase("Adding titles to your library…");
+      let shows = 0;
+      for (const c of chunk([...libRows.values()], 500)) {
+        const r = await bulkInsertWatchlist({ data: { rows: c } });
+        shows += r.inserted;
+      }
+      setLive({ showsFollowed: shows });
+      bump();
+
+      setPhase("Saving watched episodes…");
+      let eps = 0;
+      for (const c of chunk(episodeRows, 500)) {
+        const r = await bulkInsertEpisodes({ data: { rows: c } });
+        eps += r.inserted;
+      }
+      setLive({ episodesWatched: eps });
+      bump();
+
+      setPhase("Saving watched movies…");
+      let mv = 0;
+      for (const c of chunk(movieRows, 500)) {
+        const r = await bulkInsertWatchedMovies({ data: { rows: c } });
+        mv += r.inserted;
+      }
+      setLive({ moviesWatched: mv });
+      bump();
+
+      if (pending.length) {
+        setPhase("Queuing unmatched titles…");
+        for (const c of chunk(dedupePendingRows(pending), 500)) {
+          await savePendingImports({ data: { rows: c } });
+        }
+        setLive({ unresolved: pending.length });
+      }
+
+      setPhase("Cleaning up library…");
+      try {
+        await cleanupWatchedFromWatchlist();
+      } catch (e) {
+        console.error("cleanup failed", e);
+      }
+      bump();
+
+      setPhase("Done");
+      setProgress(100);
+      toast.success("Netflix history imported");
+      void refreshPendingCounts();
+      qc.invalidateQueries();
+    } catch (err) {
+      console.error(err);
+      toast.error("Import failed: " + (err instanceof Error ? err.message : "unknown error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".csv")) {
+      const text = await file.text();
+      const parsed = Papa.parse<Row>(text, { header: true, skipEmptyLines: true });
+      const cols = Object.keys(parsed.data[0] ?? {}).map((c) => c.toLowerCase());
+      if (cols.includes("title") && cols.includes("date")) {
+        await handleNetflixRows(parsed.data);
+        return;
+      }
+      toast.error("This CSV isn't a Netflix viewing history. Upload a ZIP export instead.");
+      return;
+    }
+    await handleFile(file);
+  };
+
   const handleFile = async (file: File) => {
     setBusy(true);
     setCounts(null);
