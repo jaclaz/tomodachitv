@@ -1023,7 +1023,7 @@ function ImportPage() {
                 Scroll to the bottom of the page and click "Download all" — you'll get a CSV with
                 the title and date of every episode or movie you watched.
               </li>
-              <li>Upload that CSV here; titles are matched automatically, even in Italian.</li>
+              <li>Upload that CSV here; titles are matched automatically, whatever the language.</li>
             </ol>
           </div>
         </div>
