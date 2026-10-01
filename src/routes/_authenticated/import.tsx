@@ -990,8 +990,8 @@ function ImportPage() {
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">Import &amp; Export</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Import your TV Time archive, or export your Tomodachi library as a ZIP you can re-import
-          later.
+          Import your TV Time archive or your Netflix viewing history, or export your Tomodachi
+          library as a ZIP you can re-import later.
         </p>
       </div>
 
@@ -1001,7 +1001,7 @@ function ImportPage() {
           <div>
             <p className="font-display text-base font-semibold">How it works</p>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-              <li>Drop your TV Time export (or Tomodachi backup ZIP) into the box.</li>
+              <li>Drop your TV Time export, Netflix CSV, or Tomodachi backup ZIP into the box.</li>
               <li>We try to match every series, episode and movie to a TMDB entry.</li>
               <li>
                 Items that don't match appear under "Couldn't be imported" — you can search TMDB and
@@ -1011,9 +1011,24 @@ function ImportPage() {
               <li>If something looks off, click "Sync library statuses" again to fix it.</li>
               <li>You can also export your library as a ZIP, or reset TV, movies, or everything.</li>
             </ul>
+
+            <p className="mt-4 font-display text-sm font-semibold text-foreground">
+              How to get your Netflix history
+            </p>
+            <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
+              <li>
+                Go to Account &gt; Manage profiles &gt; [your profile] &gt; Viewing activity.
+              </li>
+              <li>
+                Scroll to the bottom of the page and click "Download all" — you'll get a CSV with
+                the title and date of every episode or movie you watched.
+              </li>
+              <li>Upload that CSV here; titles are matched automatically, even in Italian.</li>
+            </ol>
           </div>
         </div>
       </div>
+
 
 
       <div className="rounded-2xl border border-border bg-surface p-8">
