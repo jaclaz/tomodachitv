@@ -368,21 +368,44 @@ export function EpisodeList({ series }: EpisodeListProps) {
             season={activeSeason}
             variant="icon"
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={markWholeSeason}
-            disabled={
-              isLoading ||
-              allSeasonWatched ||
-              bulkMutation.isPending ||
-              releasedInSeason.length === 0
-            }
-            className="mb-2 shrink-0"
-          >
-            <CheckCheck className="mr-1.5 h-4 w-4" />
-            {allSeasonWatched ? "Season watched" : "Mark season as watched"}
-          </Button>
+          <div className="mb-2 flex shrink-0 items-stretch">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={markWholeSeason}
+              disabled={
+                isLoading ||
+                allSeasonWatched ||
+                bulkMutation.isPending ||
+                releasedInSeason.length === 0
+              }
+              className="rounded-r-none border-r-0"
+            >
+              <CheckCheck className="mr-1.5 h-4 w-4" />
+              {allSeasonWatched ? "Season watched" : "Mark season as watched"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkMutation.isPending || allSeasonsMutation.isPending}
+                  className="rounded-l-none px-2"
+                  aria-label="More marking options"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => allSeasonsMutation.mutate()}
+                  disabled={allSeasonsMutation.isPending}
+                >
+                  Mark all seasons as watched
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {seasons.map((seasonInfo) => (
@@ -511,6 +534,36 @@ export function EpisodeList({ series }: EpisodeListProps) {
               className="min-w-0 px-2 text-xs sm:px-3 sm:text-sm"
             >
               Mark previous
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={confirmAll !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAll(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark all seasons as watched?</DialogTitle>
+            <DialogDescription>
+              This will mark {confirmAll?.episodes.length} released episode
+              {confirmAll && confirmAll.episodes.length === 1 ? "" : "s"} across
+              all seasons as watched. Episodes that haven't aired yet are not
+              included.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAll(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmMarkAllSeasons}
+              disabled={bulkMutation.isPending}
+            >
+              Mark all
             </Button>
           </DialogFooter>
         </DialogContent>
