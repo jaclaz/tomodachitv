@@ -325,8 +325,8 @@ export function EpisodeList({ series }: EpisodeListProps) {
   return (
     <div className="rounded-xl border border-border bg-surface">
       <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 pt-4">
-          <div className="relative flex min-w-0 flex-1 items-center">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 pt-4">
+          <div className="relative order-first flex w-full min-w-0 items-center sm:order-none sm:w-auto sm:flex-1">
             <TabsList
               ref={tabsListRef}
               className="scrollbar-hide flex h-auto min-h-0 min-w-0 flex-1 flex-nowrap items-center justify-start overflow-x-auto overflow-y-hidden bg-transparent p-0"
@@ -368,7 +368,8 @@ export function EpisodeList({ series }: EpisodeListProps) {
             season={activeSeason}
             variant="icon"
           />
-          <div className="mb-2 flex shrink-0 items-stretch">
+          {/* Desktop: split button (main action + dropdown) */}
+          <div className="mb-2 hidden shrink-0 items-stretch sm:flex">
             <Button
               variant="outline"
               size="sm"
@@ -397,6 +398,41 @@ export function EpisodeList({ series }: EpisodeListProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => allSeasonsMutation.mutate()}
+                  disabled={allSeasonsMutation.isPending}
+                >
+                  Mark all seasons as watched
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {/* Mobile: single compact dropdown button */}
+          <div className="mb-2 shrink-0 sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2"
+                  disabled={
+                    isLoading || bulkMutation.isPending || allSeasonsMutation.isPending
+                  }
+                  aria-label="Marking options"
+                >
+                  <CheckCheck className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={markWholeSeason}
+                  disabled={
+                    allSeasonWatched || releasedInSeason.length === 0
+                  }
+                >
+                  Mark season as watched
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => allSeasonsMutation.mutate()}
                   disabled={allSeasonsMutation.isPending}
