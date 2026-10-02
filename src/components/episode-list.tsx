@@ -368,7 +368,8 @@ export function EpisodeList({ series }: EpisodeListProps) {
             season={activeSeason}
             variant="icon"
           />
-          <div className="mb-2 flex shrink-0 items-stretch">
+          {/* Desktop: split button (main action + dropdown) */}
+          <div className="mb-2 hidden shrink-0 items-stretch sm:flex">
             <Button
               variant="outline"
               size="sm"
@@ -397,6 +398,41 @@ export function EpisodeList({ series }: EpisodeListProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => allSeasonsMutation.mutate()}
+                  disabled={allSeasonsMutation.isPending}
+                >
+                  Mark all seasons as watched
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {/* Mobile: single compact dropdown button */}
+          <div className="mb-2 shrink-0 sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2"
+                  disabled={
+                    isLoading || bulkMutation.isPending || allSeasonsMutation.isPending
+                  }
+                  aria-label="Marking options"
+                >
+                  <CheckCheck className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={markWholeSeason}
+                  disabled={
+                    allSeasonWatched || releasedInSeason.length === 0
+                  }
+                >
+                  Mark season as watched
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => allSeasonsMutation.mutate()}
                   disabled={allSeasonsMutation.isPending}
