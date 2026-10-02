@@ -325,8 +325,8 @@ export function EpisodeList({ series }: EpisodeListProps) {
   return (
     <div className="rounded-xl border border-border bg-surface">
       <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 pt-4">
-          <div className="relative flex min-w-0 flex-1 items-center">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 pt-4">
+          <div className="relative order-first flex w-full min-w-0 items-center sm:order-none sm:w-auto sm:flex-1">
             <TabsList
               ref={tabsListRef}
               className="scrollbar-hide flex h-auto min-h-0 min-w-0 flex-1 flex-nowrap items-center justify-start overflow-x-auto overflow-y-hidden bg-transparent p-0"
