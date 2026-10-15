@@ -294,14 +294,13 @@ export async function buildRecommendations(
         const score =
           recommendationScore({ genre, keyword, community, cowatch: co }) * (0.92 + rand() * 0.16);
 
-        // Short, always-fit tags only: the seed title is kept for the diversity
-        // pass below but not shown, because "Because you watched <title>" was
-        // too long for a poster card and got cut off.
+        // Tags must fit a poster card (108px of text on phones), so they stay
+        // short: a single genre word, or one of the two fixed phrases below.
         let reason: string;
-        if (peers >= 2 && co >= 0.5) reason = "Popular with similar viewers";
+        if (peers >= 2 && co >= 0.5) reason = "Popular with fans";
         else {
           const best = (d.genres ?? []).sort((a, b) => (gw.get(b.id) ?? 0) - (gw.get(a.id) ?? 0))[0];
-          reason = best ? `Because you like ${best.name}` : "Highly rated pick";
+          reason = best?.name ?? "Highly rated pick";
         }
         return {
           item: mapItem({ ...d, genre_ids: gs }, kind, reason),
