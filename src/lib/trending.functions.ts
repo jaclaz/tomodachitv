@@ -14,6 +14,15 @@ function regionName(code: string) {
   }
 }
 
+/**
+ * Country label short enough to sit on a poster card without being cut off.
+ * Long names ("United Arab Emirates") fall back to the 2-letter code.
+ */
+function regionLabel(code: string) {
+  const name = regionName(code);
+  return name.length <= 16 ? name : code;
+}
+
 async function tmdb(path: string, params: Record<string, string>) {
   const key = process.env.TMDB_API_KEY;
   if (!key) throw new Error("TMDB_API_KEY not configured");
