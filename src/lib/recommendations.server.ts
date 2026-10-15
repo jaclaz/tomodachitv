@@ -294,10 +294,11 @@ export async function buildRecommendations(
         const score =
           recommendationScore({ genre, keyword, community, cowatch: co }) * (0.92 + rand() * 0.16);
 
+        // Short, always-fit tags only: the seed title is kept for the diversity
+        // pass below but not shown, because "Because you watched <title>" was
+        // too long for a poster card and got cut off.
         let reason: string;
-        const viaTitle = c.via != null ? titles[kind].get(c.via) : undefined;
-        if (peers >= 2 && co >= 0.5) reason = "Popular with people who share your taste";
-        else if (viaTitle) reason = `Because you watched ${viaTitle}`;
+        if (peers >= 2 && co >= 0.5) reason = "Popular with similar viewers";
         else {
           const best = (d.genres ?? []).sort((a, b) => (gw.get(b.id) ?? 0) - (gw.get(a.id) ?? 0))[0];
           reason = best ? `Because you like ${best.name}` : "Highly rated pick";
@@ -307,6 +308,7 @@ export async function buildRecommendations(
           score,
           collection: d.belongs_to_collection?.id ?? null,
           primaryGenre: gs[0] ?? -1,
+          via: c.via ?? null,
         };
       }),
     );
