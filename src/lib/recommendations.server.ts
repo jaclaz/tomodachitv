@@ -313,24 +313,24 @@ export async function buildRecommendations(
       }),
     );
 
-    // diversity: 1 per franchise, max 3 per primary genre in top 10, max 2 per "via" seed in top 10
+    // diversity: 1 per franchise, max 3 per primary genre in top 10, max 2 per seed in top 10
     const sorted = enriched.filter((x): x is NonNullable<typeof x> => !!x).sort((a, b) => b.score - a.score);
     const out: MediaItem[] = [];
     const seenCol = new Set<number>();
     const genreCount = new Map<number, number>();
-    const reasonCount = new Map<string, number>();
+    const viaCount = new Map<number, number>();
     const deferred: MediaItem[] = [];
     for (const x of sorted) {
       if (x.collection && seenCol.has(x.collection)) continue;
       const gc = genreCount.get(x.primaryGenre) ?? 0;
-      const rc = reasonCount.get(x.item.reason ?? "") ?? 0;
-      if (out.length < 10 && (gc >= 3 || rc >= 2)) {
+      const vc = x.via == null ? 0 : viaCount.get(x.via) ?? 0;
+      if (out.length < 10 && (gc >= 3 || vc >= 2)) {
         deferred.push(x.item);
         continue;
       }
       if (x.collection) seenCol.add(x.collection);
       genreCount.set(x.primaryGenre, gc + 1);
-      reasonCount.set(x.item.reason ?? "", rc + 1);
+      if (x.via != null) viaCount.set(x.via, vc + 1);
       out.push(x.item);
     }
     return [...out, ...deferred].slice(0, 20);
