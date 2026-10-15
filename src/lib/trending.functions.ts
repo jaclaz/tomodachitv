@@ -120,7 +120,7 @@ export const getCountryTrending = createServerFn({ method: "POST" })
             backdrop_path: r.backdrop_path,
             vote_average: r.vote_average ?? 0,
             release_date: (data.type === "tv" ? r.first_air_date : r.release_date) || null,
-            reason: `Trending in ${name}`,
+            reason: regionLabel(country),
           });
         }
       } catch (e) {
