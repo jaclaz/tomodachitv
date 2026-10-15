@@ -3,8 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Shuffle } from "lucide-react";
 import {
-  getTrendingSeries,
-  getTrendingMovies,
   getUserRecommendations,
   type MediaItem,
 } from "@/lib/tmdb";
@@ -192,7 +190,7 @@ function HomePage() {
 
       <section className="space-y-5">
         <h2 className="font-display text-xl font-semibold text-foreground">
-          Trending this week
+          Trending in your country this week
         </h2>
         <MediaRow title="TV Shows" items={tvItems} loading={tvLoading} />
         <MediaRow title="Movies" items={movieItems} loading={movieLoading} />
