@@ -83,6 +83,11 @@ export function MediaCard({ item, onDismiss, dismissLabel }: MediaCardProps) {
           </span>
           <ScoreBadge value={myScore} />
         </div>
+        {item.reason && (
+          <p className="mt-1.5 line-clamp-1 text-[10px] font-medium text-primary-foreground/80" title={item.reason}>
+            <span className="rounded-sm bg-primary/70 px-1.5 py-0.5 backdrop-blur">{item.reason}</span>
+          </p>
+        )}
       </div>
     </Link>
   );

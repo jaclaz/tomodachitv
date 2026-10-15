@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Trending is computed from `trend_events` (filled by DB triggers on library actions, tagged with the user profile country) via `get_trending_scores`; TMDB regional discover is only a fallback when local data is thin. Why: TMDB trending endpoints are global and ignore country.
+- Recommendations use the weighted hybrid score in `recommendations.server.ts` (`recommendationScore`); co-watch peers come from the `get_cowatch_scores` RPC. Why: one tested scoring function keeps weights consistent.

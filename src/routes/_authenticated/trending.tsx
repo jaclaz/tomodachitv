@@ -11,18 +11,14 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Bookmark, BookmarkCheck, Flame, Grid2x2, Grid3x3 } from "lucide-react";
 import { toast } from "sonner";
+import { detectRegion } from "@/lib/region";
+import { getCountryTrending } from "@/lib/trending.functions";
 
 export const Route = createFileRoute("/_authenticated/trending")({
   component: TrendingPage,
 });
 
 
-function detectRegion(): string {
-  if (typeof navigator === "undefined") return "US";
-  const parts = (navigator.language || "en-US").split("-");
-  const code = (parts[1] || parts[0] || "US").toUpperCase();
-  return code.length === 2 ? code : "US";
-}
 
 function TrendingPage() {
   const [type, setType] = useState<MediaType>("tv");
@@ -44,10 +40,24 @@ function TrendingPage() {
       : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
 
 
+  // With no catalog filters active we show the country-aware trending engine.
+  const trendMode =
+    filters.providerId == null &&
+    filters.genreId == null &&
+    filters.yearFrom == null &&
+    filters.yearTo == null &&
+    filters.minRating == null &&
+    filters.sortBy === "popularity.desc";
+
   const { data, isFetching } = useQuery({
-    queryKey: ["discover", type, filters],
+    queryKey: trendMode
+      ? ["country-trending", type, filters.watchRegion]
+      : ["discover", type, filters],
+    placeholderData: undefined,
     queryFn: () =>
-      discoverContent({
+      trendMode
+        ? getCountryTrending({ data: { type, country: filters.watchRegion } })
+        : discoverContent({
         data: {
           type,
           genreId: filters.genreId,
@@ -60,6 +70,7 @@ function TrendingPage() {
         },
       }),
   });
+  const fallback = trendMode && data && "fallback" in data ? data.fallback : false;
 
   const results = data?.results ?? [];
   const providerActive = filters.providerId != null;
@@ -74,7 +85,9 @@ function TrendingPage() {
           <p className="text-sm text-muted-foreground">
             {providerActive
               ? `Trending on your selected service in ${filters.watchRegion}.`
-              : "Filter and sort the TMDB catalog."}
+              : trendMode
+                ? `What people are watching in ${filters.watchRegion} this week.${fallback ? " Topped up with regional popularity while local activity grows." : ""}`
+                : `Filter and sort the catalog for ${filters.watchRegion}.`}
           </p>
         </div>
         <SearchBar />
@@ -117,7 +130,7 @@ function TrendingPage() {
         <FilterBar type={type} value={filters} onChange={setFilters} />
       </div>
 
-      {isFetching && results.length === 0 ? (
+      {isFetching ? (
         <div className={gridClass}>
           {Array.from({ length: 15 }).map((_, i) => (
             <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-muted" />
