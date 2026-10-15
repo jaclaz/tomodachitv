@@ -1,7 +1,14 @@
 import type { MediaItem } from "./tmdb";
 
-const TMDB_BASE = "https://api.themoviedb.org/3";
+/**
+ * Hybrid recommendation engine (content-based + simplified collaborative).
+ *
+ * Score = Genre*0.45 + Keyword/People*0.25 + CommunityRating*0.15 + CoWatch*0.15
+ * Each component is normalised to 0..1. A diversity pass limits franchises and
+ * sub-genres in the top slots, and each pick carries a human-readable reason.
+ */
 
+const TMDB_BASE = "https://api.themoviedb.org/3";
 type Kind = "tv" | "movie";
 
 interface RawAny {
@@ -13,13 +20,34 @@ interface RawAny {
   backdrop_path: string | null;
   vote_average?: number;
   vote_count?: number;
-  popularity?: number;
   first_air_date?: string;
   release_date?: string;
   genre_ids?: number[];
 }
 
-function mapItem(r: RawAny, kind: Kind): MediaItem {
+interface Details extends RawAny {
+  genres?: { id: number; name: string }[];
+  belongs_to_collection?: { id: number } | null;
+  created_by?: { id: number }[];
+  keywords?: { keywords?: { id: number }[]; results?: { id: number }[] };
+  credits?: { cast?: { id: number }[]; crew?: { id: number; job?: string }[] };
+}
+
+export const W_GENRE = 0.45;
+export const W_KEYWORD = 0.25;
+export const W_COMMUNITY = 0.15;
+export const W_COWATCH = 0.15;
+
+export function recommendationScore(c: {
+  genre: number;
+  keyword: number;
+  community: number;
+  cowatch: number;
+}) {
+  return c.genre * W_GENRE + c.keyword * W_KEYWORD + c.community * W_COMMUNITY + c.cowatch * W_COWATCH;
+}
+
+function mapItem(r: RawAny, kind: Kind, reason?: string): MediaItem {
   return {
     id: r.id,
     media_type: kind,
@@ -29,98 +57,57 @@ function mapItem(r: RawAny, kind: Kind): MediaItem {
     backdrop_path: r.backdrop_path,
     vote_average: r.vote_average ?? 0,
     release_date: (kind === "tv" ? r.first_air_date : r.release_date) || null,
+    reason,
   };
 }
 
 async function fetchTmdb(path: string, params?: Record<string, string>) {
   const key = process.env.TMDB_API_KEY;
   if (!key) throw new Error("TMDB_API_KEY not configured");
-  const query = new URLSearchParams({
-    api_key: key,
-    language: "en-US",
-    ...params,
-  });
+  const query = new URLSearchParams({ api_key: key, language: "en-US", ...params });
   const res = await fetch(`${TMDB_BASE}${path}?${query.toString()}`);
   if (!res.ok) throw new Error(`TMDB error: ${res.status}`);
   return res.json();
 }
 
-function shuffle<T>(arr: T[], seed: number): T[] {
-  const copy = [...arr];
-  let rng = Math.abs(seed) + 1;
-  for (let i = copy.length - 1; i > 0; i--) {
-    rng = (rng * 9301 + 49297) % 233280;
-    const j = Math.floor((rng / 233280) * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+const details = (kind: Kind, id: number): Promise<Details | null> =>
+  fetchTmdb(`/${kind}/${id}`, { append_to_response: "keywords,credits" }).catch(() => null);
+
+function keywordIds(d: Details): number[] {
+  return (d.keywords?.keywords ?? d.keywords?.results ?? []).map((k) => k.id);
+}
+function peopleIds(d: Details): number[] {
+  const cast = (d.credits?.cast ?? []).slice(0, 5).map((p) => p.id);
+  const dirs = (d.credits?.crew ?? [])
+    .filter((p) => p.job === "Director" || p.job === "Screenplay" || p.job === "Writer")
+    .slice(0, 3)
+    .map((p) => p.id);
+  const creators = (d.created_by ?? []).map((p) => p.id);
+  return [...cast, ...dirs, ...creators];
 }
 
-async function collectAll(
-  supabase: any,
-  table: string,
-  userId: string,
-  cols: string,
-): Promise<any[]> {
+function rng(seed: number) {
+  let s = Math.abs(seed) + 1;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+async function collectAll(supabase: any, table: string, userId: string, cols: string) {
   const PAGE = 1000;
   const out: any[] = [];
-  let from = 0;
-  for (;;) {
+  for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from(table)
       .select(cols)
       .eq("user_id", userId)
       .range(from, from + PAGE - 1);
     if (error) break;
-    const chunk = data ?? [];
-    out.push(...chunk);
-    if (chunk.length < PAGE) break;
-    from += PAGE;
+    out.push(...(data ?? []));
+    if ((data ?? []).length < PAGE) break;
   }
   return out;
-}
-
-interface Scored {
-  item: MediaItem;
-  score: number;
-  source: "similar" | "genre" | "discovery";
-}
-
-function interleave(pools: Scored[][], quotas: number[], limit: number): MediaItem[] {
-  const taken = new Set<number>();
-  const out: MediaItem[] = [];
-  const cursors = pools.map(() => 0);
-  const counts = pools.map(() => 0);
-  let progress = true;
-  while (out.length < limit && progress) {
-    progress = false;
-    for (let p = 0; p < pools.length; p++) {
-      if (counts[p] >= quotas[p]) continue;
-      const pool = pools[p];
-      while (cursors[p] < pool.length && taken.has(pool[cursors[p]].item.id)) {
-        cursors[p]++;
-      }
-      if (cursors[p] >= pool.length) continue;
-      const pick = pool[cursors[p]++];
-      taken.add(pick.item.id);
-      out.push(pick.item);
-      counts[p]++;
-      progress = true;
-      if (out.length >= limit) break;
-    }
-  }
-  // fill remaining slots from any pool
-  if (out.length < limit) {
-    for (const pool of pools) {
-      for (const s of pool) {
-        if (out.length >= limit) break;
-        if (taken.has(s.item.id)) continue;
-        taken.add(s.item.id);
-        out.push(s.item);
-      }
-    }
-  }
-  return out.slice(0, limit);
 }
 
 export async function buildRecommendations(
@@ -128,233 +115,223 @@ export async function buildRecommendations(
   userId: string,
   seed: number,
 ): Promise<{ tv: MediaItem[]; movie: MediaItem[] }> {
-  const [ratings, favorites, episodes, movies, watchlist, dropped, dismissed] =
-    await Promise.all([
-      collectAll(supabase, "user_ratings", userId, "media_type, tmdb_id, rating, updated_at"),
-      collectAll(supabase, "favorites", userId, "media_type, tmdb_id, added_at"),
-      collectAll(supabase, "watched_episodes", userId, "tmdb_id, watched_at"),
-      collectAll(supabase, "watched_movies", userId, "tmdb_id, watched_at"),
-      collectAll(supabase, "watchlist", userId, "tmdb_id, media_type"),
-      collectAll(supabase, "dropped_shows", userId, "tmdb_id"),
-      collectAll(supabase, "recommendation_dismissals", userId, "tmdb_id, media_type"),
-    ]);
+  const [ratings, favorites, episodes, movies, watchlist, dropped, dismissed] = await Promise.all([
+    collectAll(supabase, "user_ratings", userId, "media_type, tmdb_id, rating, title"),
+    collectAll(supabase, "favorites", userId, "media_type, tmdb_id, title"),
+    collectAll(supabase, "watched_episodes", userId, "tmdb_id, watched_at"),
+    collectAll(supabase, "watched_movies", userId, "tmdb_id, title, watched_at"),
+    collectAll(supabase, "watchlist", userId, "tmdb_id, media_type, status, series_name, added_at"),
+    collectAll(supabase, "dropped_shows", userId, "tmdb_id"),
+    collectAll(supabase, "recommendation_dismissals", userId, "tmdb_id, media_type"),
+  ]);
 
-  // ---- exclusions ----
-  const excludeTv = new Set<number>();
-  const excludeMovie = new Set<number>();
-  for (const e of episodes) excludeTv.add(e.tmdb_id);
-  for (const d of dropped) excludeTv.add(d.tmdb_id);
-  for (const m of movies) excludeMovie.add(m.tmdb_id);
-  for (const w of watchlist)
-    (w.media_type === "movie" ? excludeMovie : excludeTv).add(w.tmdb_id);
-  for (const d of dismissed)
-    (d.media_type === "movie" ? excludeMovie : excludeTv).add(d.tmdb_id);
+  // ---- exclusions: anything already in library, completed, dropped or dismissed ----
+  const exclude: Record<Kind, Set<number>> = { tv: new Set(), movie: new Set() };
+  for (const e of episodes) exclude.tv.add(e.tmdb_id);
+  for (const d of dropped) exclude.tv.add(d.tmdb_id);
+  for (const m of movies) exclude.movie.add(m.tmdb_id);
+  for (const w of watchlist) exclude[w.media_type === "movie" ? "movie" : "tv"].add(w.tmdb_id);
+  for (const d of dismissed) exclude[d.media_type === "movie" ? "movie" : "tv"].add(d.tmdb_id);
 
-
-  // ---- taste profile from ratings + favorites + recency ----
+  // ---- taste signal per library title ----
   const now = Date.now();
-  const recencyWeight = (d?: string | null) => {
-    if (!d) return 0.5;
+  const recency = (d?: string | null) => {
+    if (!d) return 0.6;
     const days = (now - new Date(d).getTime()) / 86400000;
-    if (!Number.isFinite(days)) return 0.5;
     return days < 30 ? 1.5 : days < 120 ? 1.1 : days < 365 ? 0.8 : 0.5;
   };
-
-  // weight per library title (positive or negative)
-  const titleWeight = new Map<string, number>(); // `${type}-${id}` -> weight
-  const bump = (type: Kind, id: number, w: number) => {
-    const k = `${type}-${id}`;
-    titleWeight.set(k, (titleWeight.get(k) ?? 0) + w);
+  const weight: Record<Kind, Map<number, number>> = { tv: new Map(), movie: new Map() };
+  const titles: Record<Kind, Map<number, string>> = { tv: new Map(), movie: new Map() };
+  const bump = (k: Kind, id: number, w: number, title?: string | null) => {
+    weight[k].set(id, (weight[k].get(id) ?? 0) + w);
+    if (title && !titles[k].has(id)) titles[k].set(id, title);
   };
-
-  const lastEpisodeAt = new Map<number, string>();
+  const lastEp = new Map<number, string>();
   for (const e of episodes) {
-    const prev = lastEpisodeAt.get(e.tmdb_id);
-    if (!prev || (e.watched_at ?? "") > prev) lastEpisodeAt.set(e.tmdb_id, e.watched_at);
+    const p = lastEp.get(e.tmdb_id);
+    if (!p || (e.watched_at ?? "") > p) lastEp.set(e.tmdb_id, e.watched_at);
   }
-  for (const [id, at] of lastEpisodeAt) bump("tv", id, recencyWeight(at));
-  for (const m of movies) bump("movie", m.tmdb_id, recencyWeight(m.watched_at));
-  for (const f of favorites)
-    bump(f.media_type === "movie" ? "movie" : "tv", f.tmdb_id, 2.5);
-
-  const positives: { type: Kind; id: number; w: number }[] = [];
-  const negatives: { type: Kind; id: number }[] = [];
+  for (const [id, at] of lastEp) bump("tv", id, recency(at));
+  for (const m of movies) bump("movie", m.tmdb_id, recency(m.watched_at), m.title);
+  for (const w of watchlist) {
+    const k: Kind = w.media_type === "movie" ? "movie" : "tv";
+    if (w.status === "dropped") bump(k, w.tmdb_id, -2, w.series_name);
+    else if (w.status === "watching") bump(k, w.tmdb_id, 1.5, w.series_name);
+    else if (w.status === "completed") bump(k, w.tmdb_id, 1, w.series_name);
+    else titles[k].set(w.tmdb_id, w.series_name);
+  }
+  for (const d of dropped) bump("tv", d.tmdb_id, -2);
+  for (const f of favorites) bump(f.media_type === "movie" ? "movie" : "tv", f.tmdb_id, 3, f.title);
   for (const r of ratings) {
-    const type: Kind = r.media_type === "movie" ? "movie" : "tv";
-    const rating = Number(r.rating) || 0;
-    if (rating >= 4) {
-      bump(type, r.tmdb_id, 3 + (rating - 4) * 2);
-      positives.push({ type, id: r.tmdb_id, w: rating });
-    } else if (rating <= 2) {
-      bump(type, r.tmdb_id, -3);
-      negatives.push({ type, id: r.tmdb_id });
-    }
+    const k: Kind = r.media_type === "movie" ? "movie" : "tv";
+    const v = Number(r.rating) || 0; // 0.5..5 (≈ x2 on a 10 scale)
+    if (v >= 3.5) bump(k, r.tmdb_id, 2 + (v - 3.5) * 2, r.title);
+    else if (v <= 2) bump(k, r.tmdb_id, -3, r.title);
   }
 
-  // ---- genre weights via media_cache ----
-  const genreWeights: Record<Kind, Map<number, number>> = {
-    tv: new Map(),
-    movie: new Map(),
-  };
-  const keys = [...titleWeight.keys()];
-  const ids: Record<Kind, number[]> = { tv: [], movie: [] };
-  for (const k of keys) {
-    const [type, idStr] = k.split("-");
-    ids[type as Kind].push(Number(idStr));
-  }
-  const CHUNK = 300;
+  // ---- genre vector via media_cache ----
+  const genreW: Record<Kind, Map<number, number>> = { tv: new Map(), movie: new Map() };
   await Promise.all(
     (["tv", "movie"] as Kind[]).map(async (kind) => {
-      const list = ids[kind];
-      for (let i = 0; i < list.length; i += CHUNK) {
-        const slice = list.slice(i, i + CHUNK);
+      const ids = [...weight[kind].keys()];
+      for (let i = 0; i < ids.length; i += 300) {
         const { data } = await supabase
           .from("media_cache")
-          .select("tmdb_id, genre_ids")
+          .select("tmdb_id, genre_ids, title")
           .eq("media_type", kind)
-          .in("tmdb_id", slice);
+          .in("tmdb_id", ids.slice(i, i + 300));
         for (const row of data ?? []) {
-          const w = titleWeight.get(`${kind}-${row.tmdb_id}`) ?? 0;
-          for (const g of (row.genre_ids ?? []) as number[]) {
-            genreWeights[kind].set(g, (genreWeights[kind].get(g) ?? 0) + w);
-          }
+          const w = weight[kind].get(row.tmdb_id) ?? 0;
+          if (row.title && !titles[kind].has(row.tmdb_id)) titles[kind].set(row.tmdb_id, row.title);
+          for (const g of (row.genre_ids ?? []) as number[])
+            genreW[kind].set(g, (genreW[kind].get(g) ?? 0) + w);
         }
       }
     }),
   );
 
-  const topGenres = (kind: Kind, n: number) =>
-    [...genreWeights[kind].entries()]
-      .filter(([, w]) => w > 0)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, n)
-      .map(([g]) => g);
-  const badGenres = (kind: Kind) =>
-    new Set(
-      [...genreWeights[kind].entries()]
-        .filter(([, w]) => w < 0)
-        .map(([g]) => g),
-    );
-  const maxGenreWeight = (kind: Kind) =>
-    Math.max(1, ...[...genreWeights[kind].values()].map((w) => Math.abs(w)));
-
   async function forKind(kind: Kind): Promise<MediaItem[]> {
-    const exclude = kind === "tv" ? excludeTv : excludeMovie;
+    const rand = rng(seed + (kind === "tv" ? 0 : 97));
+    const gw = genreW[kind];
+    const maxG = Math.max(1, ...[...gw.values()].filter((v) => v > 0));
 
-    // seeds: favorites + high ratings first, then recently watched
-    const likedIds = [
-      ...new Set([
-        ...favorites
-          .filter((f: any) => (f.media_type === "movie" ? "movie" : "tv") === kind)
-          .map((f: any) => f.tmdb_id as number),
-        ...positives.filter((p) => p.type === kind).map((p) => p.id),
-      ]),
-    ];
-    const recentIds = [
-      ...new Set(
-        kind === "tv"
-          ? [...lastEpisodeAt.entries()]
-              .sort((a, b) => (b[1] ?? "").localeCompare(a[1] ?? ""))
-              .map(([id]) => id)
-          : [...movies]
-              .sort((a: any, b: any) =>
-                (b.watched_at ?? "").localeCompare(a.watched_at ?? ""),
-              )
-              .map((m: any) => m.tmdb_id as number),
-      ),
-    ].slice(0, 40);
+    // seeds: strongest positive titles, with a little seeded rotation
+    const positives = [...weight[kind].entries()]
+      .filter(([, w]) => w > 1)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 18);
+    const seeds = positives
+      .map(([id, w]) => ({ id, s: w * (0.6 + rand()) }))
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 6)
+      .map((x) => x.id);
 
-    const seedOffset = kind === "tv" ? 0 : 7;
-    const seeds = [
-      ...shuffle(likedIds, seed + seedOffset).slice(0, 4),
-      ...shuffle(recentIds, seed + seedOffset + 1).slice(0, 3),
-    ];
-    const seedSet = new Set(seeds);
+    const topGenres = [...gw.entries()].filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([g]) => g);
 
-    const genres = topGenres(kind, 6);
-    const gShuffled = shuffle(genres, seed + seedOffset + 2);
-    const genreParam = gShuffled.slice(0, 3).join(",");
-    const discoveryGenreParam = gShuffled.slice(0, 2).join(",") || genreParam;
-    const maxW = maxGenreWeight(kind);
-    const bad = badGenres(kind);
-
-    const page = (seed % 3) + 1;
-    const dateField = kind === "tv" ? "first_air_date" : "primary_release_date";
-
-    const [similarRes, genreRes, discoveryRes] = await Promise.all([
-      Promise.all(
-        seeds.map((id) =>
-          fetchTmdb(`/${kind}/${id}/recommendations`).catch(() => null),
-        ),
-      ),
-      genreParam
+    const [seedDetails, seedRecs, genreRes, cowatchRes] = await Promise.all([
+      Promise.all(seeds.map((id) => details(kind, id))),
+      Promise.all(seeds.map((id) => fetchTmdb(`/${kind}/${id}/recommendations`).catch(() => null))),
+      topGenres.length
         ? fetchTmdb(`/discover/${kind}`, {
-            with_genres: genreParam,
+            with_genres: topGenres.slice(0, 2).join("|"),
             sort_by: "vote_average.desc",
-            "vote_count.gte": "200",
-            page: String(page),
+            "vote_count.gte": "300",
+            page: String((seed % 3) + 1),
           }).catch(() => null)
         : Promise.resolve(null),
-      discoveryGenreParam
-        ? fetchTmdb(`/discover/${kind}`, {
-            with_genres: discoveryGenreParam,
-            sort_by: "vote_average.desc",
-            "vote_count.gte": "50",
-            "vote_count.lte": "1500",
-            [`${dateField}.gte`]: "1990-01-01",
-            page: String(((seed * 3) % 5) + 1),
-          }).catch(() => null)
-        : Promise.resolve(null),
+      supabase.rpc("get_cowatch_scores", { _media_type: kind }),
     ]);
 
-    const score = (raw: RawAny) => {
-      const gs = (raw.genre_ids ?? []) as number[];
-      let affinity = 0;
-      for (const g of gs) {
-        const w = genreWeights[kind].get(g) ?? 0;
-        affinity += w / maxW;
+    // keyword + people preference vectors from seeds
+    const kwW = new Map<number, number>();
+    const pplW = new Map<number, number>();
+    seedDetails.forEach((d, i) => {
+      if (!d) return;
+      const w = weight[kind].get(seeds[i]) ?? 1;
+      if (!titles[kind].has(seeds[i])) titles[kind].set(seeds[i], (d.title ?? d.name) || "");
+      for (const k of keywordIds(d)) kwW.set(k, (kwW.get(k) ?? 0) + w);
+      for (const p of peopleIds(d)) pplW.set(p, (pplW.get(p) ?? 0) + w);
+    });
+
+    // candidate pool
+    const cands = new Map<number, { raw: RawAny | null; via?: number; hits: number }>();
+    const usable = (id: number) => !exclude[kind].has(id) && !seeds.includes(id);
+    seedRecs.forEach((res, i) => {
+      for (const raw of ((res?.results ?? []) as RawAny[]).slice(0, 15)) {
+        if (!raw.poster_path || !usable(raw.id)) continue;
+        const c = cands.get(raw.id);
+        if (c) c.hits++;
+        else cands.set(raw.id, { raw, via: seeds[i], hits: 1 });
       }
-      const penalty = gs.some((g) => bad.has(g)) ? 1.5 : 0;
-      const quality = ((raw.vote_average ?? 0) - 6) / 4;
-      return affinity * 1.2 + quality - penalty;
+    });
+    for (const raw of (genreRes?.results ?? []) as RawAny[]) {
+      if (raw.poster_path && usable(raw.id) && !cands.has(raw.id)) cands.set(raw.id, { raw, hits: 0 });
+    }
+    const cowatch = new Map<number, number>();
+    for (const r of (cowatchRes?.data ?? []) as { tmdb_id: number; peers: number }[]) {
+      cowatch.set(r.tmdb_id, Number(r.peers));
+      if (usable(r.tmdb_id) && !cands.has(r.tmdb_id)) cands.set(r.tmdb_id, { raw: null, hits: 0 });
+    }
+    const maxPeers = Math.max(1, ...cowatch.values());
+
+    const genreScore = (gs: number[]) => {
+      if (!gs.length) return 0;
+      let s = 0;
+      for (const g of gs) s += (gw.get(g) ?? 0) / maxG;
+      return Math.max(0, Math.min(1, s / Math.min(gs.length, 3)));
     };
 
-    const usable = (raw: RawAny) =>
-      raw.poster_path && !exclude.has(raw.id) && !seedSet.has(raw.id);
+    // first pass (cheap) → shortlist for detail enrichment
+    const pre = [...cands.entries()]
+      .map(([id, c]) => {
+        const g = c.raw ? genreScore(c.raw.genre_ids ?? []) : 0.5;
+        const comm = c.raw ? (c.raw.vote_average ?? 0) / 10 : 0.6;
+        const co = (cowatch.get(id) ?? 0) / maxPeers;
+        const kwGuess = Math.min(1, c.hits / 3);
+        return { id, c, s: recommendationScore({ genre: g, keyword: kwGuess, community: comm, cowatch: co }) };
+      })
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 32);
 
-    // similar pool: frequency across seeds + affinity
-    const similarMap = new Map<number, Scored>();
-    for (const res of similarRes) {
-      for (const raw of ((res?.results ?? []) as RawAny[]).slice(0, 20)) {
-        if (!usable(raw)) continue;
-        const existing = similarMap.get(raw.id);
-        if (existing) existing.score += 1;
-        else
-          similarMap.set(raw.id, {
-            item: mapItem(raw, kind),
-            score: 1 + score(raw),
-            source: "similar",
-          });
-      }
-    }
+    const maxKw = Math.max(1, ...kwW.values());
+    const maxPpl = Math.max(1, ...pplW.values());
+    const enriched = await Promise.all(
+      pre.map(async ({ id, c }) => {
+        const d = await details(kind, id);
+        if (!d || !d.poster_path) return null;
+        const gs = (d.genres ?? []).map((g) => g.id);
+        const kws = keywordIds(d);
+        const ppl = peopleIds(d);
+        let kwSum = 0;
+        for (const k of kws) kwSum += (kwW.get(k) ?? 0) / maxKw;
+        let pSum = 0;
+        for (const p of ppl) pSum += (pplW.get(p) ?? 0) / maxPpl;
+        const keyword = Math.min(1, kwSum / 4 + pSum / 3 + c.hits * 0.1);
+        const genre = genreScore(gs);
+        const community = Math.min(1, ((d.vote_average ?? 0) / 10) * Math.min(1, (d.vote_count ?? 0) / 200));
+        const peers = cowatch.get(id) ?? 0;
+        const co = peers / maxPeers;
+        const score =
+          recommendationScore({ genre, keyword, community, cowatch: co }) * (0.92 + rand() * 0.16);
 
-    const buildPool = (
-      res: any,
-      source: Scored["source"],
-    ): Scored[] =>
-      ((res?.results ?? []) as RawAny[])
-        .filter(usable)
-        .map((raw) => ({ item: mapItem(raw, kind), score: score(raw), source }))
-        .sort((a, b) => b.score - a.score);
-
-    const similarPool = [...similarMap.values()].sort((a, b) => b.score - a.score);
-    const genrePool = shuffle(buildPool(genreRes, "genre"), seed + seedOffset + 3);
-    const discoveryPool = shuffle(
-      buildPool(discoveryRes, "discovery"),
-      seed + seedOffset + 4,
+        let reason: string;
+        const viaTitle = c.via != null ? titles[kind].get(c.via) : undefined;
+        if (peers >= 2 && co >= 0.5) reason = "Popular with people who share your taste";
+        else if (viaTitle) reason = `Because you watched ${viaTitle}`;
+        else {
+          const best = (d.genres ?? []).sort((a, b) => (gw.get(b.id) ?? 0) - (gw.get(a.id) ?? 0))[0];
+          reason = best ? `Because you like ${best.name}` : "Highly rated pick";
+        }
+        return {
+          item: mapItem({ ...d, genre_ids: gs }, kind, reason),
+          score,
+          collection: d.belongs_to_collection?.id ?? null,
+          primaryGenre: gs[0] ?? -1,
+        };
+      }),
     );
 
-    return interleave([similarPool, genrePool, discoveryPool], [8, 7, 5], 20);
+    // diversity: 1 per franchise, max 3 per primary genre in top 10, max 2 per "via" seed in top 10
+    const sorted = enriched.filter((x): x is NonNullable<typeof x> => !!x).sort((a, b) => b.score - a.score);
+    const out: MediaItem[] = [];
+    const seenCol = new Set<number>();
+    const genreCount = new Map<number, number>();
+    const reasonCount = new Map<string, number>();
+    const deferred: MediaItem[] = [];
+    for (const x of sorted) {
+      if (x.collection && seenCol.has(x.collection)) continue;
+      const gc = genreCount.get(x.primaryGenre) ?? 0;
+      const rc = reasonCount.get(x.item.reason ?? "") ?? 0;
+      if (out.length < 10 && (gc >= 3 || rc >= 2)) {
+        deferred.push(x.item);
+        continue;
+      }
+      if (x.collection) seenCol.add(x.collection);
+      genreCount.set(x.primaryGenre, gc + 1);
+      reasonCount.set(x.item.reason ?? "", rc + 1);
+      out.push(x.item);
+    }
+    return [...out, ...deferred].slice(0, 20);
   }
 
   const [tv, movie] = await Promise.all([forKind("tv"), forKind("movie")]);

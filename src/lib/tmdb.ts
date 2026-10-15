@@ -30,6 +30,8 @@ export interface MediaItem {
   backdrop_path: string | null;
   vote_average: number;
   release_date: string | null; // first_air_date for tv, release_date for movie
+  /** Optional soft explanation tag ("Because you watched X"). */
+  reason?: string;
 }
 
 // ============ Raw TMDB shapes ============
