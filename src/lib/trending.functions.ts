@@ -55,7 +55,7 @@ export const getCountryTrending = createServerFn({ method: "POST" })
   .validator((input: { type: MediaType; country: string }) => input)
   .handler(async ({ data, context }): Promise<CountryTrending> => {
     const country = (/^[A-Za-z]{2}$/.test(data.country) ? data.country : "US").toUpperCase();
-    const name = regionName(country);
+
 
     // 1) Community trend for this country: time-decayed velocity over the last 7 days.
     const { data: scores } = await context.supabase.rpc("get_trending_scores", {
