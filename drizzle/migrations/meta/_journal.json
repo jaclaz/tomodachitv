@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792046216072,
+      "tag": "0000_trend_events_and_cowatch",
+      "breakpoints": true
+    }
+  ]
+}

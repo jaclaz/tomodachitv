@@ -333,6 +333,7 @@ export type Database = {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
+          country_code: string | null
           created_at: string
           display_name: string | null
           id: string
@@ -343,6 +344,7 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          country_code?: string | null
           created_at?: string
           display_name?: string | null
           id: string
@@ -353,6 +355,7 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          country_code?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -421,6 +424,39 @@ export type Database = {
           title?: string | null
           tmdb_id?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      trend_events: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          id: string
+          kind: string
+          media_type: string
+          tmdb_id: number
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          media_type: string
+          tmdb_id: number
+          user_id: string
+          weight: number
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          media_type?: string
+          tmdb_id?: number
+          user_id?: string
+          weight?: number
         }
         Relationships: []
       }
@@ -656,6 +692,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_cowatch_scores: {
+        Args: { _media_type: string }
+        Returns: {
+          peers: number
+          tmdb_id: number
+        }[]
+      }
       get_follow_counts: {
         Args: { _user_id: string }
         Returns: {
@@ -673,6 +716,14 @@ export type Database = {
         Args: { _user_id: string }
         Returns: {
           user_id: string
+        }[]
+      }
+      get_trending_scores: {
+        Args: { _country: string; _limit?: number; _media_type: string }
+        Returns: {
+          score: number
+          tmdb_id: number
+          users: number
         }[]
       }
       get_user_watch_totals: {
