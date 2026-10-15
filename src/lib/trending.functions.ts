@@ -14,6 +14,15 @@ function regionName(code: string) {
   }
 }
 
+/**
+ * Country label short enough to sit on a poster card without being cut off.
+ * Long names ("United Arab Emirates") fall back to the 2-letter code.
+ */
+function regionLabel(code: string) {
+  const name = regionName(code);
+  return name.length <= 16 ? name : code;
+}
+
 async function tmdb(path: string, params: Record<string, string>) {
   const key = process.env.TMDB_API_KEY;
   if (!key) throw new Error("TMDB_API_KEY not configured");
@@ -46,7 +55,7 @@ export const getCountryTrending = createServerFn({ method: "POST" })
   .validator((input: { type: MediaType; country: string }) => input)
   .handler(async ({ data, context }): Promise<CountryTrending> => {
     const country = (/^[A-Za-z]{2}$/.test(data.country) ? data.country : "US").toUpperCase();
-    const name = regionName(country);
+
 
     // 1) Community trend for this country: time-decayed velocity over the last 7 days.
     const { data: scores } = await context.supabase.rpc("get_trending_scores", {
@@ -77,7 +86,7 @@ export const getCountryTrending = createServerFn({ method: "POST" })
           backdrop_path: c.backdrop_path,
           vote_average: Number(c.vote_average ?? 0),
           release_date: c.release_date,
-          reason: `Popular in ${name} this week`,
+          reason: regionLabel(country),
         });
       }
     }
@@ -111,7 +120,7 @@ export const getCountryTrending = createServerFn({ method: "POST" })
             backdrop_path: r.backdrop_path,
             vote_average: r.vote_average ?? 0,
             release_date: (data.type === "tv" ? r.first_air_date : r.release_date) || null,
-            reason: `Trending in ${name}`,
+            reason: regionLabel(country),
           });
         }
       } catch (e) {
