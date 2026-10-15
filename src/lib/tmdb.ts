@@ -502,7 +502,9 @@ export const discoverContent = createServerFn({ method: "POST" }).middleware([re
       params.with_watch_providers = String(data.providerId);
       params.with_watch_monetization_types = "flatrate";
     } else {
-      params.with_watch_monetization_types = "flatrate|free|ads|rent|buy";
+      // Streaming-only availability: rent/buy catalogs are nearly identical
+      // worldwide, so including them made every country return the same list.
+      params.with_watch_monetization_types = "flatrate|free|ads";
     }
     const res = await tmdbFetch(`/discover/${data.type}`, params);
     const results = (res.results ?? []).map((r: RawTv & RawMovie) =>

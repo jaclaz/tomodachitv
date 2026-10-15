@@ -294,16 +294,10 @@ export async function buildRecommendations(
         const score =
           recommendationScore({ genre, keyword, community, cowatch: co }) * (0.92 + rand() * 0.16);
 
-        // Tags must fit a poster card (108px of text on phones), so they stay
-        // short: a single genre word, or one of the two fixed phrases below.
-        let reason: string;
-        if (peers >= 2 && co >= 0.5) reason = "Popular with fans";
-        else {
-          const best = (d.genres ?? []).sort((a, b) => (gw.get(b.id) ?? 0) - (gw.get(a.id) ?? 0))[0];
-          reason = best?.name ?? "Highly rated pick";
-        }
+        // No reason tags: they don't fit the poster cards and the user
+        // prefers a clean row.
         return {
-          item: mapItem({ ...d, genre_ids: gs }, kind, reason),
+          item: mapItem({ ...d, genre_ids: gs }, kind),
           score,
           collection: d.belongs_to_collection?.id ?? null,
           primaryGenre: gs[0] ?? -1,
