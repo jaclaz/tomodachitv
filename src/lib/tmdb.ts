@@ -495,10 +495,14 @@ export const discoverContent = createServerFn({ method: "POST" }).middleware([re
       if (data.yearFrom) params["first_air_date.gte"] = `${data.yearFrom}-01-01`;
       if (data.yearTo) params["first_air_date.lte"] = `${data.yearTo}-12-31`;
     }
+    const region = (data.watchRegion || "US").toUpperCase();
+    params.watch_region = region;
+    if (data.type === "movie") params.region = region;
     if (data.providerId) {
       params.with_watch_providers = String(data.providerId);
-      params.watch_region = (data.watchRegion || "US").toUpperCase();
       params.with_watch_monetization_types = "flatrate";
+    } else {
+      params.with_watch_monetization_types = "flatrate|free|ads|rent|buy";
     }
     const res = await tmdbFetch(`/discover/${data.type}`, params);
     const results = (res.results ?? []).map((r: RawTv & RawMovie) =>
