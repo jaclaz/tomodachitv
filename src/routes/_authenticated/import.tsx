@@ -405,6 +405,50 @@ function ImportPage() {
   };
 
   // ---------- Netflix viewing history (plain CSV: Title,Date) ----------
+  const NF_SEASON_RE = /^(?:stagione|season|temporada|saison|staffel)\s+(\d+)/i;
+  const NF_EPISODE_RE = /^(?:episodio|episode|ep\.?)\s*(\d+)$/i;
+
+  // Unmatched Netflix rows that clearly describe a TV episode are filed as
+  // watched_episode (grouped by series name) so they can be fixed by searching
+  // a series — not a movie — and all episodes of one series collapse into a
+  // single "Couldn't be imported" entry.
+  const netflixPendingRow = (title: string, watched_at: string | null) => {
+    const segments = title.split(/\s*:\s+/).filter(Boolean);
+    let season: number | null = null;
+    let episode: number | null = null;
+    let prefixLen = segments.length;
+    for (let i = 1; i < segments.length; i++) {
+      const sm = segments[i].match(NF_SEASON_RE);
+      const em = segments[i].match(NF_EPISODE_RE);
+      if (sm) {
+        season = parseInt(sm[1], 10);
+        if (i < prefixLen) prefixLen = i;
+      } else if (em) {
+        episode = parseInt(em[1], 10);
+        if (i < prefixLen) prefixLen = i;
+      }
+    }
+    if (season !== null || episode !== null) {
+      const series = segments.slice(0, prefixLen).join(": ") || title;
+      return {
+        kind: "watched_episode" as const,
+        source: "name" as const,
+        source_id: series.slice(0, 180),
+        title,
+        season_number: season,
+        episode_number: episode,
+        watched_at,
+      };
+    }
+    return {
+      kind: "watched_movie" as const,
+      source: "name" as const,
+      source_id: title.slice(0, 180),
+      title,
+      watched_at,
+    };
+  };
+
   const handleNetflixRows = async (rows: Row[]) => {
     setBusy(true);
     setCounts(null);
@@ -449,13 +493,7 @@ function ImportPage() {
           const src = c[i];
           if (!src) return;
           if (!res) {
-            pending.push({
-              kind: "watched_movie",
-              source: "name",
-              source_id: src.title.slice(0, 180),
-              title: src.title,
-              watched_at: src.watched_at ?? null,
-            });
+            pending.push(netflixPendingRow(src.title, src.watched_at ?? null));
             return;
           }
           if (res.kind === "episode") {
