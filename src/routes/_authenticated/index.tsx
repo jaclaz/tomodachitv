@@ -8,6 +8,8 @@ import {
   getUserRecommendations,
   type MediaItem,
 } from "@/lib/tmdb";
+import { detectRegion } from "@/lib/region";
+import { getCountryTrending, syncMyCountry } from "@/lib/trending.functions";
 import { dismissRecommendation, undoDismissRecommendation } from "@/lib/recommendations.functions";
 import { toast } from "sonner";
 import { getWatchlist } from "@/lib/watchlist.functions";
@@ -83,13 +85,19 @@ function HomePage() {
     }
   }, []);
 
+  const [region, setRegion] = useState("US");
+  useEffect(() => {
+    const r = detectRegion();
+    setRegion(r);
+    syncMyCountry({ data: { country: r } }).catch(() => {});
+  }, []);
   const { data: tvTrending, isFetching: tvLoading } = useQuery({
-    queryKey: ["trending", "tv"],
-    queryFn: () => getTrendingSeries(),
+    queryKey: ["country-trending", "tv", region],
+    queryFn: () => getCountryTrending({ data: { type: "tv", country: region } }),
   });
   const { data: movieTrending, isFetching: movieLoading } = useQuery({
-    queryKey: ["trending", "movie"],
-    queryFn: () => getTrendingMovies(),
+    queryKey: ["country-trending", "movie", region],
+    queryFn: () => getCountryTrending({ data: { type: "movie", country: region } }),
   });
 
   // Daily rotation: the seed changes every day (Refresh forces a new one now).
