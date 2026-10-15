@@ -86,7 +86,7 @@ export const getCountryTrending = createServerFn({ method: "POST" })
           backdrop_path: c.backdrop_path,
           vote_average: Number(c.vote_average ?? 0),
           release_date: c.release_date,
-          reason: `Popular in ${name} this week`,
+          reason: regionLabel(country),
         });
       }
     }
