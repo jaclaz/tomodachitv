@@ -677,6 +677,26 @@ export const retryPendingImports = createServerFn({ method: "POST" })
             vote_average: d.vote_average ?? null,
             runtime: d.episode_run_time?.[0] ?? null,
           };
+      } else if (source === "name") {
+        // Name-based rows (e.g. unmatched Netflix episodes): search TMDB by
+        // the series name stored in source_id, in Italian and English.
+        for (const lang of ["it-IT", "en-US"]) {
+          const d = await tmdbFetch(`/search/tv`, { query: sourceId, language: lang });
+          const tv = d?.results?.[0];
+          if (tv) {
+            const details = await tmdbFetch(`/tv/${tv.id}`);
+            show = {
+              tmdb_id: tv.id,
+              name: tv.name,
+              poster_path: tv.poster_path ?? null,
+              backdrop_path: tv.backdrop_path ?? null,
+              first_air_date: tv.first_air_date ?? null,
+              vote_average: tv.vote_average ?? null,
+              runtime: details?.episode_run_time?.[0] ?? null,
+            };
+            break;
+          }
+        }
       }
       showCache.set(key, show);
       return show;
