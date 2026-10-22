@@ -11,3 +11,4 @@
 
 - Trending is computed from `trend_events` (filled by DB triggers on library actions, tagged with the user profile country) via `get_trending_scores`; TMDB regional discover is only a fallback when local data is thin. Why: TMDB trending endpoints are global and ignore country.
 - Recommendations use the weighted hybrid score in `recommendations.server.ts` (`recommendationScore`); co-watch peers come from the `get_cowatch_scores` RPC. Why: one tested scoring function keeps weights consistent.
+- Profile content reads use authenticated RLS against named profiles, independently of follow relationships; writes remain owner-only and private lists retain their visibility policies. Why: profile browsing and following for activity updates are separate capabilities.

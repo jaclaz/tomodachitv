@@ -19,7 +19,7 @@ import { AvatarUpload } from "@/components/avatar-upload";
 import { BannerUpload } from "@/components/banner-upload";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, UserPlus, UserMinus, Pencil, Check, X, Loader2, Tv, Film, Star } from "lucide-react";
+import { UserPlus, UserMinus, Pencil, Check, X, Loader2, Tv, Film, Star } from "lucide-react";
 
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +32,16 @@ import { FollowListDialog } from "@/components/follow-list-dialog";
 import { posterUrl } from "@/lib/tmdb";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
+  head: ({ params }) => ({
+    meta: [
+      { title: `@${params.username} · TomodachiTV` },
+      { name: "description", content: `Explore @${params.username}'s watched titles, watchlist and favorites on TomodachiTV.` },
+      { property: "og:title", content: `@${params.username} · TomodachiTV` },
+      { property: "og:description", content: `Explore @${params.username}'s movie and TV profile on TomodachiTV.` },
+      { property: "og:type", content: "profile" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: UserProfilePage,
 });
 
@@ -46,29 +56,29 @@ function UserProfilePage() {
     queryFn: () => getProfileByUsername({ data: { username } }),
   });
 
-  const canSeeWatched = !!profile && (profile.is_self || profile.is_following);
+  const profileId = profile?.id;
 
   const { data: watchlist = [] } = useQuery({
     queryKey: ["user-watchlist", profile?.id],
-    queryFn: () => getUserWatchlist({ data: { user_id: profile!.id } }),
+    queryFn: () => profileId ? getUserWatchlist({ data: { user_id: profileId } }) : Promise.resolve([]),
     enabled: !!profile,
   });
 
   const { data: watchedLibrary = [] } = useQuery({
     queryKey: ["user-watched-library", profile?.id],
-    queryFn: () => getUserWatchedLibrary({ data: { user_id: profile!.id } }),
-    enabled: !!profile && canSeeWatched,
+    queryFn: () => profileId ? getUserWatchedLibrary({ data: { user_id: profileId } }) : Promise.resolve([]),
+    enabled: !!profileId,
   });
 
   const { data: recentShows = [] } = useQuery({
     queryKey: ["user-recent-shows", profile?.id],
-    queryFn: () => getUserRecentlyWatchedShows({ data: { user_id: profile!.id } }),
-    enabled: !!profile && canSeeWatched,
+    queryFn: () => profileId ? getUserRecentlyWatchedShows({ data: { user_id: profileId } }) : Promise.resolve([]),
+    enabled: !!profileId,
   });
 
   const { data: userRatings = [] } = useQuery({
     queryKey: ["user-ratings", profile?.id],
-    queryFn: () => getUserRatings({ data: { user_id: profile!.id } }),
+    queryFn: () => profileId ? getUserRatings({ data: { user_id: profileId } }) : Promise.resolve([]),
     enabled: !!profile?.id,
     staleTime: 60_000,
   });
@@ -81,8 +91,8 @@ function UserProfilePage() {
 
   const { data: favorites = [] } = useQuery({
     queryKey: ["user-favorites", profile?.id],
-    queryFn: () => getUserFavorites({ data: { user_id: profile!.id } }),
-    enabled: !!profile && canSeeWatched,
+    queryFn: () => profileId ? getUserFavorites({ data: { user_id: profileId } }) : Promise.resolve([]),
+    enabled: !!profileId,
   });
 
   const followMut = useMutation({
@@ -274,15 +284,6 @@ function UserProfilePage() {
         </TabsList>
 
         <TabsContent value="watched" className="mt-4 space-y-6">
-          {!canSeeWatched ? (
-            <div className="rounded-2xl border border-border bg-surface p-10 text-center">
-              <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="mt-3 font-semibold">Followers only</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Follow @{profile.username} to see their watched history.
-              </p>
-            </div>
-          ) : (
             <>
               <div className="space-y-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -313,7 +314,6 @@ function UserProfilePage() {
                 />
               </div>
             </>
-          )}
         </TabsContent>
 
         <TabsContent value="watchlist" className="mt-4 space-y-6">
@@ -351,7 +351,7 @@ function UserProfilePage() {
 
 
       {/* Favorites — always for self; only if non-empty for others */}
-      {canSeeWatched && (profile.is_self || favorites.length > 0) && (
+      {(profile.is_self || favorites.length > 0) && (
         <section className="space-y-4">
           <div>
             <h2 className="font-display text-lg font-semibold">Favorites</h2>

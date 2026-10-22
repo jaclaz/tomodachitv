@@ -161,7 +161,7 @@ export const getUserWatched = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { user_id: string }) => input)
   .handler(async ({ context, data }) => {
-    // RLS enforces: only owner or follower can read. Empty = not permitted.
+    // RLS allows members to read named profiles; following only filters the activity feed.
     const [{ data: episodes }, { data: movies }] = await Promise.all([
       context.supabase
         .from("watched_episodes")
