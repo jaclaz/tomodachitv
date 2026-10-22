@@ -8,6 +8,13 @@
       "when": 1792046216072,
       "tag": "0000_trend_events_and_cowatch",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792658429754,
+      "tag": "0001_profile_content_visible_without_following",
+      "breakpoints": true
     }
   ]
 }

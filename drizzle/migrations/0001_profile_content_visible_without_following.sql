@@ -1,0 +1,10 @@
+DROP POLICY IF EXISTS "Followers can read watchlist" ON public.watchlist;
+CREATE POLICY "Named profile watchlist readable by members" ON public.watchlist FOR SELECT TO authenticated USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = user_id AND p.username IS NOT NULL));
+DROP POLICY IF EXISTS "Watched episodes readable by owner or followers" ON public.watched_episodes;
+CREATE POLICY "Named profile episodes readable by members" ON public.watched_episodes FOR SELECT TO authenticated USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = user_id AND p.username IS NOT NULL));
+DROP POLICY IF EXISTS "Watched movies readable by owner or followers" ON public.watched_movies;
+CREATE POLICY "Named profile movies readable by members" ON public.watched_movies FOR SELECT TO authenticated USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = user_id AND p.username IS NOT NULL));
+DROP POLICY IF EXISTS "public read favorites of followed or self" ON public.favorites;
+CREATE POLICY "Named profile favorites readable by members" ON public.favorites FOR SELECT TO authenticated USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = user_id AND p.username IS NOT NULL));
+DROP POLICY IF EXISTS "Followers can read ratings" ON public.user_ratings;
+CREATE POLICY "Named profile ratings readable by members" ON public.user_ratings FOR SELECT TO authenticated USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = user_id AND p.username IS NOT NULL));
