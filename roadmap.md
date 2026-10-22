@@ -1,0 +1,2 @@
+- [x] Raggruppare gli episodi nelle attività degli amici e collegare i nomi ai profili.
+- [x] Verificare raggruppamento e navigazione dalla pagina Tomodachi.

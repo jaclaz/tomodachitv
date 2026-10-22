@@ -6,8 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Film, Search, Tv, Users } from "lucide-react";
 import { posterUrl } from "@/lib/tmdb";
+import { episodeRanges, groupFollowingActivity } from "@/lib/activity-groups";
 
 export const Route = createFileRoute("/_authenticated/social")({
+  head: () => ({ meta: [
+    { title: "Friends' activity · TomodachiTV" },
+    { name: "description", content: "Find friends and see their recent movie and episode watches on TomodachiTV." },
+    { property: "og:title", content: "Friends' activity · TomodachiTV" },
+    { property: "og:description", content: "Keep up with what your friends are watching on TomodachiTV." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: TomodachiPage,
 });
 
@@ -97,6 +106,7 @@ function ActivityFeed() {
     queryKey: ["following-activity"],
     queryFn: () => getFollowingActivity(),
   });
+  const groupedActivity = groupFollowingActivity(activity ?? []);
 
   return (
     <section className="space-y-4">
@@ -119,12 +129,14 @@ function ActivityFeed() {
         </div>
       ) : (
         <ul className="space-y-2">
-          {activity.map((a) => (
+          {groupedActivity.map((a) => (
             <li key={a.id}>
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
               <Link
                 to={a.kind === "episode" ? "/serie/$id" : "/movie/$id"}
                 params={{ id: String(a.tmdb_id) }}
-                className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 transition-colors hover:bg-card"
+                aria-label={a.title}
+                className="flex-shrink-0"
               >
                 <div className="h-14 w-10 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                   {a.poster_path ? (
@@ -136,25 +148,30 @@ function ActivityFeed() {
                     />
                   ) : null}
                 </div>
+              </Link>
+              <Link to="/u/$username" params={{ username: a.user.username }} aria-label={`@${a.user.username}`}>
                 <Avatar className="h-8 w-8 flex-shrink-0">
                   <AvatarImage src={a.user.avatar_url ?? undefined} />
                   <AvatarFallback className="text-xs">
                     {(a.user.display_name ?? a.user.username).slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
+              </Link>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">
-                    <span className="font-semibold text-foreground">
+                  <p className="break-words text-sm">
+                    <Link to="/u/$username" params={{ username: a.user.username }} className="font-semibold text-foreground hover:text-primary hover:underline">
                       {a.user.display_name ?? a.user.username}
-                    </span>{" "}
+                    </Link>{" "}
                     <span className="text-muted-foreground">
-                      watched {a.kind === "episode" ? "an episode of" : "the movie"}
+                      watched {a.kind === "episode"
+                        ? `${a.episode_numbers.length > 1 ? "episodes" : "episode"} ${episodeRanges(a.episode_numbers)} of`
+                        : "the movie"}
                     </span>{" "}
-                    <span className="font-medium text-foreground">{a.title}</span>
+                    <Link to={a.kind === "episode" ? "/serie/$id" : "/movie/$id"} params={{ id: String(a.tmdb_id) }} className="font-medium text-foreground hover:text-primary hover:underline">{a.title}</Link>
                     {a.kind === "episode" && (
                       <span className="text-muted-foreground">
-                        {" "}· S{a.season_number}E{a.episode_number}
-                        {a.episode_name ? ` — ${a.episode_name}` : ""}
+                        {a.season_number !== undefined ? ` · Season ${a.season_number}` : ""}
+                        {a.episode_numbers.length === 1 && a.episode_name ? ` — ${a.episode_name}` : ""}
                       </span>
                     )}
                   </p>
@@ -167,7 +184,7 @@ function ActivityFeed() {
                     {new Date(a.watched_at).toLocaleString()}
                   </p>
                 </div>
-              </Link>
+              </div>
             </li>
           ))}
         </ul>
