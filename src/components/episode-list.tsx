@@ -97,6 +97,39 @@ export function EpisodeList({ series }: EpisodeListProps) {
     queryFn: () => getWatchedEpisodes({ data: { tmdb_id: tmdbId } }),
   });
 
+  // Open on the season the user is currently watching: the season containing
+  // the next unwatched episode after their most recently watched one.
+  const seasonTouched = useRef(false);
+  useEffect(() => {
+    if (seasonTouched.current || watched.length === 0) return;
+    const watchedSet = new Set(
+      watched.map((w) => `${w.season_number}-${w.episode_number}`),
+    );
+    const latest = watched.reduce((a, b) => (b.watched_at > a.watched_at ? b : a));
+    let s = latest.season_number;
+    let e = latest.episode_number;
+    const nextNumberedSeason = (from: number) =>
+      series.seasons
+        .filter((x) => x.season_number > from && x.season_number > 0)
+        .sort((a, b) => a.season_number - b.season_number)[0];
+    for (let guard = 0; guard < 1000; guard++) {
+      const seasonInfo = series.seasons.find((x) => x.season_number === s);
+      const count = seasonInfo?.episode_count ?? 0;
+      e += 1;
+      if ((count && e > count) || (!count && e > 100)) {
+        const next = nextNumberedSeason(s);
+        if (!next) break;
+        s = next.season_number;
+        e = 0;
+        continue;
+      }
+      if (!watchedSet.has(`${s}-${e}`)) break;
+    }
+    if (series.seasons.some((x) => x.season_number === s) && s !== activeSeason) {
+      setActiveSeason(s);
+    }
+  }, [watched, series.seasons, activeSeason]);
+
   const invalidateWatched = () => {
     queryClient.invalidateQueries({ queryKey: ["watched", tmdbId] });
     queryClient.invalidateQueries({ queryKey: ["stats"] });
@@ -324,7 +357,13 @@ export function EpisodeList({ series }: EpisodeListProps) {
 
   return (
     <div className="rounded-xl border border-border bg-surface">
-      <Tabs value={String(activeSeason)} onValueChange={(v) => setActiveSeason(Number(v))}>
+      <Tabs
+        value={String(activeSeason)}
+        onValueChange={(v) => {
+          seasonTouched.current = true;
+          setActiveSeason(Number(v));
+        }}
+      >
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 pt-4">
           <div className="relative order-first flex w-full min-w-0 items-center sm:order-none sm:w-auto sm:flex-1">
             <TabsList
