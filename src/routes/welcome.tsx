@@ -208,10 +208,10 @@ function Landing() {
             See features
           </a>
         </div>
-        <p className="landing-in mx-auto mt-4 max-w-md text-sm text-muted-foreground [animation-delay:400ms]">
+        <p className="landing-in mx-auto mt-4 max-w-md text-sm text-foreground/75 [animation-delay:400ms]">
           Just drop the export file — titles get matched automatically, no manual typing.
         </p>
-        <div className="landing-in mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs uppercase tracking-wider text-muted-foreground [animation-delay:450ms]">
+        <div className="landing-in mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-medium uppercase tracking-wider text-foreground/60 [animation-delay:450ms]">
           {SOURCES.map((s, i) => (
             <span key={s} className="flex items-center gap-3">
               {i > 0 && <span className="h-1 w-1 rounded-full bg-border" />}
