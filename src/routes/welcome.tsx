@@ -6,6 +6,7 @@ import {
   Compass,
   Heart,
   Import,
+  LogIn,
   Users,
 } from "lucide-react";
 import logo from "@/assets/onigiri-logo.svg";
