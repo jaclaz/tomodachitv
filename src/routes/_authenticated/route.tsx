@@ -9,6 +9,7 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
+      if (location.pathname === "/") throw redirect({ to: "/welcome" });
       throw redirect({ to: "/auth", search: { redirect: location.pathname } });
     }
     return { user: data.user };
