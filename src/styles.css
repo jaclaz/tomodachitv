@@ -171,4 +171,12 @@
 .landing-in { animation: landing-in .7s ease-out both; }
 .landing-float { animation: landing-float 5s ease-in-out infinite; }
 .landing-blob { animation: landing-blob 14s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .landing-in, .landing-float, .landing-blob { animation: none; } }
+@keyframes landing-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes landing-marquee-rev { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@keyframes landing-crossfade { 0%, 4% { opacity: 0; } 10%, 22% { opacity: 1; } 30%, 100% { opacity: 0; } }
+@keyframes landing-kenburns { from { transform: scale(1.06); } to { transform: scale(1.18); } }
+.landing-marquee { animation: landing-marquee 90s linear infinite; }
+.landing-marquee-rev { animation: landing-marquee-rev 110s linear infinite; }
+.landing-crossfade { animation: landing-crossfade 40s ease-in-out infinite; }
+.landing-kenburns { animation: landing-kenburns 40s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .landing-in, .landing-float, .landing-blob, .landing-marquee, .landing-marquee-rev, .landing-crossfade, .landing-kenburns { animation: none; } }

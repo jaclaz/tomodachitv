@@ -164,7 +164,7 @@ function getApiKey() {
   return key;
 }
 
-async function tmdbFetch(path: string, params?: Record<string, string>) {
+export async function tmdbFetch(path: string, params?: Record<string, string>) {
   const key = getApiKey();
   const query = new URLSearchParams({
     api_key: key,

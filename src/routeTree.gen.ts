@@ -28,6 +28,7 @@ import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPersonIdRouteImport } from './routes/_authenticated/person.$id'
 import { Route as AuthenticatedSerieIdRouteImport } from './routes/_authenticated/serie.$id'
 import { Route as AuthenticatedUUsernameRouteImport } from './routes/_authenticated/u.$username'
+import { Route as ApiPublicShowcaseRouteImport } from './routes/api/public/showcase'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -125,6 +126,11 @@ const AuthenticatedUUsernameRoute = AuthenticatedUUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicShowcaseRoute = ApiPublicShowcaseRouteImport.update({
+  id: '/api/public/showcase',
+  path: '/api/public/showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/person/$id': typeof AuthenticatedPersonIdRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/showcase': typeof ApiPublicShowcaseRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/person/$id': typeof AuthenticatedPersonIdRoute
   '/serie/$id': typeof AuthenticatedSerieIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/showcase': typeof ApiPublicShowcaseRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/_authenticated/person/$id': typeof AuthenticatedPersonIdRoute
   '/_authenticated/serie/$id': typeof AuthenticatedSerieIdRoute
   '/_authenticated/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/showcase': typeof ApiPublicShowcaseRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/person/$id'
     | '/serie/$id'
     | '/u/$username'
+    | '/api/public/showcase'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/person/$id'
     | '/serie/$id'
     | '/u/$username'
+    | '/api/public/showcase'
   id:
     | '__root__'
     | '/_authenticated'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/_authenticated/person/$id'
     | '/_authenticated/serie/$id'
     | '/_authenticated/u/$username'
+    | '/api/public/showcase'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   WelcomeRoute: typeof WelcomeRoute
+  ApiPublicShowcaseRoute: typeof ApiPublicShowcaseRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -394,6 +407,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUUsernameRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/showcase': {
+      id: '/api/public/showcase'
+      path: '/api/public/showcase'
+      fullPath: '/api/public/showcase'
+      preLoaderRoute: typeof ApiPublicShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -441,6 +461,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   WelcomeRoute: WelcomeRoute,
+  ApiPublicShowcaseRoute: ApiPublicShowcaseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
