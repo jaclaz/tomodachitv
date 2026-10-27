@@ -6,6 +6,7 @@ import {
   Compass,
   Heart,
   Import,
+  LogIn,
   Users,
 } from "lucide-react";
 import logo from "@/assets/onigiri-logo.svg";
@@ -201,17 +202,14 @@ function Landing() {
             to="/auth"
             className="flex items-center gap-2 rounded-full bg-primary px-7 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-105"
           >
-            <Import className="h-4 w-4" />
-            Import your TV Time or Netflix history
+            <LogIn className="h-4 w-4" />
+            Log in or sign up
           </Link>
           <a href="#features" className="rounded-full border border-border px-7 py-3 font-semibold hover:bg-card">
             See features
           </a>
         </div>
-        <p className="landing-in mx-auto mt-4 max-w-md text-sm text-foreground/75 [animation-delay:400ms]">
-          Just drop the export file — titles get matched automatically, no manual typing.
-        </p>
-        <div className="landing-in mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-medium uppercase tracking-wider text-foreground/60 [animation-delay:450ms]">
+        <div className="landing-in mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-medium uppercase tracking-wider text-foreground/60 [animation-delay:400ms]">
           {SOURCES.map((s, i) => (
             <span key={s} className="flex items-center gap-3">
               {i > 0 && <span className="h-1 w-1 rounded-full bg-border" />}
@@ -219,6 +217,9 @@ function Landing() {
             </span>
           ))}
         </div>
+        <p className="landing-in mx-auto mt-3 max-w-md text-sm text-foreground/75 [animation-delay:450ms]">
+          Just drop the export file — titles get matched automatically, no manual typing.
+        </p>
       </section>
 
       <section id="features" className="relative mx-auto grid max-w-6xl gap-4 px-6 pb-24 sm:grid-cols-2 lg:grid-cols-3">
