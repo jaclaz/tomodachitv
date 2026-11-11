@@ -37,19 +37,25 @@ async function buildWatchedLibrary(
     const movieIds = (libRows ?? []).filter((r) => r.media_type === "movie").map((r) => r.tmdb_id);
 
     // Episodes for tv rows (for counts + last watched)
-    const { data: eps, error: e1 } = await context.supabase
-      .from("watched_episodes")
-      .select("tmdb_id, watched_at")
-      .eq("user_id", context.userId);
-    if (e1) throw e1;
+    // Paginated: the API caps responses at 1000 rows.
     const showAgg = new Map<number, { count: number; last: string }>();
-    for (const r of eps ?? []) {
-      const cur = showAgg.get(r.tmdb_id);
-      if (!cur) showAgg.set(r.tmdb_id, { count: 1, last: r.watched_at });
-      else {
-        cur.count += 1;
-        if (r.watched_at > cur.last) cur.last = r.watched_at;
+    for (let from = 0; ; from += 1000) {
+      const { data: eps, error: e1 } = await context.supabase
+        .from("watched_episodes")
+        .select("tmdb_id, watched_at, season_number")
+        .eq("user_id", context.userId)
+        .range(from, from + 999);
+      if (e1) throw e1;
+      for (const r of eps ?? []) {
+        if ((r as any).season_number === 0) continue; // specials don't count
+        const cur = showAgg.get(r.tmdb_id);
+        if (!cur) showAgg.set(r.tmdb_id, { count: 1, last: r.watched_at });
+        else {
+          cur.count += 1;
+          if (r.watched_at > cur.last) cur.last = r.watched_at;
+        }
       }
+      if (!eps || eps.length < 1000) break;
     }
 
     const { data: movies, error: e2 } = await context.supabase
@@ -90,6 +96,13 @@ async function buildWatchedLibrary(
         (cached.episode_count_aired == null || cached.series_status == null)
       )
         return true;
+      // Show info goes stale (new episodes air, "Ended" flips). Refresh daily
+      // for running shows, weekly for finished ones.
+      if (r.media_type === "tv") {
+        const age = Date.now() - new Date(cached.updated_at ?? 0).getTime();
+        const finished = ["Ended", "Canceled", "Cancelled"].includes(cached.series_status);
+        if (age > (finished ? 7 : 1) * 86_400_000) return true;
+      }
       return false;
     };
     const missing = (libRows ?? []).filter(needsRefetch).map((r) => ({
@@ -141,6 +154,7 @@ async function buildWatchedLibrary(
               genre_ids: (d.genres ?? []).map((g: any) => g.id),
               episode_count_aired: releasedCount,
               series_status: k.media_type === "tv" ? (d.status ?? null) : null,
+              updated_at: new Date().toISOString(),
             };
           } catch {
             return null;
@@ -169,10 +183,20 @@ async function buildWatchedLibrary(
     }
 
     const items: WatchedLibraryItem[] = [];
+    const reopen: number[] = [];
     for (const lib of libRows ?? []) {
       const c = cacheMap.get(`${lib.media_type}:${lib.tmdb_id}`);
       if (lib.media_type === "tv") {
         const agg = showAgg.get(lib.tmdb_id);
+        // A "completed" show with newly aired episodes goes back to watching.
+        if (
+          lib.status === "completed" &&
+          c?.episode_count_aired != null &&
+          (agg?.count ?? 0) < c.episode_count_aired
+        ) {
+          reopen.push(lib.tmdb_id);
+          continue;
+        }
         items.push({
           media_type: "tv",
           tmdb_id: lib.tmdb_id,
@@ -204,6 +228,15 @@ async function buildWatchedLibrary(
           dropped: lib.status === "dropped",
         });
       }
+    }
+    if (reopen.length && userId === context.userId) {
+      await context.supabase
+        .from("watchlist")
+        .update({ status: "watching" })
+        .eq("user_id", userId)
+        .eq("media_type", "tv")
+        .eq("status", "completed")
+        .in("tmdb_id", reopen);
     }
     return items;
   }
