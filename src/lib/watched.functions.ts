@@ -107,7 +107,8 @@ async function syncTvLibrary(
     .from("watched_episodes")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("tmdb_id", tmdb_id);
+    .eq("tmdb_id", tmdb_id)
+    .gt("season_number", 0); // specials don't count toward completion
   const watchedCount = count ?? 0;
 
   const { data: existing } = await supabase
