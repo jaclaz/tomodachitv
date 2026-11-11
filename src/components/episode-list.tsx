@@ -25,6 +25,7 @@ import {
   unmarkEpisodeWatched,
 } from "@/lib/watched.functions";
 import { addToWatchlist } from "@/lib/watchlist.functions";
+import { celebrate } from "@/lib/celebrate";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -158,6 +159,40 @@ export function EpisodeList({ series }: EpisodeListProps) {
     }
   };
 
+  // Confetti when a mark completes a season (or the whole series).
+  const celebrateIfFinished = (
+    marked: { season_number: number; episode_number: number }[],
+  ) => {
+    const now = new Set(watchedSet);
+    for (const m of marked) now.add(`${m.season_number}-${m.episode_number}`);
+    const realSeasons = series.seasons.filter((s) => s.season_number > 0);
+    const totalEpisodes = realSeasons.reduce((n, s) => n + (s.episode_count ?? 0), 0);
+    const watchedReal = [...now].filter((k) => !k.startsWith("0-")).length;
+    const wasSeriesDone = totalEpisodes > 0 && watchedSet.size >= totalEpisodes;
+    if (totalEpisodes > 0 && watchedReal >= totalEpisodes && !wasSeriesDone) {
+      void celebrate("series");
+      return;
+    }
+    const seasonsTouched = new Set(marked.map((m) => m.season_number));
+    for (const sn of seasonsTouched) {
+      if (sn <= 0) continue;
+      const info = realSeasons.find((s) => s.season_number === sn);
+      const eps =
+        seasonDetails && seasonDetails.season_number === sn
+          ? seasonDetails.episodes.filter(isReleased).map((e) => e.episode_number)
+          : info
+            ? Array.from({ length: info.episode_count ?? 0 }, (_, i) => i + 1)
+            : [];
+      if (!eps.length) continue;
+      const doneNow = eps.every((e) => now.has(`${sn}-${e}`));
+      const doneBefore = eps.every((e) => watchedSet.has(`${sn}-${e}`));
+      if (doneNow && !doneBefore) {
+        void celebrate("season");
+        return;
+      }
+    }
+  };
+
   const markMutation = useMutation({
     mutationFn: async (vars: {
       tmdb_id: number;
@@ -169,7 +204,10 @@ export function EpisodeList({ series }: EpisodeListProps) {
       await ensureInLibrary();
       return markEpisodeWatched({ data: vars });
     },
-    onSuccess: invalidateWatched,
+    onSuccess: (_d, vars) => {
+      celebrateIfFinished([vars]);
+      return invalidateWatched();
+    },
   });
 
   const bulkMutation = useMutation({
@@ -185,7 +223,10 @@ export function EpisodeList({ series }: EpisodeListProps) {
       await ensureInLibrary();
       return markEpisodesBulk({ data: vars });
     },
-    onSuccess: invalidateWatched,
+    onSuccess: (_d, vars) => {
+      celebrateIfFinished(vars.episodes);
+      return invalidateWatched();
+    },
   });
 
   const unmarkMutation = useMutation({
