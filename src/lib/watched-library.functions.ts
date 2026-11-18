@@ -1,3 +1,4 @@
+import { resolveLastAired, countAired } from "@/lib/aired.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -101,7 +102,7 @@ async function buildWatchedLibrary(
       if (r.media_type === "tv") {
         const age = Date.now() - new Date(cached.updated_at ?? 0).getTime();
         const finished = ["Ended", "Canceled", "Cancelled"].includes(cached.series_status);
-        if (age > (finished ? 7 : 1) * 86_400_000) return true;
+        if (age > (finished ? 7 * 24 : 6) * 3_600_000) return true;
       }
       return false;
     };
@@ -124,7 +125,7 @@ async function buildWatchedLibrary(
             let releasedCount: number | null = null;
             if (k.media_type === "tv") {
               const today = new Date().toISOString().slice(0, 10);
-              const last = d.last_episode_to_air as
+              const last = (await resolveLastAired(d, k.tmdb_id)) as
                 | { season_number: number; episode_number: number; air_date?: string | null }
                 | null;
               const seasons = (d.seasons ?? []).filter(

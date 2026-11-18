@@ -1,3 +1,4 @@
+import { resolveLastAired, countAired } from "@/lib/aired.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -232,7 +233,7 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
             });
           } else {
             const raw = await tmdbFetch(`/tv/${item.tmdb_id}`);
-            const last = raw.last_episode_to_air;
+            const last = (await resolveLastAired(raw, item.tmdb_id)) as any;
             // Keep the aired-episode count fresh; a DB trigger moves
             // "completed" shows back to watching when new episodes air.
             if (last) {

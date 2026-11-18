@@ -1,3 +1,4 @@
+import { resolveLastAired, countAired } from "@/lib/aired.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -134,7 +135,7 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
         );
 
         // Only count episodes that have already aired based on last_episode_to_air.
-        const last = details.last_episode_to_air as
+        const last = (await resolveLastAired(details, tmdb_id)) as
           | { season_number: number; episode_number: number }
           | null
           | undefined;

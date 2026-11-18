@@ -1,3 +1,4 @@
+import { resolveLastAired, countAired } from "@/lib/aired.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -82,7 +83,9 @@ async function fetchTmdbSummary(
         (media_type === "tv" ? d.first_air_date : d.release_date) || null,
       vote_average: d.vote_average ?? null,
       episode_count_aired:
-        media_type === "tv" ? computeReleasedEpisodes(d) : null,
+        media_type === "tv"
+          ? countAired(d, await resolveLastAired(d, tmdb_id)) ?? computeReleasedEpisodes(d)
+          : null,
       series_status: media_type === "tv" ? d.status ?? null : null,
     };
   } catch {
