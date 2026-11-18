@@ -1,3 +1,4 @@
+import { isAiringNow } from "@/lib/airing";
 import { resolveLastAired, countAired } from "@/lib/aired.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -15,6 +16,9 @@ export interface CurrentlyWatchingItem {
   next_episode: number;
   runtime_minutes: number | null;
   last_watched_at: string;
+  /** Watched everything released so far, more episodes coming soon. */
+  caught_up: boolean;
+  next_air_date: string | null;
 }
 
 export const getCurrentlyWatching = createServerFn({ method: "POST" })
@@ -128,6 +132,8 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
             next_episode: agg.count + 1,
             runtime_minutes: null,
             last_watched_at: agg.last,
+            caught_up: false,
+            next_air_date: null,
           } satisfies CurrentlyWatchingItem;
         }
         const seasons = (details.seasons ?? []).filter(
@@ -174,9 +180,29 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
         }
 
         // Currently watching only if 0 < watched < totalAired and there IS a next aired episode.
-        if (!next) return null;
         if (agg.count <= 0) return null;
-        if (totalAired > 0 && agg.count >= totalAired) return null;
+        const upcoming = details.next_episode_to_air as
+          | { season_number: number; episode_number: number; air_date?: string | null }
+          | null
+          | undefined;
+        if (!next || (totalAired > 0 && agg.count >= totalAired)) {
+          // Caught up on an airing show: keep it in "watching" without +1.
+          if (!upcoming || !isAiringNow(upcoming.air_date)) return null;
+          return {
+            tmdb_id,
+            title: details.name ?? "Unknown",
+            poster_path: details.poster_path ?? null,
+            backdrop_path: details.backdrop_path ?? null,
+            episodes_watched: agg.count,
+            total_episodes: totalAired,
+            next_season: upcoming.season_number,
+            next_episode: upcoming.episode_number,
+            runtime_minutes: details.episode_run_time?.[0] ?? null,
+            last_watched_at: agg.last,
+            caught_up: true,
+            next_air_date: upcoming.air_date ?? null,
+          } satisfies CurrentlyWatchingItem;
+        }
 
         return {
           tmdb_id,
@@ -189,6 +215,8 @@ export const getCurrentlyWatching = createServerFn({ method: "POST" })
           next_episode: next.episode,
           runtime_minutes: details.episode_run_time?.[0] ?? null,
           last_watched_at: agg.last,
+          caught_up: false,
+          next_air_date: upcoming?.air_date ?? null,
         } satisfies CurrentlyWatchingItem;
       }),
     );

@@ -13,6 +13,9 @@ import { markEpisodeWatched, getWatchedShowProgress, getWatchedMovies } from "@/
 import { toast } from "sonner";
 import type { CurrentlyWatchingItem } from "@/lib/currently-watching.functions";
 
+const fmtAir = (d: string | null) =>
+  d ? new Date(`${d}T12:00:00Z`).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : null;
+
 export const Route = createFileRoute("/_authenticated/watchlist")({
   validateSearch: (search: Record<string, unknown>) => ({
     type: (search.type === "movie" ? "movie" : "tv") as "tv" | "movie",
@@ -320,7 +323,9 @@ function WatchlistPage() {
                   return (
                     <div className="mt-2 space-y-1.5">
                       <p className="text-[11px] text-muted-foreground">
-                        Next: S{prog.next_season} · E{prog.next_episode}
+                        {prog.caught_up
+                          ? `Up to date · next ${fmtAir(prog.next_air_date) ?? "soon"}`
+                          : `Next: S${prog.next_season} · E${prog.next_episode}`}
                         {prog.total_episodes > 0
                           ? ` · ${prog.episodes_watched}/${prog.total_episodes}`
                           : ""}
@@ -331,6 +336,7 @@ function WatchlistPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
+                      {!prog.caught_up && (
                       <button
                         type="button"
                         disabled={pending}
@@ -348,6 +354,7 @@ function WatchlistPage() {
                         )}
                         Mark next watched
                       </button>
+                      )}
                     </div>
                   );
                 })()}

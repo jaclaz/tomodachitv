@@ -212,6 +212,7 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
       tmdb_id: number;
       episode_count_aired: number;
       series_status: string | null;
+      next_air_date: string | null;
       updated_at: string;
     }> = [];
 
@@ -250,6 +251,7 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
                   tmdb_id: item.tmdb_id,
                   episode_count_aired: aired,
                   series_status: raw.status ?? null,
+                  next_air_date: raw.next_episode_to_air?.air_date ?? null,
                   updated_at: new Date().toISOString(),
                 });
             }
@@ -282,6 +284,7 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
             .update({
               episode_count_aired: u.episode_count_aired,
               series_status: u.series_status,
+              next_air_date: u.next_air_date,
               updated_at: u.updated_at,
             })
             .eq("media_type", "tv")

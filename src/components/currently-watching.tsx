@@ -6,6 +6,9 @@ import { markEpisodeWatched } from "@/lib/watched.functions";
 import { posterUrl } from "@/lib/tmdb";
 import { toast } from "sonner";
 
+const fmtAir = (d: string | null) =>
+  d ? new Date(`${d}T12:00:00Z`).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : null;
+
 export function CurrentlyWatching() {
   const queryClient = useQueryClient();
 
@@ -143,7 +146,9 @@ export function CurrentlyWatching() {
                     {s.title}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Next: S{s.next_season} · E{s.next_episode}
+                    {s.caught_up
+                      ? `Up to date · S${s.next_season}·E${s.next_episode}${fmtAir(s.next_air_date) ? ` on ${fmtAir(s.next_air_date)}` : " soon"}`
+                      : `Next: S${s.next_season} · E${s.next_episode}`}
                   </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {s.episodes_watched}
@@ -157,6 +162,7 @@ export function CurrentlyWatching() {
                     />
                   </div>
                 </div>
+                {!s.caught_up && (
                 <button
                   type="button"
                   disabled={pending}
@@ -178,6 +184,7 @@ export function CurrentlyWatching() {
                   )}
                   Mark next watched
                 </button>
+                )}
               </div>
             </div>
           );

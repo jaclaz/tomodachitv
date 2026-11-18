@@ -1,3 +1,4 @@
+import { isAiringNow } from "@/lib/airing";
 import { resolveLastAired, countAired } from "@/lib/aired.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -65,6 +66,7 @@ async function fetchTmdbSummary(
   vote_average: number | null;
   episode_count_aired: number | null;
   series_status: string | null;
+  next_air_date: string | null;
 } | null> {
   const key = process.env.TMDB_API_KEY;
   if (!key) return null;
@@ -87,6 +89,7 @@ async function fetchTmdbSummary(
           ? countAired(d, await resolveLastAired(d, tmdb_id)) ?? computeReleasedEpisodes(d)
           : null,
       series_status: media_type === "tv" ? d.status ?? null : null,
+      next_air_date: media_type === "tv" ? d.next_episode_to_air?.air_date ?? null : null,
     };
   } catch {
     return null;
@@ -156,6 +159,8 @@ async function syncTvLibrary(
           vote_average: tmdb.vote_average,
           episode_count_aired: tmdb.episode_count_aired,
           series_status: tmdb.series_status,
+          next_air_date: tmdb.next_air_date,
+          updated_at: new Date().toISOString(),
         },
         { onConflict: "media_type, tmdb_id" },
       );
@@ -166,7 +171,12 @@ async function syncTvLibrary(
 
   let desired: string;
   if (watchedCount === 0) desired = "watching";
-  else if (totalReleased && totalReleased > 0 && watchedCount >= totalReleased)
+  else if (
+    totalReleased &&
+    totalReleased > 0 &&
+    watchedCount >= totalReleased &&
+    !isAiringNow(tmdb ? tmdb.next_air_date : cache?.next_air_date)
+  )
     desired = "completed";
   else desired = "watching";
 
@@ -528,11 +538,14 @@ export const getWatchedShowProgress = createServerFn({ method: "POST" })
 
     const { data: cacheRows, error: cacheError } = await context.supabase
       .from("media_cache")
-      .select("tmdb_id, episode_count_aired")
+      .select("tmdb_id, episode_count_aired, next_air_date")
       .eq("media_type", "tv")
       .in("tmdb_id", ids);
     if (cacheError) throw cacheError;
 
+    const nextAir = new Map<number, string | null>(
+      (cacheRows ?? []).map((row) => [row.tmdb_id, row.next_air_date ?? null]),
+    );
     const totals = new Map<number, number | null>(
       (cacheRows ?? []).map((row) => [row.tmdb_id, row.episode_count_aired ?? null]),
     );
@@ -541,12 +554,14 @@ export const getWatchedShowProgress = createServerFn({ method: "POST" })
       const watchedCount = byShow.get(tmdb_id)?.size ?? 0;
       const totalReleased = totals.get(tmdb_id) ?? null;
       const hasKnownTotal = totalReleased != null && totalReleased > 0;
-      const isCompleted = hasKnownTotal && watchedCount >= totalReleased;
+      const airing = isAiringNow(nextAir.get(tmdb_id));
+      const isCompleted = hasKnownTotal && watchedCount >= totalReleased && !airing;
       return {
         tmdb_id,
         watched_count: watchedCount,
         total_released_episodes: totalReleased,
-        is_currently_watching: hasKnownTotal && watchedCount >= 1 && watchedCount < totalReleased,
+        is_currently_watching:
+          hasKnownTotal && watchedCount >= 1 && (watchedCount < totalReleased || airing),
         is_completed: isCompleted,
       } satisfies WatchedShowProgress;
     });

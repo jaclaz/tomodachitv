@@ -1,3 +1,4 @@
+import { isAiringNow } from "@/lib/airing";
 import { resolveLastAired, countAired } from "@/lib/aired.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -155,6 +156,7 @@ async function buildWatchedLibrary(
               genre_ids: (d.genres ?? []).map((g: any) => g.id),
               episode_count_aired: releasedCount,
               series_status: k.media_type === "tv" ? (d.status ?? null) : null,
+              next_air_date: k.media_type === "tv" ? (d.next_episode_to_air?.air_date ?? null) : null,
               updated_at: new Date().toISOString(),
             };
           } catch {
@@ -193,7 +195,8 @@ async function buildWatchedLibrary(
         if (
           lib.status === "completed" &&
           c?.episode_count_aired != null &&
-          (agg?.count ?? 0) < c.episode_count_aired
+          ((agg?.count ?? 0) < c.episode_count_aired ||
+            ((agg?.count ?? 0) > 0 && isAiringNow(c.next_air_date)))
         ) {
           reopen.push(lib.tmdb_id);
           continue;

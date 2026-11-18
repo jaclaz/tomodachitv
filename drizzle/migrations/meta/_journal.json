@@ -22,6 +22,13 @@
       "when": 1795007385196,
       "tag": "0002_reopen_completed_shows_on_new_episodes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795009256029,
+      "tag": "0003_reopen_completed_shows_when_airing",
+      "breakpoints": true
     }
   ]
 }
