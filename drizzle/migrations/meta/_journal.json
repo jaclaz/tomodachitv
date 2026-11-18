@@ -15,6 +15,13 @@
       "when": 1792658429754,
       "tag": "0001_profile_content_visible_without_following",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795007385196,
+      "tag": "0002_reopen_completed_shows_on_new_episodes",
+      "breakpoints": true
     }
   ]
 }

@@ -201,17 +201,24 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
       .from("watchlist")
       .select("tmdb_id, media_type, series_name, status")
       .eq("user_id", userId)
-      .in("status", ["planned", "watching"])
-      .limit(80);
+      .in("status", ["planned", "watching", "completed"])
+      .limit(120);
     if (error) throw new Error(error.message);
 
     const pending: NewNotification[] = [];
+    const cacheUpdates: Array<{
+      media_type: "tv";
+      tmdb_id: number;
+      episode_count_aired: number;
+      series_status: string | null;
+      updated_at: string;
+    }> = [];
 
     await Promise.all(
       (library ?? []).map(async (item) => {
         try {
           if (item.media_type === "movie") {
-            if (!wantReleases) return;
+            if (!wantReleases || item.status === "completed") return;
             const raw = await tmdbFetch(`/movie/${item.tmdb_id}`);
             const age = daysAgo(raw.release_date);
             if (age === null || age < 0 || age > 7) return;
@@ -224,9 +231,28 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
               dedupe_key: `release:movie:${item.tmdb_id}`,
             });
           } else {
-            if (!wantEpisodes) return;
             const raw = await tmdbFetch(`/tv/${item.tmdb_id}`);
             const last = raw.last_episode_to_air;
+            // Keep the aired-episode count fresh; a DB trigger moves
+            // "completed" shows back to watching when new episodes air.
+            if (last) {
+              let aired = 0;
+              for (const s of raw.seasons ?? []) {
+                if (s.season_number <= 0) continue;
+                if (s.season_number < last.season_number) aired += s.episode_count ?? 0;
+                else if (s.season_number === last.season_number)
+                  aired += Math.min(last.episode_number, s.episode_count || last.episode_number);
+              }
+              if (aired > 0)
+                cacheUpdates.push({
+                  media_type: "tv",
+                  tmdb_id: item.tmdb_id,
+                  episode_count_aired: aired,
+                  series_status: raw.status ?? null,
+                  updated_at: new Date().toISOString(),
+                });
+            }
+            if (!wantEpisodes) return;
             const age = daysAgo(last?.air_date);
             if (!last || age === null || age < 0 || age > 7) return;
             pending.push({
@@ -245,6 +271,25 @@ export const syncMediaNotifications = createServerFn({ method: "POST" })
         }
       }),
     );
+
+    if (cacheUpdates.length) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        for (const u of cacheUpdates) {
+          await supabaseAdmin
+            .from("media_cache")
+            .update({
+              episode_count_aired: u.episode_count_aired,
+              series_status: u.series_status,
+              updated_at: u.updated_at,
+            })
+            .eq("media_type", "tv")
+            .eq("tmdb_id", u.tmdb_id);
+        }
+      } catch {
+        /* best-effort */
+      }
+    }
 
     if (pending.length === 0) return { created: 0 };
 
