@@ -45,7 +45,7 @@ function WatchlistPage() {
       ? "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
       : "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
 
-  const { data = [], isLoading } = useQuery({
+  const { data = [], isLoading: listLoading } = useQuery({
     queryKey: ["watchlist"],
     queryFn: () => getWatchlist(),
   });
@@ -56,7 +56,7 @@ function WatchlistPage() {
     staleTime: 60_000,
   });
 
-  const { data: watchedShowProgress = [] } = useQuery({
+  const { data: watchedShowProgress = [], isLoading: progressLoading } = useQuery({
     queryKey: ["watched-show-progress"],
     queryFn: () => getWatchedShowProgress(),
     staleTime: 60_000,
@@ -245,7 +245,7 @@ function WatchlistPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {listLoading || (filter === "tv" && progressLoading) ? (
         <div className={gridClass}>
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-muted" />
